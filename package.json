@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@mdx-js/react": "^3.1.1",
-    "@scalar/api-reference-react": "^0.9.41",
+    "@scalar/api-reference-react": "^0.9.58",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
