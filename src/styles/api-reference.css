@@ -1,0 +1,283 @@
+.api-reference-page .scalar-app {
+  --refs-sidebar-width: 0px;
+  --scalar-color-accent: #0f766e;
+  --scalar-radius: 6px;
+  --scalar-radius-lg: 8px;
+  --scalar-radius-xl: 10px;
+  --scalar-font:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --scalar-font-code:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  border: 0;
+  border-radius: 0;
+  min-height: calc(100vh - 56px);
+  overflow: visible;
+}
+
+.api-reference-page .t-doc__sidebar,
+.api-reference-page .t-doc__header {
+  display: none !important;
+}
+
+.api-reference-page .references-rendered {
+  grid-area: rendered;
+  min-width: 0;
+  width: 100%;
+}
+
+.api-reference-page .section-container {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.api-reference-page .section {
+  border-bottom: 1px solid #f0f2f4;
+  width: 100%;
+  max-width: none;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.api-reference-page .section[hidden] {
+  display: none !important;
+}
+
+.api-reference-page .section-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 42px clamp(28px, 3vw, 56px) 58px;
+}
+
+.api-reference-page .operation-header {
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.api-reference-page .section-header-label {
+  color: #202124;
+  font-size: 38px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.calle-endpoint-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-bottom: 34px;
+  color: #6b7280;
+}
+
+.calle-endpoint-line code {
+  overflow: hidden;
+  color: #6b7280;
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-reference-page .section-columns {
+  align-items: flex-start;
+  gap: clamp(32px, 3vw, 64px);
+  justify-content: stretch;
+}
+
+.api-reference-page .section-column:first-child {
+  flex: 1 1 520px;
+  min-width: 0;
+  max-width: 760px;
+}
+
+.api-reference-page .section-column:last-child {
+  flex: 1.1 1 520px;
+  min-width: min(480px, 100%);
+  max-width: none;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: sticky;
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  top: 72px;
+}
+
+.api-reference-page .scalar-card {
+  border-color: #e5e7eb;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.api-reference-page .scalar-card.dark-mode {
+  overflow: hidden;
+  border-color: #111827;
+  background: #111827;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.14);
+}
+
+.api-reference-page .scalar-card.dark-mode pre,
+.api-reference-page .scalar-card.dark-mode code {
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.api-reference-page .response-card {
+  overflow: hidden;
+  border-color: #111827;
+  background: #111827;
+  color: #d1d5db;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.14);
+}
+
+.api-reference-page .response-card .scalar-card-header {
+  border-color: #1f2937;
+  background: #151923;
+  color: #cbd5e1;
+}
+
+.api-reference-page .response-card .scalar-card-footer {
+  border-color: #1f2937;
+  background: #111827;
+  color: #cbd5e1;
+}
+
+.api-reference-page .response-card .tab {
+  color: #94a3b8;
+}
+
+.api-reference-page .response-card .tab-selected {
+  color: #34d399;
+  font-weight: 800;
+}
+
+.api-reference-page .response-card .tab:not(.tab-selected),
+.api-reference-page .response-card .scalar-card-checkbox {
+  display: none;
+}
+
+.api-reference-page
+  ul[aria-label="Responses"]
+  > .parameter-item:not(:first-child) {
+  display: none;
+}
+
+.api-reference-page .response-card .scalar-code-block {
+  background: #0b0f19;
+  color: #cbd5e1;
+}
+
+.api-reference-page .response-card pre,
+.api-reference-page .response-card code,
+.api-reference-page .scalar-card.dark-mode pre,
+.api-reference-page .scalar-card.dark-mode code {
+  color: #cbd5e1;
+}
+
+.api-reference-page .response-card .hljs,
+.api-reference-page .scalar-card.dark-mode .hljs {
+  color: #cbd5e1;
+}
+
+.api-reference-page .response-card .hljs-attr,
+.api-reference-page .scalar-card.dark-mode .hljs-attr {
+  color: #7dd3fc;
+}
+
+.api-reference-page .response-card .hljs-string,
+.api-reference-page .scalar-card.dark-mode .hljs-string {
+  color: #86efac;
+}
+
+.api-reference-page .response-card .hljs-number,
+.api-reference-page .scalar-card.dark-mode .hljs-number {
+  color: #facc15;
+}
+
+.api-reference-page .response-card .hljs-literal,
+.api-reference-page .response-card .hljs-keyword,
+.api-reference-page .scalar-card.dark-mode .hljs-literal,
+.api-reference-page .scalar-card.dark-mode .hljs-keyword {
+  color: #f0abfc;
+}
+
+.api-reference-page .response-card .hljs-punctuation,
+.api-reference-page .scalar-card.dark-mode .hljs-punctuation {
+  color: #94a3b8;
+}
+
+.api-reference-page .response-card .scalar-code-copy {
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+.api-reference-page .parameter-item-trigger,
+.api-reference-page .schema-card-title {
+  border-radius: 8px;
+}
+
+.api-reference-page #api-1\/models {
+  display: none;
+}
+
+.api-reference-page #api-1\/tag\/calls,
+.api-reference-page #api-1\/tag\/webhooks {
+  display: none;
+}
+
+.api-reference-page .security-requirement-badge {
+  color: #202124;
+}
+
+/* Hide interactive API client controls while keeping read-only endpoint docs visible. */
+.api-reference-page [data-addressbar-action="send"],
+.api-reference-page .response-section-content {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .api-reference-page .section-columns {
+    flex-direction: column;
+  }
+
+  .api-reference-page .section-column,
+  .api-reference-page .section-column:last-child {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: none;
+    overflow: visible;
+    position: static;
+    scrollbar-gutter: auto;
+  }
+
+  .api-reference-page .section-column:first-child {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 1080px) {
+  .api-reference-page .section-content {
+    padding: 34px 32px 50px;
+  }
+
+  .api-reference-page .section-header-label {
+    font-size: 30px;
+  }
+
+  .api-reference-page .section-columns {
+    gap: 24px;
+  }
+}
+
+@media (max-width: 760px) {
+  .api-reference-page .section-content {
+    padding: 28px 18px 44px;
+  }
+}

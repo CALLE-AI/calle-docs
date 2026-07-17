@@ -1,0 +1,345 @@
+# Calls
+
+Use call tasks to turn a structured workflow step into one or more real phone interactions.
+
+<h2 id="call-inputs">Call inputs</h2>
+
+`task` is the natural-language instruction for the call task. Keep it specific and outcome-oriented.
+
+`recipients` is optional when the task text already includes the phone target. Use it for explicit batch recipients. Each recipient can include `phones` in E.164 format plus optional `region` and `locale` hints.
+
+Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
+
+`result_schema` is a JSON Schema object for the whole call task. CALL-E validates the structured result against it before returning the terminal call task state. Object schemas are strict by default, so fields not declared in `properties` are rejected.
+
+`recipient_result_schema` is an optional JSON Schema object for each recipient result. It uses the same strict object behavior.
+
+`metadata` is copied through to the call task and webhook payload. Use it for workflow identifiers, user ids, or reconciliation fields.
+
+`webhook_url` is an optional request-level endpoint for terminal webhooks.
+
+The server SDKs also reserve a `context` input for future SDK-side workflow data. It is not sent to the API yet.
+
+TypeScript:
+
+```ts
+const call = await client.calls.create(
+  {
+    task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    recipients: [
+      { phones: ["<RECIPIENT_1_E164_PHONE>"], region: "US", locale: "en-US" },
+      { phones: ["<RECIPIENT_2_E164_PHONE>"], region: "US", locale: "en-US" },
+    ],
+    resultSchema: {
+      type: "object",
+      required: ["attending_count"],
+      properties: {
+        attending_count: { type: "integer" },
+      },
+    },
+    recipientResultSchema: {
+      type: "object",
+      required: ["can_attend"],
+      properties: {
+        can_attend: { type: "string", enum: ["yes", "no", "unknown"] },
+      },
+    },
+    metadata: {
+      workflow_run_id: "wf_123",
+    },
+    webhookUrl: "https://example.com/calle/webhook",
+  },
+  {
+    idempotencyKey: "wf_123_friday_lunch",
+  },
+);
+```
+
+Python:
+
+```python
+call = client.calls.create(
+    task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    recipients=[
+        {"phones": ["<RECIPIENT_1_E164_PHONE>"], "region": "US", "locale": "en-US"},
+        {"phones": ["<RECIPIENT_2_E164_PHONE>"], "region": "US", "locale": "en-US"},
+    ],
+    result_schema={
+        "type": "object",
+        "required": ["attending_count"],
+        "properties": {"attending_count": {"type": "integer"}},
+    },
+    recipient_result_schema={
+        "type": "object",
+        "required": ["can_attend"],
+        "properties": {
+            "can_attend": {"type": "string", "enum": ["yes", "no", "unknown"]},
+        },
+    },
+    metadata={"workflow_run_id": "wf_123"},
+    webhook_url="https://example.com/calle/webhook",
+    idempotency_key="wf_123_friday_lunch",
+)
+```
+
+<h2 id="structured-results">Structured results</h2>
+
+Structured results let you turn the terminal call evidence into a stable JSON object for your workflow. The schema is an extraction contract: the SDK sends the schema to CALL-E, CALL-E extracts a result from the completed call evidence, and the service validates the result before returning it.
+
+The extraction model uses the call transcript, ASR, and Calling facts as primary evidence. It uses the post-call summary and outcome as supporting context. If CALL-E cannot produce a schema-valid result from the evidence, the public `structured_result` is `null`.
+
+Use `result_schema` for one result object that describes the whole call task. Use `recipient_result_schema` when each recipient needs an independent result, especially for batch calls. TypeScript uses `resultSchema` and `recipientResultSchema`; Python uses `result_schema` and `recipient_result_schema`. The JSON Schema object itself is the same shape.
+
+For `recipient_result_schema`, avoid reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, and timing fields. Use custom names such as `customer_summary`, `notes`, or `reason` instead.
+
+Descriptions are passed to the extraction model. Use `description` to explain what each field means and how enum values should be selected. Descriptions guide extraction, but they are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
+
+Supported schema features:
+
+- `type`: `object`, `string`, `number`, `integer`, `boolean`, or `array`
+- `properties`
+- `required`
+- `enum`
+- nested `object` fields
+- simple `array.items`
+- `description`
+- `additionalProperties: false`
+
+Unsupported schema features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
+
+For business decisions, prefer string enums over booleans when the answer can be unclear. Include an `unknown` value when the call may not provide enough evidence.
+
+```ts
+resultSchema: {
+  type: "object",
+  required: ["answer", "evidence"],
+  properties: {
+    answer: {
+      type: "string",
+      enum: ["yes", "no", "unknown"],
+      description:
+        "The answer to the task question. Use unknown if the recipient did not answer, avoided the question, or the evidence is ambiguous.",
+    },
+    evidence: {
+      type: "string",
+      description:
+        "A short quote or paraphrase from the call that supports the answer.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+When a result drives automation, add an evidence field so your system can inspect why CALL-E made the classification.
+
+<h3 id="sales-handoff-result">Sales handoff</h3>
+
+Use this pattern when a prospect should be routed to a human if they ask for help or show strong interest.
+
+```ts
+resultSchema: {
+  type: "object",
+  required: [
+    "human_assistance_requested",
+    "interest_level",
+    "handoff_recommended",
+    "evidence_summary",
+  ],
+  properties: {
+    human_assistance_requested: {
+      type: "string",
+      enum: ["yes", "no", "unknown"],
+      description:
+        "Whether the prospect explicitly asked to speak with a human, sales representative, specialist, manager, or requested a callback from a person. Use unknown if the evidence is unclear.",
+    },
+    interest_level: {
+      type: "string",
+      enum: ["strong", "moderate", "low", "not_interested", "unknown"],
+      description:
+        "Use strong when the prospect asks about pricing, demos, next steps, availability, implementation, purchase process, or clearly wants follow-up. Use moderate for curiosity without a concrete next step. Use low for minimal engagement. Use not_interested when they clearly decline. Use unknown when evidence is insufficient.",
+    },
+    handoff_recommended: {
+      type: "string",
+      enum: ["yes", "no", "unknown"],
+      description:
+        "Use yes if human_assistance_requested is yes or interest_level is strong. Use no when the prospect is low interest or not interested. Use unknown when the evidence is insufficient.",
+    },
+    evidence_summary: {
+      type: "string",
+      description:
+        "One concise sentence citing the prospect's words or behavior that supports the handoff decision.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+<h3 id="appointment-confirmation-result">Appointment confirmation</h3>
+
+Use this pattern when calling a business to confirm, reschedule, or cancel an appointment.
+
+```ts
+resultSchema: {
+  type: "object",
+  required: ["appointment_status", "confirmed_time", "confirmation_code"],
+  properties: {
+    appointment_status: {
+      type: "string",
+      enum: ["confirmed", "rescheduled", "canceled", "not_found", "unknown"],
+      description:
+        "The final appointment outcome. Use confirmed only when the business clearly confirms the appointment. Use rescheduled if a new time was agreed. Use not_found if the business cannot find the appointment. Use unknown when the evidence is unclear.",
+    },
+    confirmed_time: {
+      type: "string",
+      description:
+        "The confirmed appointment time as stated in the call, or an empty string if no time was confirmed.",
+    },
+    confirmation_code: {
+      type: "string",
+      description:
+        "The confirmation number or booking reference provided by the business, or an empty string if none was provided.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+<h3 id="batch-recipient-result">Batch recipient result</h3>
+
+Use `recipientResultSchema` when each recipient should have their own answer.
+
+```ts
+recipientResultSchema: {
+  type: "object",
+  required: ["can_attend", "dietary_notes"],
+  properties: {
+    can_attend: {
+      type: "string",
+      enum: ["yes", "no", "maybe", "unknown"],
+      description:
+        "Whether this recipient can attend. Use maybe only when they express uncertainty. Use unknown if the call did not reach the recipient or no clear answer was given.",
+    },
+    dietary_notes: {
+      type: "string",
+      description:
+        "Any dietary restrictions or preferences mentioned by this recipient, or an empty string if none were mentioned.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+<h3 id="support-triage-result">Support triage</h3>
+
+Use this pattern when a call should determine whether an issue was resolved or needs follow-up.
+
+```ts
+resultSchema: {
+  type: "object",
+  required: ["issue_resolved", "requires_follow_up", "priority", "summary"],
+  properties: {
+    issue_resolved: {
+      type: "string",
+      enum: ["yes", "no", "partial", "unknown"],
+      description:
+        "Use yes when the issue was fully resolved during the call. Use partial when some progress was made but another action remains. Use no when the issue was not resolved. Use unknown if the outcome is unclear.",
+    },
+    requires_follow_up: {
+      type: "string",
+      enum: ["yes", "no", "unknown"],
+      description:
+        "Whether another human or system action is required after the call. Use unknown if the call evidence is insufficient.",
+    },
+    priority: {
+      type: "string",
+      enum: ["urgent", "normal", "low", "unknown"],
+      description:
+        "Use urgent for time-sensitive issues, service outages, billing blockers, or explicit escalation requests. Use normal for standard follow-up. Use low for informational or non-urgent cases.",
+    },
+    summary: {
+      type: "string",
+      description:
+        "A concise summary of the issue, outcome, and any next action.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+<h3 id="pricing-request-result">Pricing or quote request</h3>
+
+Use this pattern when a prospect may ask about pricing, quotes, discounts, or budget.
+
+```ts
+resultSchema: {
+  type: "object",
+  required: ["pricing_requested", "budget_mentioned", "next_step"],
+  properties: {
+    pricing_requested: {
+      type: "string",
+      enum: ["yes", "no", "unknown"],
+      description:
+        "Whether the prospect asked for pricing, a quote, discount information, plan details, or cost comparison. Use unknown if the evidence is unclear.",
+    },
+    budget_mentioned: {
+      type: "string",
+      description:
+        "Any budget, price range, or cost constraint mentioned by the prospect, or an empty string if none was mentioned.",
+    },
+    next_step: {
+      type: "string",
+      enum: ["send_pricing", "schedule_demo", "human_callback", "no_action", "unknown"],
+      description:
+        "The most appropriate next step based on the prospect's request. Use human_callback if they ask to speak with a person. Use no_action if they clearly decline or no follow-up is needed. Use unknown if the evidence is insufficient.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+<h3 id="structured-result-best-practices">Best practices</h3>
+
+- Keep schemas focused. A small schema with clear fields is more reliable than a large schema with many optional fields.
+- Put enum selection rules in the field `description`.
+- Include `unknown` when the call may not contain enough evidence.
+- Use `required` for fields your workflow always expects.
+- Use `additionalProperties: false` to prevent extra fields from being returned.
+- Add an evidence or summary field when the result triggers workflow automation.
+- Do not rely on `description` for validation. Use schema constraints for enforceable behavior.
+
+<h2 id="idempotency">Idempotency</h2>
+
+Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
+
+Use a stable workflow key, not a random UUID generated at each retry.
+
+<h2 id="polling-and-events">Polling and events</h2>
+
+Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
+
+When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`. The task-level `task_completed`, `completion_confidence`, and `evidence` fields come from the post-call summary and are available independently of your custom result schema.
+
+Each recipient attempt can include `transcript_turns`, an ordered list of structured transcript turns for that dial attempt. Each turn has `offset_seconds`, `speaker`, and `text`; `speaker` is `bot`, `user`, or `unknown`. The array is empty when no transcript is available.
+
+TypeScript:
+
+```ts
+const completed = await client.calls.waitForResult(call.id, {
+  timeoutMs: 120_000,
+  intervalMs: 2_000,
+});
+
+const events = await client.calls.listEvents(call.id, { limit: 50 });
+```
+
+Python:
+
+```python
+completed = client.calls.wait_for_result(
+    call["id"],
+    timeout_seconds=120,
+    interval_seconds=2,
+)
+
+events = client.calls.list_events(call["id"], limit=50)
+```

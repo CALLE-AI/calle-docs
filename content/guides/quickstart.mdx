@@ -1,0 +1,137 @@
+# Quickstart
+
+Create a CALL-E call task, wait for the terminal result, and read the structured output.
+
+<span className="doc-badge">API key</span>
+<span className="doc-badge">TypeScript</span>
+<span className="doc-badge">Python</span>
+
+<h2 id="install">Install</h2>
+
+Install the server SDK package for your runtime:
+
+```bash
+pnpm add @call-e/calle
+pip install calle-ai
+```
+
+Set your API key before running the examples:
+
+```bash
+export CALLE_API_KEY="calle_test_key"
+```
+
+You can view your API keys in the [CALL-E dashboard](https://dashboard.heycall-e.com/account/api-keys).
+
+See [Authentication](#/authentication) for API key handling, server-only usage, and webhook secret boundaries.
+
+<h2 id="create-a-client">Create a client</h2>
+
+TypeScript:
+
+```ts
+import { CalleClient } from "@call-e/calle";
+
+const client = new CalleClient({
+  apiKey: process.env.CALLE_API_KEY!,
+});
+```
+
+Python:
+
+```python
+import os
+from calle import CalleClient
+
+client = CalleClient(api_key=os.environ["CALLE_API_KEY"])
+```
+
+<h2 id="minimum-request">Minimum request</h2>
+
+The minimum create request is task-only. Include the phone number directly in the task when CALL-E should infer the recipient from the instruction. Replace `<E164_PHONE>` with a phone number you own or are authorized to call.
+
+```json
+{
+  "task": "Call <E164_PHONE> and ask whether they can hear clearly."
+}
+```
+
+<h2 id="create-and-wait">Create and wait</h2>
+
+TypeScript:
+
+```ts
+const call = await client.calls.createAndWait({
+  task: "Call <E164_PHONE> and ask whether they can hear clearly.",
+  resultSchema: {
+    type: "object",
+    required: ["can_hear_clearly"],
+    properties: {
+      can_hear_clearly: { type: "string", enum: ["yes", "no", "unknown"] },
+    },
+  },
+});
+```
+
+Python:
+
+```python
+call = client.calls.create_and_wait(
+    task="Call <E164_PHONE> and ask whether they can hear clearly.",
+    result_schema={
+        "type": "object",
+        "required": ["can_hear_clearly"],
+        "properties": {
+            "can_hear_clearly": {"type": "string", "enum": ["yes", "no", "unknown"]},
+        },
+    },
+)
+```
+
+<h2 id="read-the-result">Read the result</h2>
+
+The terminal call task includes a stable status, a schema-valid structured result, and task-level outcome fields from the post-call summary. When CALL-E cannot produce a schema-valid result from the evidence, `structured_result` is `null`.
+
+TypeScript:
+
+```ts
+console.log(call.status);
+console.log(call.structuredResult);
+console.log(call.taskCompleted, call.completionConfidence, call.evidence);
+```
+
+Example output:
+
+```json
+{
+  "status": "completed",
+  "taskCompleted": true,
+  "completionConfidence": {"score": 0.92, "label": "high"},
+  "evidence": ["The recipient clearly answered yes."],
+  "structuredResult": {
+    "can_hear_clearly": "yes"
+  }
+}
+```
+
+Python:
+
+```python
+print(call["status"])
+print(call["structured_result"])
+print(call["task_completed"], call["completion_confidence"], call["evidence"])
+```
+
+Example output:
+
+```json
+{
+  "status": "completed",
+  "task_completed": true,
+  "completion_confidence": {"score": 0.92, "label": "high"},
+  "evidence": ["The recipient clearly answered yes."],
+  "structured_result": {
+    "can_hear_clearly": "yes"
+  }
+}
+```

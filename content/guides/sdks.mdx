@@ -1,0 +1,231 @@
+# SDKs
+
+CALL-E provides server SDKs for trusted backend services, workers, and automation systems that create and monitor call tasks.
+
+<h2 id="packages">Packages</h2>
+
+TypeScript package name:
+
+```text
+@call-e/calle
+```
+
+Python distribution name:
+
+```text
+calle-ai
+```
+
+Python imports the package as `calle`:
+
+```python
+from calle import CalleClient
+```
+
+<h2 id="package-status">Package status</h2>
+
+The current stable server SDK packages are:
+
+- TypeScript: `@call-e/calle@0.2.0`
+- Python: `calle-ai==0.2.0`
+
+<h2 id="source-repositories">Source repositories</h2>
+
+The SDKs are maintained as separate repositories so they can have independent release cadence, CI, package metadata, and language-specific examples.
+
+<table>
+  <thead>
+    <tr>
+      <th>Runtime</th>
+      <th>Package</th>
+      <th>Repository</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>TypeScript</td>
+      <td><code>@call-e/calle</code></td>
+      <td><a href="https://github.com/CALLE-AI/server-sdk-typescript">CALLE-AI/server-sdk-typescript</a></td>
+    </tr>
+    <tr>
+      <td>Python</td>
+      <td><code>calle-ai</code></td>
+      <td><a href="https://github.com/CALLE-AI/server-sdk-python">CALLE-AI/server-sdk-python</a></td>
+    </tr>
+  </tbody>
+</table>
+
+Each repository includes public source code, examples, and security guidance:
+
+- <a href="https://github.com/CALLE-AI/server-sdk-typescript/blob/main/SECURITY.md">TypeScript security policy</a>
+- <a href="https://github.com/CALLE-AI/server-sdk-python/blob/main/SECURITY.md">Python security policy</a>
+
+<h2 id="local-examples">Local examples</h2>
+
+Each SDK repository includes runnable examples for the server-side call task flow.
+
+TypeScript:
+
+```bash
+git clone https://github.com/CALLE-AI/server-sdk-typescript.git
+cd server-sdk-typescript
+pnpm install
+pnpm run example:create-and-wait
+pnpm run example:webhook
+```
+
+Python:
+
+```bash
+git clone https://github.com/CALLE-AI/server-sdk-python.git
+cd server-sdk-python
+uv sync --all-groups
+uv run python examples/create_and_wait.py
+uv run python examples/webhook_server.py
+```
+
+The webhook examples listen on `POST /calle/webhook` and verify `CALL-E-Timestamp` plus `CALL-E-Signature` before parsing JSON.
+
+<h2 id="supported-methods">Supported methods</h2>
+
+The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
+
+Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
+
+The SDKs accept structured result schemas as plain JSON objects. Use field `description` values to explain how CALL-E should interpret enum values, and use `type`, `required`, `enum`, and `additionalProperties` for hard validation. See the Calls guide for structured result design patterns and examples.
+
+TypeScript:
+
+```ts
+const created = await client.calls.create(
+  {
+    task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    recipients: [
+      { phones: ["<RECIPIENT_1_E164_PHONE>"], region: "US", locale: "en-US" },
+      { phones: ["<RECIPIENT_2_E164_PHONE>"], region: "US", locale: "en-US" },
+    ],
+    resultSchema: {
+      type: "object",
+      required: ["attending_count"],
+      properties: {
+        attending_count: { type: "integer" },
+      },
+    },
+    recipientResultSchema: {
+      type: "object",
+      required: ["can_attend"],
+      properties: {
+        can_attend: { type: "string", enum: ["yes", "no", "unknown"] },
+      },
+    },
+  },
+  { idempotencyKey: "wf_123_friday_lunch" },
+);
+
+const fetched = await client.calls.get(created.id);
+const completed = await client.calls.waitForResult(fetched.id);
+const createdAndCompleted = await client.calls.createAndWait(
+  {
+    task: "Call <E164_PHONE> and confirm their preferred appointment time.",
+    resultSchema: {
+      type: "object",
+      required: ["preferred_time"],
+      properties: {
+        preferred_time: { type: "string" },
+      },
+    },
+  },
+  { timeoutMs: 120_000, intervalMs: 2_000 },
+);
+const events = await client.calls.listEvents(createdAndCompleted.id, {
+  limit: 50,
+});
+const verified = client.webhooks.verify({
+  rawBody,
+  timestamp: headers["CALL-E-Timestamp"],
+  signature: headers["CALL-E-Signature"],
+  secret: process.env.CALLE_WEBHOOK_SECRET!,
+});
+const event = client.webhooks.unwrap({
+  rawBody,
+  headers,
+  secret: process.env.CALLE_WEBHOOK_SECRET!,
+});
+```
+
+Python:
+
+```python
+created = client.calls.create(
+    task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    recipients=[
+        {"phones": ["<RECIPIENT_1_E164_PHONE>"], "region": "US", "locale": "en-US"},
+        {"phones": ["<RECIPIENT_2_E164_PHONE>"], "region": "US", "locale": "en-US"},
+    ],
+    result_schema={
+        "type": "object",
+        "required": ["attending_count"],
+        "properties": {"attending_count": {"type": "integer"}},
+    },
+    recipient_result_schema={
+        "type": "object",
+        "required": ["can_attend"],
+        "properties": {
+            "can_attend": {"type": "string", "enum": ["yes", "no", "unknown"]},
+        },
+    },
+    idempotency_key="wf_123_friday_lunch",
+)
+
+fetched = client.calls.get(created["id"])
+completed = client.calls.wait_for_result(fetched["id"])
+created_and_completed = client.calls.create_and_wait(
+    task="Call <E164_PHONE> and confirm their preferred appointment time.",
+    result_schema={
+        "type": "object",
+        "required": ["preferred_time"],
+        "properties": {"preferred_time": {"type": "string"}},
+    },
+    timeout_seconds=120,
+    interval_seconds=2,
+)
+events = client.calls.list_events(created_and_completed["id"], limit=50)
+verified = client.webhooks.verify(
+    raw_body=raw_body,
+    timestamp=headers["CALL-E-Timestamp"],
+    signature=headers["CALL-E-Signature"],
+    secret=os.environ["CALLE_WEBHOOK_SECRET"],
+)
+event = client.webhooks.unwrap(
+    raw_body=raw_body,
+    headers=headers,
+    secret=os.environ["CALLE_WEBHOOK_SECRET"],
+)
+```
+
+<h2 id="availability">Availability</h2>
+
+Install the stable server SDK package for your runtime:
+
+```bash
+pnpm add @call-e/calle
+pip install calle-ai
+```
+
+Use pinned versions when your deployment process requires exact package reproducibility:
+
+```bash
+pnpm add @call-e/calle@0.2.0
+pip install calle-ai==0.2.0
+```
+
+<h2 id="supported-scope">Supported scope</h2>
+
+This release does not include:
+
+- Python async client support
+- Project-level webhook management
+- Cancel calls
+- Recurring or scheduled calls
+- Zod result schema helpers
+- Pydantic result schema helpers

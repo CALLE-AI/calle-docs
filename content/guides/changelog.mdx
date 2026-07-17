@@ -1,0 +1,27 @@
+# What's New
+
+Product updates for the CALL-E Developer API and server SDKs.
+
+<h2 id="june-8-2026">June 8, 2026</h2>
+
+<h3 id="developer-api-and-server-sdks">What's New: Developer API and server SDKs</h3>
+
+1. Developer API: Create outbound call tasks, retrieve call task details, list call task events, and receive terminal webhook messages from a trusted server environment.
+
+2. TypeScript server SDK: The CALL-E TypeScript server SDK is available on npm.
+
+```bash
+pnpm add @call-e/calle
+```
+
+Use `CalleClient` to create a call task, wait for a terminal result, and verify webhook payloads.
+
+3. Python server SDK: The CALL-E Python server SDK is available on PyPI.
+
+```bash
+pip install calle-ai
+```
+
+Import `CalleClient` from `calle` to create call tasks, poll results, and verify webhook payloads.
+
+4. Server-side integrations: API keys and server SDKs are designed for trusted backend services, workers, and automation systems. Browser SDKs, scheduled call tasks, cancel call task APIs, and project-level webhook management are not part of this release.

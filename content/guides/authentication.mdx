@@ -1,0 +1,93 @@
+# Authentication
+
+CALL-E uses project API keys for server-to-server requests.
+
+<h2 id="api-keys">API keys</h2>
+
+The CALL-E team provisions API keys for approved projects.
+
+You can view your API keys in the [CALL-E dashboard](https://dashboard.heycall-e.com/account/api-keys).
+
+Store the key in your backend secret manager or runtime environment:
+
+```bash
+export CALLE_API_KEY="calle_test_key"
+```
+
+Do not commit API keys, print them in logs, send them to browser code, or store them in mobile apps. The CALL-E SDKs are server SDKs for trusted backend services and workers.
+
+<h2 id="authorization-header">Authorization header</h2>
+
+Send the API key as a bearer token:
+
+```bash
+curl https://api.heycall-e.com/v1/calls \
+  -H "Authorization: Bearer $CALLE_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+SDK clients set this header for you.
+
+TypeScript:
+
+```ts
+import { CalleClient } from "@call-e/calle";
+
+const client = new CalleClient({
+  apiKey: process.env.CALLE_API_KEY!,
+  baseUrl: "https://api.heycall-e.com",
+});
+```
+
+Python:
+
+```python
+import os
+from calle import CalleClient
+
+client = CalleClient(
+    api_key=os.environ["CALLE_API_KEY"],
+    base_url="https://api.heycall-e.com",
+)
+```
+
+<h2 id="environments">Environments</h2>
+
+Use an explicit base URL in each environment so staging jobs do not accidentally send live calls.
+
+```bash
+export CALLE_BASE_URL="https://api.heycall-e.com"
+```
+
+The example SDK servers and call scripts read `CALLE_BASE_URL` when you provide it. Keep test and production API keys separate, and do not reuse idempotency keys across environments.
+
+<h2 id="server-only">Server-only usage</h2>
+
+Only call the Developer API from trusted server code:
+
+- backend API handlers
+- job workers
+- workflow runners
+- internal automation services
+
+Do not call the Developer API directly from a browser, public frontend, or untrusted client. If a frontend user needs to start a call, send the request to your backend first, validate the user, and let your backend call CALL-E with its project API key.
+
+<h2 id="webhook-secrets">Webhook secrets</h2>
+
+Webhook secrets are different from API keys.
+
+Use API keys to authenticate your outbound requests to CALL-E. Use webhook secrets to verify inbound `POST /calle/webhook` requests from CALL-E before parsing JSON or triggering side effects.
+
+```bash
+export CALLE_WEBHOOK_SECRET="whsec_test_key"
+```
+
+Verify `CALL-E-Timestamp` and `CALL-E-Signature` against the raw request body. See the [Webhooks](#/webhooks) guide for runnable server examples.
+
+<h2 id="auth-errors">Auth errors</h2>
+
+`401 unauthorized` means the API key is missing, malformed, expired, or invalid. Check the `Authorization: Bearer` header and the environment variable loaded by the running process.
+
+`403 forbidden` means the key is valid but does not have access to the requested project, capability, region, or operation.
+
+When rotating keys, deploy the new key to all workers before disabling the old key so in-flight retries do not fail unexpectedly.
