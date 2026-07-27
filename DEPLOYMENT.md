@@ -29,8 +29,10 @@ Add these environment variables:
 | `DOCS_PUBLIC_URL` | `https://docs.example.com` | CDN or gateway URL used by the post-deploy smoke check. |
 
 The deployment identity should have only the OSS permissions needed to list the
-configured bucket prefix and read or write docs objects. Do not reuse broad
-developer credentials.
+bucket and read or write the root docs objects. The bucket also contains
+unrelated namespaced applications such as `dashboard/`; the workflow never
+deletes objects and does not modify those prefixes. Do not reuse broad developer
+credentials.
 
 ## Workflow
 
@@ -41,11 +43,12 @@ The deployment workflow runs after a push to `main` or a manual dispatch:
 3. Upload the generated `dist/` directory as a short-lived workflow artifact.
 4. Start the `production` environment job.
 5. Download the exact artifact built by the validation job.
-6. Upload it to `calle-docs-site/prod/` in OSS.
+6. Upload it to the OSS bucket root used by `docs.heycall-e.com`.
 7. Verify signed reads of `index.html` and
    `openapi/calle.openapi.yaml`.
 8. List the destination prefix and confirm every build object exists.
-9. Fetch the entry page and OpenAPI document through `DOCS_PUBLIC_URL`.
+9. Fetch the entry page and OpenAPI document through `DOCS_PUBLIC_URL`, then
+   compare both files byte-for-byte with the build artifact.
 
 The build job does not reference deployment secrets. Pull requests from forks
 only run CI and cannot access the `production` environment.
@@ -88,8 +91,9 @@ The site uses hash routing, so routes such as `#/quickstart` and
 With the four OSS environment variables set locally:
 
 ```bash
-python3 scripts/deploy_docs_to_oss.py --dry-run --target-env prod
+python3 scripts/deploy_docs_to_oss.py --dry-run
 ```
 
 The dry run prints the destination and file plan but never prints credential
-values.
+values. Pass `--deploy-prefix calle-docs-site/test` only for an explicitly
+configured non-production origin prefix.

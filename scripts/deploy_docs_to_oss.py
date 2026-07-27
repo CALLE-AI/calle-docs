@@ -42,9 +42,25 @@ def content_type_for(path: Path) -> str:
 
 
 def cache_control_for(key: str) -> str:
-    if "/assets/" in key:
+    if key.startswith("assets/") or "/assets/" in key:
         return "public, max-age=31536000, immutable"
     return "no-cache"
+
+
+def normalize_prefix(prefix: str) -> str:
+    normalized = prefix.strip("/")
+    if not normalized:
+        return ""
+
+    segment_pattern = re.compile(r"[a-z0-9][a-z0-9_-]*")
+    if any(
+        not segment_pattern.fullmatch(segment)
+        for segment in normalized.split("/")
+    ):
+        raise ValueError(
+            "deploy prefix must contain lowercase path segments"
+        )
+    return f"{normalized}/"
 
 
 def collect_files(dist_dir: Path) -> list[Path]:
@@ -173,14 +189,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Built docs-site dist directory.",
     )
     parser.add_argument(
-        "--site-prefix",
-        default="calle-docs-site",
-        help="Root OSS prefix for the docs site.",
-    )
-    parser.add_argument(
-        "--target-env",
-        default="prod",
-        help="Deployment environment segment.",
+        "--deploy-prefix",
+        default="",
+        help="Optional OSS object prefix. Production deploys to the bucket root.",
     )
     parser.add_argument(
         "--dry-run",
@@ -210,18 +221,13 @@ def main() -> int:
         )
         return 2
 
-    site_prefix = args.site_prefix.strip("/")
-    target_env = args.target_env.strip("/")
-    segment_pattern = re.compile(r"[a-z0-9][a-z0-9_-]*")
-    if not segment_pattern.fullmatch(site_prefix):
-        print("site prefix must be a single lowercase path segment", file=sys.stderr)
-        return 2
-    if not segment_pattern.fullmatch(target_env):
-        print("target env must be a single lowercase path segment", file=sys.stderr)
+    try:
+        deploy_prefix = normalize_prefix(args.deploy_prefix)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
 
     dist_dir = Path(args.dist_dir)
-    deploy_prefix = f"{site_prefix}/{target_env}/"
     try:
         bucket = parse_bucket(os.environ["OSS_BUCKET_URI"])
     except ValueError as exc:
@@ -245,7 +251,7 @@ def main() -> int:
 
     print(f"bucket={bucket}")
     print(f"endpoint={os.environ['OSS_ENDPOINT']}")
-    print(f"prefix={deploy_prefix}")
+    print(f"prefix={deploy_prefix or '<bucket-root>'}")
 
     if args.dry_run:
         print(f"dry_run=true files={len(files)}")

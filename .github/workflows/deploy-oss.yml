@@ -73,7 +73,7 @@ jobs:
           path: dist
 
       - name: Deploy production docs
-        run: python3 scripts/deploy_docs_to_oss.py --target-env prod
+        run: python3 scripts/deploy_docs_to_oss.py
 
       - name: Verify public docs
         run: |
@@ -86,3 +86,5 @@ jobs:
           curl --fail --silent --show-error "$base_url/openapi/calle.openapi.yaml" --output /tmp/calle-docs-openapi.yaml
           test -s /tmp/calle-docs-index.html
           test -s /tmp/calle-docs-openapi.yaml
+          cmp --silent dist/index.html /tmp/calle-docs-index.html
+          cmp --silent dist/openapi/calle.openapi.yaml /tmp/calle-docs-openapi.yaml
