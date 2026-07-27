@@ -31,13 +31,14 @@ class DeployDocsToOssTests(unittest.TestCase):
         )
 
     def test_normalize_prefix(self) -> None:
-        self.assertEqual(normalize_prefix(""), "")
         self.assertEqual(
             normalize_prefix("/calle-docs-site/test/"),
             "calle-docs-site/test/",
         )
 
     def test_normalize_prefix_rejects_unsafe_segments(self) -> None:
+        with self.assertRaises(ValueError):
+            normalize_prefix("")
         with self.assertRaises(ValueError):
             normalize_prefix("../docs")
 

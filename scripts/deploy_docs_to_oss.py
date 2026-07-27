@@ -50,7 +50,7 @@ def cache_control_for(key: str) -> str:
 def normalize_prefix(prefix: str) -> str:
     normalized = prefix.strip("/")
     if not normalized:
-        return ""
+        raise ValueError("deploy prefix must not be empty")
 
     segment_pattern = re.compile(r"[a-z0-9][a-z0-9_-]*")
     if any(
@@ -190,8 +190,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--deploy-prefix",
-        default="",
-        help="Optional OSS object prefix. Production deploys to the bucket root.",
+        required=True,
+        help="OSS object prefix, such as calle-docs-site/prod.",
     )
     parser.add_argument(
         "--dry-run",
@@ -251,7 +251,7 @@ def main() -> int:
 
     print(f"bucket={bucket}")
     print(f"endpoint={os.environ['OSS_ENDPOINT']}")
-    print(f"prefix={deploy_prefix or '<bucket-root>'}")
+    print(f"prefix={deploy_prefix}")
 
     if args.dry_run:
         print(f"dry_run=true files={len(files)}")
