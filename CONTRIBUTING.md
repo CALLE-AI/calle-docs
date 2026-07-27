@@ -4,7 +4,8 @@ Thanks for helping improve the CALL-E Developer Docs.
 
 ## Development setup
 
-This repository requires Node.js 22 or later and pnpm 8.10.2.
+This repository requires Node.js 22 or later, pnpm 8.10.2, and Python 3.10 or
+later.
 
 ```bash
 pnpm install
@@ -30,6 +31,9 @@ The API Reference is built from `openapi/calle.openapi.yaml`. Contract changes
 must describe behavior already supported by the public CALL-E Developer API.
 If you are proposing a new API capability, open an issue before changing the
 contract.
+
+Pull requests from forks run validation without deployment credentials.
+Production deployment only runs after a maintainer merges a change to `main`.
 
 ## Pull requests
 
