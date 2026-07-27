@@ -1,0 +1,88 @@
+name: Deploy docs to OSS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-oss-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 8.10.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Validate site
+        run: pnpm run validate
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: production
+      url: ${{ vars.DOCS_PUBLIC_URL }}
+    env:
+      OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
+      OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
+      OSS_BUCKET_URI: ${{ vars.OSS_BUCKET_URI }}
+      OSS_ENDPOINT: ${{ vars.OSS_ENDPOINT }}
+      DOCS_PUBLIC_URL: ${{ vars.DOCS_PUBLIC_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Download docs artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-dist
+          path: dist
+
+      - name: Deploy production docs
+        run: python3 scripts/deploy_docs_to_oss.py --target-env prod
+
+      - name: Verify public docs
+        run: |
+          if [ -z "$DOCS_PUBLIC_URL" ]; then
+            echo "DOCS_PUBLIC_URL must be configured in the production environment."
+            exit 1
+          fi
+          base_url="${DOCS_PUBLIC_URL%/}"
+          curl --fail --silent --show-error "$base_url/index.html" --output /tmp/calle-docs-index.html
+          curl --fail --silent --show-error "$base_url/openapi/calle.openapi.yaml" --output /tmp/calle-docs-openapi.yaml
+          test -s /tmp/calle-docs-index.html
+          test -s /tmp/calle-docs-openapi.yaml

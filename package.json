@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "description": "Open-source developer documentation for the CALL-E Developer API.",
-  "homepage": "https://calle-ai.github.io/calle-docs/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/CALLE-AI/calle-docs.git"
@@ -19,9 +18,10 @@
     "dev": "pnpm run sync:openapi && vite",
     "build": "pnpm run sync:openapi && tsc -p tsconfig.json && vite build",
     "verify:dist": "node scripts/verify-dist.mjs",
-    "validate": "pnpm run typecheck && pnpm run build && pnpm run verify:dist && pnpm run test",
+    "validate": "pnpm run typecheck && pnpm run build && pnpm run verify:dist && pnpm run test:deploy && pnpm run test",
     "preview": "vite preview",
     "test": "playwright test",
+    "test:deploy": "python3 -m unittest scripts/test_deploy_docs_to_oss.py",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

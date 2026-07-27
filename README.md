@@ -2,8 +2,9 @@
 
 Open-source developer documentation for the CALL-E Developer API.
 
-Read the published docs at
-[calle-ai.github.io/calle-docs](https://calle-ai.github.io/calle-docs/).
+The source is maintained on GitHub for public contributions. Merges to `main`
+are validated and deployed to the official CALL-E documentation domain through
+Aliyun OSS and its CDN or gateway.
 
 ## Contributing
 
@@ -17,6 +18,7 @@ Requirements:
 
 - Node.js 22 or later
 - pnpm 8.10.2
+- Python 3.10 or later
 
 Install dependencies and start the site:
 
@@ -45,6 +47,10 @@ pnpm run validate
 
 The build copies `openapi/calle.openapi.yaml` to
 `public/openapi/calle.openapi.yaml` and emits the static site to `dist/`.
+
+The backend contract is the source of truth for the Developer API. The OpenAPI
+file in this repository is the public snapshot used to build and publish the
+API Reference.
 
 ## Scope
 
