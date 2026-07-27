@@ -60,6 +60,7 @@ jobs:
       OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
       OSS_BUCKET_URI: ${{ vars.OSS_BUCKET_URI }}
       OSS_ENDPOINT: ${{ vars.OSS_ENDPOINT }}
+      OSS_DEPLOY_PREFIX: ${{ vars.OSS_DEPLOY_PREFIX }}
       DOCS_PUBLIC_URL: ${{ vars.DOCS_PUBLIC_URL }}
 
     steps:
@@ -73,7 +74,7 @@ jobs:
           path: dist
 
       - name: Deploy production docs
-        run: python3 scripts/deploy_docs_to_oss.py
+        run: python3 scripts/deploy_docs_to_oss.py --deploy-prefix "$OSS_DEPLOY_PREFIX"
 
       - name: Verify public docs
         run: |
