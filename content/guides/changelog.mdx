@@ -5,6 +5,42 @@ description: Track CALL-E Developer API and SDK product updates.
 
 Product updates for the CALL-E Developer API and server SDKs.
 
+## July 22, 2026
+
+### Phone-only Goal Run requests in API 0.6
+
+Create Goal Run requests now use a top-level `phone` plus `variables`. The `target` wrapper and per-Run `region`, `locale`, and `display_name` fields have been removed. Voice region and callee locale are fixed by the published Goal; recipient names needed by the conversation belong in the Goal's input schema and are supplied through `variables`.
+
+The TypeScript and Python SDK source candidates now implement the matching
+`client.goals` surface at version `0.6.0`, including Goal discovery, Run
+creation, Run reads, and result-or-error polling. Existing Calls and Webhooks
+surfaces remain compatible; registry packages stay on their current stable
+versions until the 0.6.0 release is published.
+
+### Simplified Goal Runs API 0.5
+
+1. Useful Goal metadata: Goal list and get responses now include the current published `title` and `description` alongside the input and result schemas.
+
+2. Smaller response: Goal and Goal Run responses expose RunSpec ids and versions without content fingerprints.
+
+3. One result contract: a Goal Run returns the parsed object directly in `result`, or one unified `error` when execution or result processing fails. When both are null, clients continue polling.
+
+4. Goal discovery: `GET /v1/goals` lists the authenticated owner's active, listed, published Goal interfaces with opaque cursor pagination. The API 0.5 SDK design adds `client.goals.list(...)` in both TypeScript and Python while keeping stable 0.2 packages Calls-only until a matching SDK minor is released.
+
+## July 21, 2026
+
+### Goal Runs API preview
+
+1. Published Goal interface: Read the current normalized input schema, result schema, and RunSpec identity with `GET /v1/goals/{goal_id}`.
+
+2. Goal Run creation: Create one singleton Run with `POST /v1/goals/{goal_id}/runs`. Requests supply one target, scalar variables, and a required business-stable `Idempotency-Key`; they cannot replace the published schemas or choose a RunSpec version. Initial acceptance and exact replay both return `201`.
+
+3. Result polling: Read execution and schema-bound results with `GET /v1/goals/{goal_id}/runs/{goal_run_id}`. The Goal Run preserves the exact RunSpec version pinned when CALL-E accepted it.
+
+4. SDK transition: The Goal Runs guide defines TypeScript and Python parity on `client.goals`, with `get`, `run`, get-Run, wait, and run-and-wait helpers using each language's naming convention. Stable 0.2 SDK packages continue to support the one-shot Calls API until matching next-minor packages are released.
+
+See [Goal Runs](/goal-runs) for request, polling, version-pinning, and SDK examples.
+
 ## June 8, 2026
 
 ### What's New: Developer API and server SDKs

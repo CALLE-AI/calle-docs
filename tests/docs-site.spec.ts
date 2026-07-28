@@ -4,6 +4,7 @@ const guides = [
   { path: "/quickstart", heading: "Quickstart" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
+  { path: "/goal-runs", heading: "Goal Runs" },
   { path: "/webhooks", heading: "Webhooks" },
   { path: "/errors", heading: "Errors" },
   { path: "/sdks", heading: "SDKs" },
@@ -166,12 +167,20 @@ test("publishes crawler and OpenAPI artifacts", async ({ request }) => {
   expect(sitemapText).toContain(
     "<loc>https://docs.heycall-e.com/api-reference/calls</loc>",
   );
+  expect(sitemapText).toContain(
+    "<loc>https://docs.heycall-e.com/api-reference/goals</loc>",
+  );
+  expect(sitemapText).toContain(
+    "<loc>https://docs.heycall-e.com/api-reference/goal-runs</loc>",
+  );
 
   const openApi = await request.get("/openapi/calle.openapi.yaml");
   expect(openApi.status()).toBe(200);
   const openApiText = await openApi.text();
   expect(openApiText).toContain("openapi: 3.1.0");
   expect(openApiText).toContain("/v1/calls");
+  expect(openApiText).toContain("/v1/goals");
+  expect(openApiText).toContain("/v1/goals/{goal_id}/runs");
   expect(openApiText).toContain("/calle/webhook");
 
   const apiReference = await request.get("/api-reference");
@@ -196,6 +205,13 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
   await expect(page).toHaveURL(/\/calls#idempotency$/);
   await expect(
     page.getByRole("heading", { name: "Idempotency" }),
+  ).toBeVisible();
+
+  await page.goto("/#/goal-runs?section=create-a-run");
+  await expect(page).toHaveURL(/\/goal-runs#create-a-run$/);
+  await expect(page.locator("#create-a-run")).toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { name: "Create a Goal Run" }),
   ).toBeVisible();
 
   await page.goto("/#/api-reference");
@@ -295,6 +311,36 @@ test("connects the Calls guide to HTTP and related references", async ({
   ).toBeVisible();
 });
 
+test("documents the published Goal Run flow on a clean route", async ({
+  page,
+}) => {
+  await page.goto("/goal-runs");
+
+  await expect(
+    page.getByRole("heading", { name: "Goal Runs" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Goal Runs", exact: true }).first(),
+  ).toHaveAttribute("href", "/goal-runs");
+  await expect(
+    page.locator("pre").filter({
+      hasText: /POST[\s\S]*\/v1\/goals\/\$\{CALLE_GOAL_ID\}\/runs/,
+    }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Poll for results" }),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/errors"]').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/api-reference/goals"]').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/api-reference/goal-runs"]').first(),
+  ).toBeVisible();
+});
+
 test("renders a read-only OpenAPI reference", async ({ page }) => {
   await page.goto("/api-reference");
   await expect(
@@ -322,6 +368,14 @@ test("renders a read-only OpenAPI reference", async ({ page }) => {
   await expect(
     page.locator("h2#server-message"),
   ).toBeVisible();
+
+  await page.goto("/api-reference/goals");
+  await expect(page.locator("h2#list-goals")).toBeVisible();
+  await expect(page.locator("h2#get-goal")).toBeVisible();
+
+  await page.goto("/api-reference/goal-runs");
+  await expect(page.locator("h2#create-goal-run")).toBeVisible();
+  await expect(page.locator("h2#get-goal-run")).toBeVisible();
 });
 
 test("keeps the guide usable on a narrow screen", async ({ page }) => {

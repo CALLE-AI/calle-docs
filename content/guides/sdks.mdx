@@ -29,8 +29,28 @@ from calle import CalleClient
 
 The current stable server SDK packages are:
 
-- TypeScript: `@call-e/calle@0.2.0`
+- TypeScript: `@call-e/calle@0.2.2`
 - Python: `calle-ai==0.2.0`
+
+These stable packages support the request-scoped Calls API. The Goal Runs
+API and both SDK source candidates are aligned on `0.6.0`; the registry
+packages remain Calls-only until that matching SDK release is published.
+
+## Goal Runs preview
+
+The Goal-based SDK surface keeps published contracts separate from the
+one-shot Calls API:
+
+- TypeScript: `client.goals.list(...)`, `get(...)`, `run(...)`, `getRun(...)`,
+  `waitForResult(...)`, and `runAndWait(...)`
+- Python: `client.goals.list(...)`, `get(...)`, `run(...)`, `get_run(...)`,
+  `wait_for_result(...)`, and `run_and_wait(...)`
+
+Run requests contain Goal identity, one phone number, per-Run variables, and an
+idempotency key. They do not accept request-scoped task text, prompts,
+`input_schema`, or `result_schema`; those fields are owned by the published
+RunSpec. See the [Goal Runs guide](/goal-runs) for the API contract and SDK
+examples.
 
 ## Source repositories
 
@@ -48,7 +68,8 @@ Each repository includes public source code, examples, and security guidance:
 
 ## Local examples
 
-Each SDK repository includes runnable examples for the server-side call task flow.
+Each SDK repository currently includes runnable examples for the server-side
+one-shot call task flow.
 
 TypeScript:
 
@@ -72,7 +93,7 @@ uv run python examples/webhook_server.py
 
 The webhook examples listen on `POST /calle/webhook` and verify `CALL-E-Timestamp` plus `CALL-E-Signature` before parsing JSON.
 
-## Supported methods
+## Stable 0.2 methods
 
 The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
 
@@ -201,7 +222,7 @@ pip install calle-ai
 Use pinned versions when your deployment process requires exact package reproducibility:
 
 ```bash
-pnpm add @call-e/calle@0.2.0
+pnpm add @call-e/calle@0.2.2
 pip install calle-ai==0.2.0
 ```
 

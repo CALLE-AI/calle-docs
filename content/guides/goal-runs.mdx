@@ -1,0 +1,422 @@
+---
+title: Goal Runs
+description: Run a published Goal with one phone number and schema-validated variables.
+---
+
+Run a published Goal when your application repeats the same validated phone workflow for different targets.
+
+**API 0.6** · **Server-side** · **Asynchronous**
+
+A Goal owns its call behavior, voice region and locale, input schema, result schema, and provider contract. A Goal Run supplies only one E.164 phone number, per-Run variables, and a business-stable idempotency key.
+
+Use the one-shot [Calls](/calls) API when each request needs new task text or a request-scoped result schema. Goal Runs are a separate contract and do not replace or reinterpret `/v1/calls`.
+
+For endpoint schemas and response models, browse the read-only [Goals API Reference](/api-reference/goals) and [Goal Runs API Reference](/api-reference/goal-runs).
+
+<a id="example-workflow"></a>
+
+## Example: confirm a delivery window
+
+Imagine a fulfillment system that needs to call customers before a scheduled delivery. An operations user authors and publishes one reusable Goal in CALL-E Chat: explain the order reference and proposed delivery window, ask the customer to confirm or request another time, and return a structured outcome.
+
+Your application then performs the following steps for every order:
+
+1. Store the published `goal_id` in server-side configuration.
+2. Read the Goal interface and validate which `variables` the current published version expects.
+3. Create one Goal Run using the customer's E.164 phone number, order-specific variables, and the order event's stable idempotency key.
+4. Poll until the Goal Run returns either `result` or `error`.
+5. Update the fulfillment system directly from `result`, for example by confirming the delivery or opening a rescheduling task.
+
+This guide uses that delivery-confirmation workflow throughout. Phone numbers remain placeholders so examples cannot accidentally call a real recipient.
+
+## List published Goals
+
+Use `GET /v1/goals` to discover the authenticated owner's active, listed Goals that have a published RunSpec:
+
+```bash
+curl "https://api.heycall-e.com/v1/goals?limit=20" \
+  -H "Authorization: Bearer $CALLE_API_KEY"
+```
+
+| Parameter | Location | Required | Description |
+|---|---|---:|---|
+| `Authorization` | Header | Yes | `Bearer $CALLE_API_KEY`. The API key determines the Goal owner scope; an owner id is never accepted from the request. |
+| `limit` | Query | No | Number of Goal interfaces to return. Defaults to `20`; minimum `1`, maximum `100`. |
+| `after` | Query | No | Opaque value from the previous response's `next_cursor`. Pass it unchanged and never build it from a Goal id. |
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "goal",
+      "id": "goal_delivery_confirmation",
+      "title": "Delivery window confirmation",
+      "description": "Call a customer to confirm the proposed delivery window or collect a preferred alternative.",
+      "status": "active",
+      "published_run_spec": {
+        "id": "rspec_delivery_v4",
+        "version": 4,
+        "input_schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "customer_name": {
+              "type": "string",
+              "description": "Name the voice agent may use when greeting the customer."
+            },
+            "order_reference": {
+              "type": "string",
+              "description": "Customer-safe order reference to mention during the call."
+            },
+            "delivery_window": {
+              "type": "string",
+              "description": "Proposed local delivery date and time window."
+            }
+          },
+          "required": ["customer_name", "order_reference", "delivery_window"]
+        },
+        "result_schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "delivery_outcome": {
+              "type": "string",
+              "enum": ["confirmed", "reschedule_requested", "declined", "unknown"]
+            },
+            "preferred_window": {
+              "type": "string",
+              "description": "Alternative window requested by the customer, when stated."
+            }
+          },
+          "required": ["delivery_outcome"]
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+When `next_cursor` is non-null, pass it unchanged as `after` on the next request. Cursors are opaque and results use stable Goal identity order. Hidden, draft, paused, retired, unpublished, and other owners' Goals are not returned.
+
+The list is a discovery and recovery tool, not title search. `title` and `description` help a developer recognize each published workflow, but they are not stable identity. Do not execute `data[0]` blindly: persist the `goal_id` received when the intended Goal is published.
+
+<a id="published-interface"></a>
+
+## Read one published interface
+
+You can also store the `goal_id` returned by a successful publish in CALL-E Chat and read it directly. Goal authoring and publication are not Developer API operations.
+
+| Parameter | Location | Required | Description |
+|---|---|---:|---|
+| `goal_id` | Path | Yes | Opaque Goal identity returned by publish success or Goal listing. It is not the nested RunSpec id. |
+| `Authorization` | Header | Yes | Developer API key for the same owner that published the Goal. Cross-owner and hidden Goals return `404`. |
+
+```bash
+curl "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}" \
+  -H "Authorization: Bearer $CALLE_API_KEY"
+```
+
+`GET /v1/goals/{goal_id}` returns the current normalized input and result schemas:
+
+```json
+{
+  "id": "goal_delivery_confirmation",
+  "object": "goal",
+  "title": "Delivery window confirmation",
+  "description": "Call a customer to confirm the proposed delivery window or collect a preferred alternative.",
+  "status": "active",
+  "published_run_spec": {
+    "id": "rspec_delivery_v4",
+    "version": 4,
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "customer_name": {
+          "type": "string",
+          "description": "Name the voice agent may use when greeting the customer."
+        },
+        "order_reference": {
+          "type": "string",
+          "description": "Customer-safe order reference to mention during the call."
+        },
+        "delivery_window": {
+          "type": "string",
+          "description": "Proposed local delivery date and time window."
+        }
+      },
+      "required": ["customer_name", "order_reference", "delivery_window"]
+    },
+    "result_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "delivery_outcome": {
+          "type": "string",
+          "enum": ["confirmed", "reschedule_requested", "declined", "unknown"]
+        },
+        "preferred_window": {
+          "type": "string",
+          "description": "Alternative window requested by the customer, when stated."
+        }
+      },
+      "required": ["delivery_outcome"]
+    }
+  }
+}
+```
+
+The response is an interface, not a version selector. `title` and `description` explain the current published workflow without exposing its prompt. The response never exposes provider configuration, materialization guidance, or authoring history.
+
+<a id="create-a-run"></a>
+
+## Create a Goal Run
+
+Send one top-level `phone` to `POST /v1/goals/{goal_id}/runs`. `variables` defaults to `{}` and is validated against the RunSpec pinned during acceptance.
+
+Request headers:
+
+| Parameter | Required | Description |
+|---|---:|---|
+| `Authorization` | Yes | `Bearer $CALLE_API_KEY`. Keep API keys in backend secrets; never send them from browser code. |
+| `Idempotency-Key` | Yes | Stable identity for this logical business action, 1–255 characters. Derive it from a durable event such as `delivery:ORD-8472:confirm-window:v1`, store it with the order, and reuse it after timeouts. Do not generate a new UUID for every retry. |
+| `Content-Type` | Yes | Use `application/json`. The request is a closed object; unknown fields and contract overrides are rejected. |
+
+Request body fields:
+
+| Field | Required | Description |
+|---|---:|---|
+| `phone` | Yes | Recipient phone in canonical E.164 form: `+`, country code, and subscriber number. Do not include spaces, parentheses, or extensions. Your application must be authorized to call it. |
+| `variables` | No | Per-Run scalar business values defined by the published `input_schema`. Defaults to `{}`. |
+
+Do not send `target`, `region`, `locale`, or `display_name`. Voice region and callee locale belong to the published Goal and cannot be changed per Run. If the workflow needs a customer's name, define a field such as `customer_name` in the Goal's `input_schema` and send it through `variables`.
+
+`variables` is an object whose allowed keys, required keys, types, defaults, and enum values come from `published_run_spec.input_schema`. Values are limited to finite JSON scalars: strings, numbers, and booleans. Do not send nested objects, arrays, or `null`. In this example, all three delivery variables are required by version 4 of the published interface.
+
+```bash
+curl -X POST "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}/runs" \
+  -H "Authorization: Bearer $CALLE_API_KEY" \
+  -H "Idempotency-Key: delivery:ORD-8472:confirm-window:v1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "<E164_PHONE>",
+    "variables": {
+      "customer_name": "Taylor",
+      "order_reference": "ORD-8472",
+      "delivery_window": "July 24, 2:00-4:00 PM"
+    }
+  }'
+```
+
+The first accepted request and an exact idempotent replay both return `201 Created`. The response contains the immutable RunSpec snapshot and never echoes the phone or variables:
+
+```json
+{
+  "id": "rgrp_delivery_ord_8472",
+  "object": "goal_run",
+  "goal_id": "goal_delivery_confirmation",
+  "run_id": "run_delivery_ord_8472",
+  "status": "in_progress",
+  "run_spec": {
+    "id": "rspec_delivery_v4",
+    "version": 4
+  },
+  "result": null,
+  "error": null,
+  "created_at": "2026-07-20T10:00:00Z",
+  "completed_at": null
+}
+```
+
+`201` means CALL-E durably accepted responsibility for the Run. It does not mean the provider accepted the call, the recipient answered, or the structured result is ready.
+
+Save `GoalRun.id` from the response as `GOAL_RUN_ID`. The `Location` response header contains the same resource path, and `Retry-After` suggests when to begin polling. The response deliberately omits `phone` and `variables`; keep your own correlation between the idempotency key and order record.
+
+## Poll for results
+
+Poll the read-only Goal Run resource:
+
+```bash
+curl "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}/runs/${GOAL_RUN_ID}" \
+  -H "Authorization: Bearer $CALLE_API_KEY"
+```
+
+| Parameter | Location | Required | Description |
+|---|---|---:|---|
+| `goal_id` | Path | Yes | The Goal identity used when creating the Run. This prevents a Run id from being read through the wrong Goal. |
+| `goal_run_id` | Path | Yes | `GoalRun.id` returned by `POST`, not the nested telephone `run_id`. |
+| `Authorization` | Header | Yes | API key for the owning account. A missing, cross-owner, or mismatched resource returns `404`. |
+
+`GET /v1/goals/{goal_id}/runs/{goal_run_id}` only reads persisted facts. It does not dispatch work, move the Goal's published pointer, or start result materialization.
+
+The response deliberately has one completion rule: stop polling when either `result` or `error` is non-null. `status` describes the telephone execution, so a completed call can briefly return `result: null, error: null` while CALL-E parses and saves the structured result.
+
+```json
+{
+  "id": "rgrp_delivery_ord_8472",
+  "object": "goal_run",
+  "goal_id": "goal_delivery_confirmation",
+  "run_id": "run_delivery_ord_8472",
+  "status": "completed",
+  "run_spec": {
+    "id": "rspec_delivery_v4",
+    "version": 4
+  },
+  "result": {
+    "delivery_outcome": "reschedule_requested",
+    "preferred_window": "July 24 after 5:00 PM"
+  },
+  "error": null,
+  "created_at": "2026-07-20T10:00:00Z",
+  "completed_at": "2026-07-20T10:01:00Z"
+}
+```
+
+When parsing succeeds, `result` is the exact dynamic object described by the Goal's `result_schema`. When anything prevents a usable result, CALL-E returns one `error` object instead:
+
+```json
+{
+  "status": "failed",
+  "result": null,
+  "error": {
+    "code": "no_answer",
+    "message": "No human answered the call.",
+    "detail_code": "no_human_answered"
+  }
+}
+```
+
+Use `error.code` for application logic and `error.message` for logs or operators. The possible Goal Run error codes are `call_failed`, `no_answer`, `declined`, `timed_out`, `canceled`, `result_invalid`, `result_unavailable`, and `result_failed`.
+
+<a id="schema-ownership"></a>
+
+## Schemas belong to the Goal
+
+A Run request cannot provide task text, prompts, instructions, schemas, RunSpec identity, provider settings, or materialization settings. To change these fields, update the Goal in Chat and publish a new RunSpec version. Existing Runs keep their pinned version.
+
+Before deploying a variable change, compare the published `version`, `input_schema`, and `result_schema` with the contract expected by your integration. A newly published version affects new idempotency keys only; an exact replay of an existing business command keeps the original pinned RunSpec.
+
+## Idempotency
+
+`Idempotency-Key` is required, 1–255 characters after trimming, and scoped to the authenticated owner plus `goal_id`.
+
+- Retry a lost response with the same key, phone, and variables.
+- Reusing a key with an equivalent request returns the same `GoalRun.id` and `run_id` with HTTP `201`.
+- Reusing a key with changed input returns `409 idempotency_conflict`.
+- Use a new stable business key for each new logical Run.
+
+The SDK does not generate the key because it must survive network ambiguity and process restarts.
+
+For example, if the first `POST` for order `ORD-8472` times out after CALL-E accepts it, retry with the same key and identical JSON. If the delivery window changes, create a new logical command and key such as `delivery:ORD-8472:confirm-window:v2`; changing the body while reusing the `v1` key returns `409 idempotency_conflict`.
+
+<a id="common-errors"></a>
+
+## Common integration errors
+
+CALL-E returns a stable JSON error envelope. Use `error.code` for program logic and keep `error.message` for logs or operator diagnostics.
+
+| HTTP / code | What it usually means | Recommended action |
+|---|---|---|
+| `400 invalid_request` | The JSON shape, query parameter, cursor, or idempotency header is malformed. | Fix the request. Retrying the same invalid payload will not help. |
+| `401 unauthorized` / `403 forbidden` | The API key is missing, invalid, or cannot use the requested capability. | Verify the Bearer header, environment, and project permissions. Never fall back to a key from another tenant. |
+| `404 not_found` | The Goal or Goal Run is missing, hidden, owned by another account, or paired with the wrong `goal_id`. | Check the saved `goal_id` and `GoalRun.id`. Do not probe other owner ids or substitute the nested `run_id`. |
+| `409 idempotency_conflict` | The key already identifies a Run, but the phone or variables differ. | Retrieve the original workflow record. Use the existing key only for an exact replay; create a new business-version key for an intentionally new call. |
+| `409 goal_not_published` / `goal_not_executable` / `goal_not_ready` | The Goal has no published interface, is not active, or its exact published contract cannot currently execute. | Stop automatic retries and ask the Goal owner to publish, activate, or repair the Goal. |
+| `422 variables_invalid` | Required variables are missing, an extra key was supplied, or a value violates the pinned input schema. | Refresh `GET /v1/goals/{goal_id}`, compare its version and input schema, then correct the integration payload. |
+| `422 invalid_phone` | `phone` is not a valid supported E.164 number. | Normalize and validate the number before calling. Do not send the documentation placeholder. |
+| `422 schema_override_not_allowed` | The request tried to supply task text, schemas, RunSpec selectors, or provider/materialization settings owned by the Goal. | Remove those fields. Change the Goal in Chat and publish a new version instead. |
+| `429 rate_limit_exceeded` | The caller has reached an API limit. | Honor `Retry-After` when present and retry with backoff while preserving the same idempotency key and request. |
+| `502/503 provider_unavailable` | CALL-E could not durably accept the Run because a required upstream dependency was unavailable. | Retry with the same idempotency key and identical body. Once a `201` has been returned, later execution failures appear on the Goal Run resource instead of as POST errors. |
+
+See [Errors](/errors) for the HTTP error catalog. HTTP errors mean the API request itself was rejected. After a `201`, execution or result-processing problems are returned in the Goal Run's unified `error` field.
+
+## SDK examples
+
+The following methods define the API 0.6 SDK surface. The currently stable 0.2 packages remain Calls-only until matching TypeScript and Python minors are released.
+
+TypeScript uses camelCase on the existing `client.goals` resource:
+
+```ts
+const goals = await client.goals.list({ limit: 20 });
+const nextGoals = goals.nextCursor
+  ? await client.goals.list({ limit: 20, after: goals.nextCursor })
+  : null;
+
+const goal = await client.goals.get("goal_delivery_confirmation");
+
+const run = await client.goals.run({
+  goalId: goal.id,
+  phone: "<E164_PHONE>",
+  variables: {
+    customer_name: "Taylor",
+    order_reference: "ORD-8472",
+    delivery_window: "July 24, 2:00-4:00 PM",
+  },
+  idempotencyKey: "delivery:ORD-8472:confirm-window:v1",
+});
+
+const current = await client.goals.getRun(goal.id, run.id);
+const completed = await client.goals.waitForResult(goal.id, run.id);
+if (completed.error) {
+  throw new Error(`${completed.error.code}: ${completed.error.message}`);
+}
+const deliveryResult = completed.result;
+
+const createdAndCompleted = await client.goals.runAndWait({
+  goalId: goal.id,
+  phone: "<E164_PHONE>",
+  variables: {
+    customer_name: "Morgan",
+    order_reference: "ORD-8473",
+    delivery_window: "July 25, 9:00-11:00 AM",
+  },
+  idempotencyKey: "delivery:ORD-8473:confirm-window:v1",
+});
+```
+
+Python keeps the same resource with snake_case methods:
+
+```python
+goals = client.goals.list(limit=20)
+next_goals = (
+    client.goals.list(limit=20, after=goals["next_cursor"])
+    if goals["next_cursor"] is not None
+    else None
+)
+
+goal = client.goals.get("goal_delivery_confirmation")
+
+run = client.goals.run(
+    goal_id=goal["id"],
+    phone="<E164_PHONE>",
+    variables={
+        "customer_name": "Taylor",
+        "order_reference": "ORD-8472",
+        "delivery_window": "July 24, 2:00-4:00 PM",
+    },
+    idempotency_key="delivery:ORD-8472:confirm-window:v1",
+)
+
+current = client.goals.get_run(goal["id"], run["id"])
+completed = client.goals.wait_for_result(goal["id"], run["id"])
+if completed["error"] is not None:
+    raise RuntimeError(
+        f'{completed["error"]["code"]}: {completed["error"]["message"]}'
+    )
+delivery_result = completed["result"]
+
+created_and_completed = client.goals.run_and_wait(
+    goal_id=goal["id"],
+    phone="<E164_PHONE>",
+    variables={
+        "customer_name": "Morgan",
+        "order_reference": "ORD-8473",
+        "delivery_window": "July 25, 9:00-11:00 AM",
+    },
+    idempotency_key="delivery:ORD-8473:confirm-window:v1",
+)
+```
+
+`waitForResult` and `wait_for_result` return when either `result` or `error` becomes non-null. A terminal failure still returns the complete Goal Run object; polling timeout continues to use each SDK's existing timeout exception.

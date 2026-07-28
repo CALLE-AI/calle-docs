@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CALL-E Developer API
-  version: 0.2.0
+  version: 0.6.0
   description: Developer API contract used by the CALL-E TypeScript and Python SDKs.
 servers:
   - url: https://api.heycall-e.com
@@ -313,6 +313,332 @@ paths:
           $ref: "#/components/responses/ErrorResponse"
         "500":
           $ref: "#/components/responses/ErrorResponse"
+  /v1/goals:
+    get:
+      operationId: listGoals
+      tags:
+        - goals
+      summary: List Goals
+      description: |-
+        List the authenticated owner's active, listed Goals that have a published RunSpec. For
+        example, a fulfillment service can inspect the published interface for its reusable
+        delivery-confirmation workflow before creating phone-specific Runs.
+
+        Results are ordered by opaque Goal identity. Use `next_cursor` as the next request's
+        `after` value; clients must not parse or construct cursor values. `title` and `description`
+        help operators recognize each published workflow, but integrations should still store the
+        intended `goal_id` at publish time and must not execute the first list item blindly.
+      parameters:
+        - $ref: "#/components/parameters/GoalListLimit"
+        - $ref: "#/components/parameters/GoalListAfter"
+      responses:
+        "200":
+          description: Page of executable published Goal interfaces.
+          headers:
+            Cache-Control:
+              description: Prevent storage of owner-scoped Goal data.
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalList"
+              examples:
+                deliveryConfirmation:
+                  summary: Published delivery-window confirmation Goal.
+                  value:
+                    object: list
+                    data:
+                      - object: goal
+                        id: goal_delivery_confirmation
+                        title: Delivery window confirmation
+                        description: Call a customer to confirm the proposed delivery window or collect a preferred alternative.
+                        status: active
+                        published_run_spec:
+                          id: rspec_delivery_v4
+                          version: 4
+                          input_schema:
+                            type: object
+                            additionalProperties: false
+                            properties:
+                              customer_name:
+                                type: string
+                                description: Name the voice agent may use when greeting the customer.
+                              order_reference:
+                                type: string
+                                description: Customer-safe order reference to mention during the call.
+                              delivery_window:
+                                type: string
+                                description: Proposed local delivery date and time window.
+                            required:
+                              - customer_name
+                              - order_reference
+                              - delivery_window
+                          result_schema:
+                            type: object
+                            additionalProperties: false
+                            properties:
+                              delivery_outcome:
+                                type: string
+                                enum:
+                                  - confirmed
+                                  - reschedule_requested
+                                  - declined
+                                  - unknown
+                              preferred_window:
+                                type: string
+                                description: Alternative window requested by the customer, when stated.
+                            required:
+                              - delivery_outcome
+                    next_cursor: null
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+  /v1/goals/{goal_id}:
+    get:
+      operationId: getGoal
+      tags:
+        - goals
+      summary: Get Goal
+      description: |-
+        Get an owner-scoped active Goal and its currently published immutable RunSpec interface.
+
+        Store the `goal_id` returned by Chat publish success. `title` and `description` explain the
+        current published workflow. Before sending a delivery-confirmation Run, use `input_schema`
+        to verify that `customer_name`, `order_reference`, and `delivery_window` match the current
+        published version, and use `result_schema` to prepare downstream outcome handling.
+
+        This endpoint does not search by title, objective, or recency, and does not expose authoring
+        instructions, provider bindings, or result materialization guidance. The
+        server always resolves the current published pointer for a new business key.
+      parameters:
+        - $ref: "#/components/parameters/GoalId"
+      responses:
+        "200":
+          description: Active Goal and its currently published RunSpec interface.
+          headers:
+            Cache-Control:
+              description: Prevent storage of owner-scoped Goal data.
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+  /v1/goals/{goal_id}/runs:
+    post:
+      operationId: createGoalRun
+      tags:
+        - goal-runs
+      summary: Create Goal Run
+      description: |-
+        Create one singleton Goal Run for a published Goal.
+
+        In a delivery-confirmation integration, `phone` identifies one customer and `variables`
+        provide that order's reference and proposed window. CALL-E atomically resolves and pins the
+        published RunSpec, validates the variables, and durably accepts execution.
+
+        The request cannot select, replace, or relax schemas or the materialization contract. The
+        first accepted request and an exact idempotent replay both return `201` with the same Goal
+        Run identity. A `201` response means durable acceptance, not that the recipient answered or
+        that `result` is ready.
+      parameters:
+        - $ref: "#/components/parameters/GoalId"
+        - $ref: "#/components/parameters/GoalRunIdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGoalRunRequest"
+            examples:
+              confirmDeliveryWindow:
+                summary: Ask one customer to confirm a proposed delivery window.
+                value:
+                  phone: "<E164_PHONE>"
+                  variables:
+                    customer_name: Taylor
+                    order_reference: ORD-8472
+                    delivery_window: July 24, 2:00-4:00 PM
+      responses:
+        "201":
+          description: Goal Run durably accepted, or the current projection of an exact idempotent replay.
+          headers:
+            Cache-Control:
+              description: Prevent storage of owner-scoped Goal Run data.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Location:
+              description: Relative URL of the Goal Run resource.
+              schema:
+                type: string
+            Retry-After:
+              description: Suggested number of seconds before polling the execution.
+              schema:
+                type: integer
+                minimum: 0
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalRun"
+              examples:
+                acceptedDeliveryConfirmation:
+                  summary: Delivery confirmation accepted and awaiting execution.
+                  value:
+                    object: goal_run
+                    id: rgrp_delivery_ord_8472
+                    goal_id: goal_delivery_confirmation
+                    run_id: run_delivery_ord_8472
+                    status: queued
+                    run_spec:
+                      id: rspec_delivery_v4
+                      version: 4
+                    result: null
+                    error: null
+                    created_at: "2026-07-22T10:00:00Z"
+                    completed_at: null
+        "400":
+          $ref: "#/components/responses/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "402":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
+  /v1/goals/{goal_id}/runs/{goal_run_id}:
+    get:
+      operationId: getGoalRun
+      tags:
+        - goal-runs
+      summary: Get Goal Run
+      description: |-
+        Get an owner- and Goal-scoped Run and its structured result facts.
+
+        This is a pure read of the immutable execution snapshot. It does not resolve the current
+        Goal pointer, dispatch work, or start result materialization. Use the `GoalRun.id` returned
+        by create as `goal_run_id`; the nested telephone `run_id` is not valid in this path.
+
+        Poll until either `result` or `error` is non-null. A non-null `result` is the parsed object
+        validated against the published result schema. A non-null `error` means this Run will not
+        produce a result. `status: completed` with both fields null means result processing is still
+        in progress.
+      parameters:
+        - $ref: "#/components/parameters/GoalId"
+        - $ref: "#/components/parameters/GoalRunId"
+      responses:
+        "200":
+          description: Current Goal Run execution and result state.
+          headers:
+            Cache-Control:
+              description: Prevent storage of owner-scoped Goal Run data.
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Retry-After:
+              description: Suggested number of seconds before polling again when results are pending.
+              schema:
+                type: integer
+                minimum: 0
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalRun"
+              examples:
+                deliveryRescheduleRequested:
+                  summary: Customer requested a different delivery window.
+                  value:
+                    object: goal_run
+                    id: rgrp_delivery_ord_8472
+                    goal_id: goal_delivery_confirmation
+                    run_id: run_delivery_ord_8472
+                    status: completed
+                    run_spec:
+                      id: rspec_delivery_v4
+                      version: 4
+                    result:
+                      delivery_outcome: reschedule_requested
+                      preferred_window: July 24 after 5:00 PM
+                    error: null
+                    created_at: "2026-07-22T10:00:00Z"
+                    completed_at: "2026-07-22T10:01:12Z"
+                deliveryConfirmationNoAnswer:
+                  summary: No human answered, so no business result is available.
+                  value:
+                    object: goal_run
+                    id: rgrp_delivery_ord_8472
+                    goal_id: goal_delivery_confirmation
+                    run_id: run_delivery_ord_8472
+                    status: failed
+                    run_spec:
+                      id: rspec_delivery_v4
+                      version: 4
+                    result: null
+                    error:
+                      code: no_answer
+                      message: No human answered the call.
+                      detail_code: no_human_answered
+                    created_at: "2026-07-22T10:00:00Z"
+                    completed_at: "2026-07-22T10:01:12Z"
+        "401":
+          $ref: "#/components/responses/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ErrorResponse"
+        "502":
+          $ref: "#/components/responses/ErrorResponse"
+        "503":
+          $ref: "#/components/responses/ErrorResponse"
   /calle/webhook:
     post:
       operationId: receiveWebhookEvent
@@ -421,6 +747,72 @@ components:
         type: string
         minLength: 1
         maxLength: 255
+    GoalRunIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: |-
+        Required business-stable identity for one logical Goal Run, scoped to the authenticated
+        owner and `goal_id`. Derive it from a durable workflow event, for example
+        `delivery:ORD-8472:confirm-window:v1`, and persist it before sending the request.
+
+        Retry a timeout with the same key and byte-equivalent logical input. An exact replay returns
+        the original Goal Run with `201`; changing the phone or variables while reusing the key
+        returns `409 idempotency_conflict`. Do not generate a new random key for each network retry.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+      example: delivery:ORD-8472:confirm-window:v1
+    GoalListLimit:
+      name: limit
+      in: query
+      description: |-
+        Maximum number of Goal interfaces in this page. Defaults to `20`; values below `1` or above
+        `100` return `400 invalid_request`. A page can contain fewer items even when the limit is
+        larger. Continue only when `next_cursor` is non-null.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+    GoalListAfter:
+      name: after
+      in: query
+      description: |-
+        Opaque cursor returned as `next_cursor` by the immediately preceding list response. Pass it
+        unchanged together with the desired `limit`. Do not decode it, construct it from a Goal id,
+        or persist assumptions about its format. Omit this parameter for the first page.
+      required: false
+      schema:
+        type: string
+        minLength: 1
+      example: goalcur_Z29hbF9kZWxpdmVyeV9jb25maXJtYXRpb24
+    GoalId:
+      name: goal_id
+      in: path
+      description: |-
+        Opaque public Goal identity returned by CALL-E Chat publish success or `GET /v1/goals`.
+        Store it with your integration configuration. It identifies the reusable Goal and is
+        different from `published_run_spec.id`, `goal_run_id`, and the nested telephone `run_id`.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      example: goal_delivery_confirmation
+    GoalRunId:
+      name: goal_run_id
+      in: path
+      description: |-
+        Opaque `GoalRun.id` returned by `POST /v1/goals/{goal_id}/runs`. Use it together with the
+        same `goal_id` when polling. Do not substitute the nested telephone `run_id`.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      example: rgrp_delivery_ord_8472
     CallId:
       name: call_id
       in: path
@@ -457,11 +849,285 @@ components:
   responses:
     ErrorResponse:
       description: Stable API error.
+      headers:
+        Cache-Control:
+          description: Prevent storage of owner-scoped API error details.
+          schema:
+            type: string
+            enum:
+              - no-store
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
+    GoalList:
+      type: object
+      description: |-
+        Cursor-paginated collection of the authenticated owner's listed, active, published Goal
+        interfaces. Use this for discovery or recovery of a known Goal id, not as title search.
+      additionalProperties: false
+      required:
+        - object
+        - data
+        - next_cursor
+      properties:
+        object:
+          type: string
+          description: Always `list` for paginated list responses.
+          enum:
+            - list
+        data:
+          type: array
+          description: |-
+            Goal interfaces in stable opaque-id order. Do not assume the first item is the Goal your
+            workflow should execute; store the intended `goal_id` when it is published.
+          items:
+            $ref: "#/components/schemas/Goal"
+        next_cursor:
+          type:
+            - string
+            - "null"
+          description: Opaque cursor for the next page. `null` means there are no more Goals.
+    Goal:
+      type: object
+      description: |-
+        Owner-scoped active Goal and its currently published immutable RunSpec interface. This is an
+        execution contract, not an authoring record: it includes a developer-facing title and
+        description but omits prompts, provider settings, and history.
+      additionalProperties: false
+      required:
+        - object
+        - id
+        - title
+        - description
+        - status
+        - published_run_spec
+      properties:
+        object:
+          type: string
+          description: Always `goal` for Goal responses.
+          enum:
+            - goal
+        id:
+          type: string
+          description: Opaque Goal identity. This is distinct from the nested RunSpec identity.
+          minLength: 1
+        title:
+          type:
+            - string
+            - "null"
+          description: Short developer-facing title from the current published RunSpec. It may be null for an untitled Goal.
+          minLength: 1
+        description:
+          type: string
+          description: Developer-facing summary of what the current published Goal does. This is not the execution prompt.
+          minLength: 1
+        status:
+          type: string
+          description: Always `active`; non-executable Goals are not returned by this surface.
+          enum:
+            - active
+        published_run_spec:
+          description: |-
+            Currently published immutable interface used to validate new `variables` and interpret
+            `result`. New business keys pin this version at acceptance time.
+          $ref: "#/components/schemas/GoalPublishedRunSpec"
+    GoalPublishedRunSpec:
+      type: object
+      description: |-
+        Read-only published RunSpec interface for a Goal. Applications should inspect the schemas
+        before constructing variables and should record the version used by deployments.
+      additionalProperties: false
+      required:
+        - id
+        - version
+        - input_schema
+        - result_schema
+      properties:
+        id:
+          type: string
+          description: Opaque immutable RunSpec identity.
+          minLength: 1
+        version:
+          type: integer
+          description: Monotonic published version within this Goal. A later publish affects only new Runs.
+          minimum: 1
+        input_schema:
+          type: object
+          description: |-
+            Normalized JSON Schema for per-Run `variables`. Respect `required`, property types, enum
+            values, defaults, and `additionalProperties`; invalid input is rejected before execution.
+          additionalProperties: true
+        result_schema:
+          type: object
+          description: |-
+            Normalized JSON Schema for `result`. CALL-E exposes a result only after it is
+            validated against this exact pinned schema and durably persisted.
+          additionalProperties: true
+    CreateGoalRunRequest:
+      type: object
+      description: |-
+        One phone-specific submission against the Goal's currently published RunSpec. The object is
+        closed: target wrappers, per-Run region/locale/display-name hints, task text, schemas, RunSpec
+        selectors, provider settings, and unknown fields are not accepted. Region, callee locale, and
+        runtime profile come from the published Goal. Use the required `Idempotency-Key` header for
+        retry safety.
+      additionalProperties: false
+      required:
+        - phone
+      properties:
+        phone:
+          type: string
+          description: |-
+            Recipient phone in canonical E.164 form: `+`, country code, and subscriber number with
+            no spaces, punctuation, or extension. The caller must be authorized to contact it.
+            CALL-E validates it against the published Goal's fixed Voice Target policy.
+          pattern: "^\\+[1-9]\\d{7,14}$"
+        variables:
+          description: |-
+            Per-Run business context validated against the pinned published `input_schema`. Keys and
+            required fields vary by Goal. Values must be finite JSON strings, numbers, or booleans;
+            nested objects, arrays, and null are not supported. Omit for Goals whose schema accepts `{}`.
+          default: {}
+          $ref: "#/components/schemas/GoalVariables"
+    GoalScalar:
+      type:
+        - string
+        - number
+        - boolean
+      description: Scalar value supported by published Goal input and result Schema profiles.
+    GoalVariables:
+      type: object
+      description: |-
+        Dynamic variable map validated by the exact published input schema pinned during acceptance.
+        Read the Goal interface rather than hard-coding undocumented keys.
+      additionalProperties:
+        $ref: "#/components/schemas/GoalScalar"
+    GoalRun:
+      type: object
+      description: |-
+        Public projection of one phone-specific execution of a published Goal. A non-null `result`
+        is a successfully parsed and persisted object. A non-null `error` means the Run will not
+        produce a result. When both are null, continue polling.
+      additionalProperties: false
+      required:
+        - object
+        - id
+        - goal_id
+        - run_id
+        - run_spec
+        - status
+        - result
+        - error
+        - created_at
+        - completed_at
+      properties:
+        object:
+          type: string
+          enum:
+            - goal_run
+        id:
+          type: string
+          description: Public Goal Run identity. Persist this value and use it as `goal_run_id` when polling.
+          minLength: 1
+        goal_id:
+          type: string
+          description: Goal identity supplied in the create path.
+          minLength: 1
+        run_id:
+          type: string
+          description: Internal execution member exposed for correlation; do not use it in the Goal Run polling path.
+          minLength: 1
+        run_spec:
+          description: Read-only identity and version of the exact RunSpec pinned by this Run.
+          $ref: "#/components/schemas/GoalRunSpecSnapshot"
+        status:
+          $ref: "#/components/schemas/GoalRunStatus"
+        result:
+          type:
+            - object
+            - "null"
+          description: |-
+            Parsed result validated against the published result schema and durably persisted, or
+            `null` while processing or when the Run has an error. Its keys vary by Goal.
+          additionalProperties:
+            $ref: "#/components/schemas/GoalScalar"
+        error:
+          description: |-
+            Unified execution or result-processing error, or `null`. Branch on `code`; keep `message`
+            for logs and operators. A non-null error is final and is mutually exclusive with `result`.
+          oneOf:
+            - $ref: "#/components/schemas/GoalRunError"
+            - type: "null"
+        created_at:
+          type: string
+          format: date-time
+          description: UTC time at which CALL-E durably accepted this Goal Run.
+        completed_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: UTC telephone-execution completion time, or `null` while execution is non-terminal.
+    GoalRunSpecSnapshot:
+      type: object
+      description: Exact immutable RunSpec identity and version pinned by a Goal Run.
+      additionalProperties: false
+      required:
+        - id
+        - version
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Exact immutable RunSpec id pinned when the Goal Run was accepted.
+        version:
+          type: integer
+          minimum: 1
+          description: Published RunSpec version pinned for this Goal Run.
+    GoalRunStatus:
+      type: string
+      description: |-
+        Stable telephone execution state. `queued` and `in_progress` are non-terminal; `completed`,
+        `failed`, and `canceled` are terminal. A completed call can still have `result: null` and
+        `error: null` briefly while CALL-E parses and saves the result.
+      enum:
+        - queued
+        - in_progress
+        - completed
+        - failed
+        - canceled
+    GoalRunError:
+      type: object
+      description: Unified safe error returned when a Goal Run cannot produce a usable result.
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - detail_code
+      properties:
+        code:
+          type: string
+          enum:
+            - call_failed
+            - no_answer
+            - declined
+            - timed_out
+            - canceled
+            - result_invalid
+            - result_unavailable
+            - result_failed
+        message:
+          type: string
+          description: Human-readable safe explanation. Do not parse this field for application logic.
+          minLength: 1
+        detail_code:
+          type:
+            - string
+            - "null"
+          description: Optional low-cardinality diagnostic detail safe for logs or narrow application branching.
+          maxLength: 128
     CreateCallRequest:
       type: object
       additionalProperties: false
@@ -960,6 +1626,11 @@ components:
             - result_schema_invalid
             - recipient_result_schema_invalid
             - idempotency_conflict
+            - goal_not_published
+            - goal_not_executable
+            - goal_not_ready
+            - schema_override_not_allowed
+            - variables_invalid
             - provider_unavailable
             - internal_error
             - not_found
