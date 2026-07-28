@@ -4,8 +4,8 @@ Thanks for helping improve the CALL-E Developer Docs.
 
 ## Development setup
 
-This repository requires Node.js 22 or later, pnpm 8.10.2, and Python 3.10 or
-later.
+This repository requires Node.js 22.12 or later, pnpm 8.10.2, and Python 3.10
+or later.
 
 ```bash
 pnpm install
@@ -22,10 +22,15 @@ pnpm run validate
 ## What to change
 
 - Edit narrative documentation in `content/guides/`.
-- Edit navigation metadata in `src/docs-nav.ts`.
-- Edit the documentation shell and styles in `src/`.
+- Edit navigation, metadata, and API Reference behavior in
+  `zudoku.config.tsx`.
+- Edit the CALL-E theme layer in `src/styles.css`.
 - Add or update Playwright coverage in `tests/` when navigation, rendering, or
   other observable site behavior changes.
+
+Guide frontmatter supplies titles and descriptions to `/llms.txt`. Keep guide
+content in portable Markdown where possible so `.md` and `llms-full.txt`
+remain useful to automated agents.
 
 The API Reference is built from `openapi/calle.openapi.yaml`. Contract changes
 must describe behavior already supported by the public CALL-E Developer API.

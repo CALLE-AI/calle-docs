@@ -1,8 +1,16 @@
-# Calls
+---
+title: Calls
+description: Understand the call creation contract and event flow.
+---
 
 Use call tasks to turn a structured workflow step into one or more real phone interactions.
 
-<h2 id="call-inputs">Call inputs</h2>
+Use the [Calls API Reference](/api-reference/calls) for the exact HTTP request
+and response schemas. See the [error handling guide](/errors) for retry
+behavior and the [terminal webhooks guide](/webhooks) for asynchronous
+completion.
+
+## Call inputs
 
 `task` is the natural-language instruction for the call task. Keep it specific and outcome-oriented.
 
@@ -19,6 +27,53 @@ Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PH
 `webhook_url` is an optional request-level endpoint for terminal webhooks.
 
 The server SDKs also reserve a `context` input for future SDK-side workflow data. It is not sent to the API yet.
+
+## Direct HTTP with curl
+
+Set your API key, then create a call with a stable idempotency key. Replace
+`<E164_PHONE>` with a phone number you own or are authorized to call.
+
+```bash
+export CALLE_API_KEY="<CALLE_API_KEY>"
+
+curl --fail-with-body --silent --show-error \
+  --request POST "https://api.heycall-e.com/v1/calls" \
+  --header "Authorization: Bearer $CALLE_API_KEY" \
+  --header "Content-Type: application/json" \
+  --header "Idempotency-Key: wf_123_hearing_check" \
+  --data '{
+    "task": "Call <E164_PHONE> and ask whether they can hear clearly.",
+    "result_schema": {
+      "type": "object",
+      "required": ["can_hear_clearly"],
+      "properties": {
+        "can_hear_clearly": {
+          "type": "string",
+          "enum": ["yes", "no", "unknown"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "workflow_run_id": "wf_123"
+    }
+  }'
+```
+
+The response contains the call task `id`. Use it to read the current state or
+the ordered lifecycle events:
+
+```bash
+export CALLE_CALL_ID="<CALL_ID>"
+
+curl --fail-with-body --silent --show-error \
+  --header "Authorization: Bearer $CALLE_API_KEY" \
+  "https://api.heycall-e.com/v1/calls/$CALLE_CALL_ID"
+
+curl --fail-with-body --silent --show-error \
+  --header "Authorization: Bearer $CALLE_API_KEY" \
+  "https://api.heycall-e.com/v1/calls/$CALLE_CALL_ID/events?limit=50"
+```
 
 TypeScript:
 
@@ -82,7 +137,7 @@ call = client.calls.create(
 )
 ```
 
-<h2 id="structured-results">Structured results</h2>
+## Structured results
 
 Structured results let you turn the terminal call evidence into a stable JSON object for your workflow. The schema is an extraction contract: the SDK sends the schema to CALL-E, CALL-E extracts a result from the completed call evidence, and the service validates the result before returning it.
 
@@ -132,7 +187,7 @@ resultSchema: {
 
 When a result drives automation, add an evidence field so your system can inspect why CALL-E made the classification.
 
-<h3 id="sales-handoff-result">Sales handoff</h3>
+### Sales handoff
 
 Use this pattern when a prospect should be routed to a human if they ask for help or show strong interest.
 
@@ -174,7 +229,7 @@ resultSchema: {
 }
 ```
 
-<h3 id="appointment-confirmation-result">Appointment confirmation</h3>
+### Appointment confirmation
 
 Use this pattern when calling a business to confirm, reschedule, or cancel an appointment.
 
@@ -204,7 +259,7 @@ resultSchema: {
 }
 ```
 
-<h3 id="batch-recipient-result">Batch recipient result</h3>
+### Batch recipient result
 
 Use `recipientResultSchema` when each recipient should have their own answer.
 
@@ -229,7 +284,7 @@ recipientResultSchema: {
 }
 ```
 
-<h3 id="support-triage-result">Support triage</h3>
+### Support triage
 
 Use this pattern when a call should determine whether an issue was resolved or needs follow-up.
 
@@ -266,7 +321,7 @@ resultSchema: {
 }
 ```
 
-<h3 id="pricing-request-result">Pricing or quote request</h3>
+### Pricing or quote request
 
 Use this pattern when a prospect may ask about pricing, quotes, discounts, or budget.
 
@@ -297,7 +352,7 @@ resultSchema: {
 }
 ```
 
-<h3 id="structured-result-best-practices">Best practices</h3>
+### Best practices
 
 - Keep schemas focused. A small schema with clear fields is more reliable than a large schema with many optional fields.
 - Put enum selection rules in the field `description`.
@@ -307,13 +362,13 @@ resultSchema: {
 - Add an evidence or summary field when the result triggers workflow automation.
 - Do not rely on `description` for validation. Use schema constraints for enforceable behavior.
 
-<h2 id="idempotency">Idempotency</h2>
+## Idempotency
 
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
 
 Use a stable workflow key, not a random UUID generated at each retry.
 
-<h2 id="polling-and-events">Polling and events</h2>
+## Polling and events
 
 Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
 

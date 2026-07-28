@@ -1,10 +1,13 @@
-# Webhooks
+---
+title: Webhooks
+description: Verify terminal webhooks and process events safely.
+---
 
 Use webhooks when your application needs to react to terminal call task results without polling.
 
 Phone values in examples are placeholders. Real webhook payloads echo the phone numbers from your call task.
 
-<h2 id="terminal-events">Terminal events</h2>
+## Terminal events
 
 CALL-E sends terminal webhook events:
 
@@ -117,7 +120,7 @@ Example payload:
 }
 ```
 
-<h2 id="signature-verification">Signature verification</h2>
+## Signature verification
 
 Verify the signature against the raw request body before parsing JSON. The SDK helpers return the parsed event only after the timestamp and signature are valid.
 
@@ -148,7 +151,7 @@ if event["type"] == "call.completed":
     print(event["data"]["id"], event["data"]["recipients"])
 ```
 
-<h2 id="example-servers">Example servers</h2>
+## Example servers
 
 The SDK repositories include minimal webhook servers built with runtime standard libraries:
 
@@ -157,7 +160,7 @@ The SDK repositories include minimal webhook servers built with runtime standard
 
 Both examples listen on `POST /calle/webhook`, preserve the raw request body for signature verification, and return `200` only after `client.webhooks.unwrap` succeeds.
 
-<h2 id="idempotent-handling">Idempotent handling</h2>
+## Idempotent handling
 
 Webhook delivery is at least once. Store the webhook event `id` before processing side effects so duplicate deliveries are ignored safely.
 

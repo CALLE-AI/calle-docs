@@ -84,8 +84,23 @@ jobs:
           fi
           base_url="${DOCS_PUBLIC_URL%/}"
           curl --fail --silent --show-error "$base_url/index.html" --output /tmp/calle-docs-index.html
+          curl --fail --silent --show-error "$base_url/quickstart" --output /tmp/calle-docs-quickstart.html
+          curl --fail --silent --show-error "$base_url/quickstart.md" --output /tmp/calle-docs-quickstart.md
+          curl --fail --silent --show-error "$base_url/llms.txt" --output /tmp/calle-docs-llms.txt
+          curl --fail --silent --show-error "$base_url/llms-full.txt" --output /tmp/calle-docs-llms-full.txt
+          curl --fail --silent --show-error "$base_url/sitemap.xml" --output /tmp/calle-docs-sitemap.xml
           curl --fail --silent --show-error "$base_url/openapi/calle.openapi.yaml" --output /tmp/calle-docs-openapi.yaml
           test -s /tmp/calle-docs-index.html
+          test -s /tmp/calle-docs-quickstart.html
+          test -s /tmp/calle-docs-quickstart.md
+          test -s /tmp/calle-docs-llms.txt
+          test -s /tmp/calle-docs-llms-full.txt
+          test -s /tmp/calle-docs-sitemap.xml
           test -s /tmp/calle-docs-openapi.yaml
           cmp --silent dist/index.html /tmp/calle-docs-index.html
+          cmp --silent dist/quickstart.html /tmp/calle-docs-quickstart.html
+          cmp --silent dist/quickstart.md /tmp/calle-docs-quickstart.md
+          cmp --silent dist/llms.txt /tmp/calle-docs-llms.txt
+          cmp --silent dist/llms-full.txt /tmp/calle-docs-llms-full.txt
+          cmp --silent dist/sitemap.xml /tmp/calle-docs-sitemap.xml
           cmp --silent dist/openapi/calle.openapi.yaml /tmp/calle-docs-openapi.yaml

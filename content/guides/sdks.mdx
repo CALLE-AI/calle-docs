@@ -1,8 +1,11 @@
-# SDKs
+---
+title: SDKs
+description: Install the stable TypeScript and Python server SDKs.
+---
 
 CALL-E provides server SDKs for trusted backend services, workers, and automation systems that create and monitor call tasks.
 
-<h2 id="packages">Packages</h2>
+## Packages
 
 TypeScript package name:
 
@@ -22,45 +25,28 @@ Python imports the package as `calle`:
 from calle import CalleClient
 ```
 
-<h2 id="package-status">Package status</h2>
+## Package status
 
 The current stable server SDK packages are:
 
 - TypeScript: `@call-e/calle@0.2.0`
 - Python: `calle-ai==0.2.0`
 
-<h2 id="source-repositories">Source repositories</h2>
+## Source repositories
 
 The SDKs are maintained as separate repositories so they can have independent release cadence, CI, package metadata, and language-specific examples.
 
-<table>
-  <thead>
-    <tr>
-      <th>Runtime</th>
-      <th>Package</th>
-      <th>Repository</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>TypeScript</td>
-      <td><code>@call-e/calle</code></td>
-      <td><a href="https://github.com/CALLE-AI/server-sdk-typescript">CALLE-AI/server-sdk-typescript</a></td>
-    </tr>
-    <tr>
-      <td>Python</td>
-      <td><code>calle-ai</code></td>
-      <td><a href="https://github.com/CALLE-AI/server-sdk-python">CALLE-AI/server-sdk-python</a></td>
-    </tr>
-  </tbody>
-</table>
+| Runtime | Package | Repository |
+| --- | --- | --- |
+| TypeScript | `@call-e/calle` | [CALLE-AI/server-sdk-typescript](https://github.com/CALLE-AI/server-sdk-typescript) |
+| Python | `calle-ai` | [CALLE-AI/server-sdk-python](https://github.com/CALLE-AI/server-sdk-python) |
 
 Each repository includes public source code, examples, and security guidance:
 
-- <a href="https://github.com/CALLE-AI/server-sdk-typescript/blob/main/SECURITY.md">TypeScript security policy</a>
-- <a href="https://github.com/CALLE-AI/server-sdk-python/blob/main/SECURITY.md">Python security policy</a>
+- [TypeScript security policy](https://github.com/CALLE-AI/server-sdk-typescript/blob/main/SECURITY.md)
+- [Python security policy](https://github.com/CALLE-AI/server-sdk-python/blob/main/SECURITY.md)
 
-<h2 id="local-examples">Local examples</h2>
+## Local examples
 
 Each SDK repository includes runnable examples for the server-side call task flow.
 
@@ -86,7 +72,7 @@ uv run python examples/webhook_server.py
 
 The webhook examples listen on `POST /calle/webhook` and verify `CALL-E-Timestamp` plus `CALL-E-Signature` before parsing JSON.
 
-<h2 id="supported-methods">Supported methods</h2>
+## Supported methods
 
 The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
 
@@ -203,7 +189,7 @@ event = client.webhooks.unwrap(
 )
 ```
 
-<h2 id="availability">Availability</h2>
+## Availability
 
 Install the stable server SDK package for your runtime:
 
@@ -219,7 +205,7 @@ pnpm add @call-e/calle@0.2.0
 pip install calle-ai==0.2.0
 ```
 
-<h2 id="supported-scope">Supported scope</h2>
+## Supported scope
 
 This release does not include:
 
