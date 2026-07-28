@@ -1,4 +1,6 @@
 import type { ZudokuConfig } from "zudoku";
+import { ScrollToTop } from "./src/components/ScrollToTop.js";
+import { ThemeMenu } from "./src/components/ThemeMenu.js";
 import "./src/styles.css";
 
 const legacyHashRedirect = `
@@ -64,6 +66,9 @@ const config = {
     showPoweredBy: false,
   },
   header: {
+    themeSwitcher: {
+      enabled: false,
+    },
     navigation: [
       {
         label: "Website",
@@ -80,6 +85,21 @@ const config = {
       navigation: "end",
       search: "center",
     },
+  },
+  slots: {
+    "head-navigation-end": () => (
+      <ThemeMenu
+        className="theme-menu--desktop"
+        testId="theme-menu-trigger"
+      />
+    ),
+    "mobile-top-bar-end": () => (
+      <ThemeMenu
+        className="theme-menu--mobile"
+        testId="theme-menu-trigger-mobile"
+      />
+    ),
+    "layout-after-head": ScrollToTop,
   },
   docs: {
     files: "/content/guides/**/*.{md,mdx}",

@@ -56,6 +56,69 @@ test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {
   expect(descriptionContent).not.toBe('""');
 });
 
+test("offers system, light, and dark appearance modes", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/quickstart");
+
+  const html = page.locator("html");
+  const trigger = page.getByTestId("theme-menu-trigger");
+
+  await expect(trigger).toHaveAttribute("data-theme", "system");
+  await expect(html).toHaveClass("dark");
+
+  await trigger.click();
+  const lightOption = page.getByRole("menuitemradio", {
+    name: "Light",
+    exact: true,
+  });
+  await lightOption.click();
+  await expect(trigger).toHaveAttribute("data-theme", "light");
+  await expect(html).toHaveClass("light");
+  await expect(lightOption).toBeHidden();
+
+  await trigger.click();
+  const darkOption = page.getByRole("menuitemradio", {
+    name: "Dark",
+    exact: true,
+  });
+  await darkOption.click();
+  await expect(trigger).toHaveAttribute("data-theme", "dark");
+  await expect(html).toHaveClass("dark");
+  await expect(darkOption).toBeHidden();
+
+  await trigger.click();
+  const systemOption = page.getByRole("menuitemradio", {
+    name: "System",
+    exact: true,
+  });
+  await systemOption.click();
+  await expect(trigger).toHaveAttribute("data-theme", "system");
+  await expect(html).toHaveClass("dark");
+
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect(html).toHaveClass("light");
+});
+
+test("shows a desktop scroll-to-top control after one viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/calls");
+
+  const scrollToTop = page.getByTestId("scroll-to-top");
+  await expect(scrollToTop).toBeHidden();
+
+  await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+  await expect(scrollToTop).toBeVisible();
+  await expect(scrollToTop).toHaveCSS("transform", "none");
+
+  await scrollToTop.click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test("publishes non-empty Markdown and LLM discovery files", async ({
   request,
 }) => {
@@ -271,4 +334,25 @@ test("keeps the guide usable on a narrow screen", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Open navigation menu" }),
   ).toBeVisible();
+  const mobileTheme = page.getByTestId("theme-menu-trigger-mobile");
+  const mobileToc = page.getByRole("button", {
+    name: "Toggle table of contents",
+  });
+  await expect(mobileTheme).toBeVisible();
+  await expect(mobileToc).toBeVisible();
+
+  const themeCenterY = await mobileTheme.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  });
+  const tocCenterY = await mobileToc.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  });
+  expect(Math.abs(themeCenterY - tocCenterY)).toBeLessThan(4);
+
+  await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+  await expect(page.getByTestId("scroll-to-top")).toHaveCSS("display", "none");
 });
