@@ -151,14 +151,14 @@ if event["type"] == "call.completed":
     print(event["data"]["id"], event["data"]["recipients"])
 ```
 
-## Example servers
+{/* ## Example servers
 
 The SDK repositories include minimal webhook servers built with runtime standard libraries:
 
 - [TypeScript webhook server](https://github.com/CALLE-AI/server-sdk-typescript/blob/main/examples/webhook-server.ts)
 - [Python webhook server](https://github.com/CALLE-AI/server-sdk-python/blob/main/examples/webhook_server.py)
 
-Both examples listen on `POST /calle/webhook`, preserve the raw request body for signature verification, and return `200` only after `client.webhooks.unwrap` succeeds.
+Both examples listen on `POST /calle/webhook`, preserve the raw request body for signature verification, and return `200` only after `client.webhooks.unwrap` succeeds. */}
 
 ## Idempotent handling
 
