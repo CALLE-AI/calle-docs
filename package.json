@@ -11,32 +11,28 @@
   "license": "MIT",
   "packageManager": "pnpm@8.10.2",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "sync:openapi": "node scripts/sync-openapi.mjs",
-    "dev": "pnpm run sync:openapi && vite",
-    "build": "pnpm run sync:openapi && tsc -p tsconfig.json && vite build",
+    "dev": "pnpm run sync:openapi && zudoku dev",
+    "build": "pnpm run sync:openapi && zudoku build && node scripts/augment-llms.mjs",
     "verify:dist": "node scripts/verify-dist.mjs",
     "validate": "pnpm run typecheck && pnpm run build && pnpm run verify:dist && pnpm run test:deploy && pnpm run test",
-    "preview": "vite preview",
+    "preview": "zudoku preview",
     "test": "playwright test",
     "test:deploy": "python3 -m unittest scripts/test_deploy_docs_to_oss.py",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mdx-js/react": "^3.1.1",
-    "@scalar/api-reference-react": "^0.9.41",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
-    "@mdx-js/rollup": "^3.1.1",
     "@playwright/test": "^1.60.0",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
     "typescript": "^5.9.0",
-    "vite": "^8.0.14"
+    "zudoku": "0.82.3"
   }
 }

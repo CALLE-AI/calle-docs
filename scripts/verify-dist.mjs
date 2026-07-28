@@ -5,8 +5,16 @@ import { fileURLToPath } from "node:url";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const docsRoot = resolve(scriptDir, "..");
 const distRoot = resolve(docsRoot, "dist");
-const indexPath = resolve(distRoot, "index.html");
-const openApiPath = resolve(distRoot, "openapi/calle.openapi.yaml");
+
+const guides = [
+  { slug: "quickstart", title: "Quickstart" },
+  { slug: "authentication", title: "Authentication" },
+  { slug: "calls", title: "Calls" },
+  { slug: "webhooks", title: "Webhooks" },
+  { slug: "errors", title: "Errors" },
+  { slug: "sdks", title: "SDKs" },
+  { slug: "changelog", title: "What's New" },
+];
 
 function assertFile(path, label) {
   try {
@@ -24,36 +32,136 @@ function assertFile(path, label) {
   }
 }
 
-assertFile(indexPath, "dist index");
-assertFile(openApiPath, "OpenAPI document");
-
-const indexHtml = readFileSync(indexPath, "utf8");
-const scriptMatch = indexHtml.match(/<script[^>]+src="([^"]+assets\/index-[^"]+\.js)"/);
-const stylesheetMatch = indexHtml.match(/<link[^>]+href="([^"]+assets\/index-[^"]+\.css)"/);
-
-if (!scriptMatch) {
-  throw new Error("dist index does not reference a hashed entry script.");
+function readRequired(relativePath, label = relativePath) {
+  const path = resolve(distRoot, relativePath);
+  assertFile(path, label);
+  return readFileSync(path, "utf8");
 }
-if (!stylesheetMatch) {
-  throw new Error("dist index does not reference a hashed stylesheet.");
+
+const indexHtml = readRequired("index.html", "dist index");
+readRequired("400.html", "400 status page");
+readRequired("404.html", "404 status page");
+readRequired("500.html", "500 status page");
+const apiInfoHtml = readRequired(
+  "api-reference.html",
+  "API Reference entry",
+);
+const apiCallsHtml = readRequired(
+  "api-reference/calls.html",
+  "Calls API Reference",
+);
+readRequired("api-reference/webhooks.html", "Webhooks API Reference");
+readRequired("api-reference/~schemas.html", "API schemas page");
+readRequired("favicon.svg", "favicon");
+readRequired("call-e-logo.svg", "CALL-E logo");
+const robots = readRequired("robots.txt", "robots policy");
+const sitemap = readRequired("sitemap.xml", "sitemap");
+const llms = readRequired("llms.txt", "LLM index");
+const llmsFull = readRequired("llms-full.txt", "full LLM export");
+readRequired("pagefind/pagefind.js", "Pagefind search runtime");
+
+if (
+  !indexHtml.includes("CALL-E Developer Docs") ||
+  !indexHtml.includes('window.location.replace("/quickstart")') ||
+  !indexHtml.includes('"/authentication"')
+) {
+  throw new Error(
+    "dist index is missing the documentation entry page or legacy hash bridge.",
+  );
+}
+
+const scriptMatch = indexHtml.match(
+  /<script[^>]+src="(\/assets\/entry\.client-[^"]+\.js)"/,
+);
+const stylesheetMatch = indexHtml.match(
+  /<link[^>]+href="(\/assets\/entry-[^"]+\.css)"/,
+);
+
+if (!scriptMatch || !stylesheetMatch) {
+  throw new Error("dist index does not reference Zudoku entry assets.");
 }
 
 for (const assetPath of [scriptMatch[1], stylesheetMatch[1]]) {
-  if (!assetPath.startsWith("./assets/")) {
-    throw new Error(
-      `Expected relative asset path for subpath hosting, got ${assetPath}`,
-    );
-  }
-
-  assertFile(join(distRoot, assetPath.slice(2)), `asset ${assetPath}`);
+  assertFile(join(distRoot, assetPath.slice(1)), `asset ${assetPath}`);
 }
 
-const openApi = readFileSync(openApiPath, "utf8");
+for (const guide of guides) {
+  const html = readRequired(`${guide.slug}.html`, `${guide.title} HTML`);
+  const markdown = readRequired(`${guide.slug}.md`, `${guide.title} Markdown`);
+
+  if (
+    !html.includes('data-pagefind-body="true"') ||
+    !html.includes("<h1 ")
+  ) {
+    throw new Error(`${guide.title} HTML is missing prerendered guide content.`);
+  }
+  if (!markdown.startsWith(`# ${guide.title}\n`)) {
+    throw new Error(`${guide.title} Markdown is missing its generated title.`);
+  }
+  if (!llms.includes(`/${guide.slug}.md`)) {
+    throw new Error(`llms.txt does not link to ${guide.slug}.md.`);
+  }
+  if (!llmsFull.includes(`# ${guide.title}`)) {
+    throw new Error(`llms-full.txt does not contain ${guide.title}.`);
+  }
+  if (!sitemap.includes(`<loc>https://docs.heycall-e.com/${guide.slug}</loc>`)) {
+    throw new Error(`sitemap.xml does not contain /${guide.slug}.`);
+  }
+}
+
+if (
+  !llms.includes("[API Reference](/api-reference)") ||
+  !llms.includes(
+    "[OpenAPI Specification](/openapi/calle.openapi.yaml)",
+  )
+) {
+  throw new Error(
+    "llms.txt does not expose the API Reference and OpenAPI contract.",
+  );
+}
+
+if (
+  !apiInfoHtml.includes('data-pagefind-body="true"') ||
+  !apiInfoHtml.includes("CALL-E Developer API") ||
+  !apiInfoHtml.includes("Developer API contract")
+) {
+  throw new Error(
+    "API Reference entry is missing prerendered OpenAPI information.",
+  );
+}
+if (
+  apiInfoHtml.includes('window.location.href="/api-reference/') ||
+  apiInfoHtml.includes('window.location.replace("/api-reference/')
+) {
+  throw new Error("API Reference entry must not be a client-side redirect.");
+}
+
+if (
+  !apiCallsHtml.includes("Create Call") ||
+  !apiCallsHtml.includes("List Call Events")
+) {
+  throw new Error("Calls API Reference is missing prerendered operations.");
+}
+if (apiCallsHtml.includes(">Try it<") || apiCallsHtml.includes(">Send Request<")) {
+  throw new Error("API Reference unexpectedly exposes a request playground.");
+}
+
+const openApi = readRequired(
+  "openapi/calle.openapi.yaml",
+  "OpenAPI document",
+);
 if (!openApi.includes("openapi: 3.1.0")) {
-  throw new Error("OpenAPI document does not look like the Phase 1 contract.");
+  throw new Error("OpenAPI document does not look like the public contract.");
 }
 if (!openApi.includes("/v1/calls") || !openApi.includes("/calle/webhook")) {
-  throw new Error("OpenAPI document is missing Phase 1 endpoint paths.");
+  throw new Error("OpenAPI document is missing public endpoint paths.");
 }
 
-console.log(`Verified static docs dist at ${distRoot}.`);
+if (
+  !robots.includes("User-agent: *") ||
+  !robots.includes("https://docs.heycall-e.com/sitemap.xml")
+) {
+  throw new Error("robots.txt does not allow crawling or link the sitemap.");
+}
+
+console.log(`Verified Zudoku static docs dist at ${distRoot}.`);

@@ -1,20 +1,25 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "allowJs": false,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "WebWorker"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "useDefineForClassFields": true,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "useUnknownInCatchVariables": false,
+    "strict": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["zudoku/client"]
   },
-  "include": ["src", "content", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "content",
+    "tests",
+    "zudoku.config.tsx",
+    "playwright.config.ts"
+  ]
 }

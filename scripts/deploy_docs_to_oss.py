@@ -34,10 +34,18 @@ def parse_bucket(bucket_uri: str) -> str:
 
 def content_type_for(path: Path) -> str:
     guessed, _ = mimetypes.guess_type(path.name)
+    if path.suffix == ".html":
+        return "text/html; charset=utf-8"
+    if path.suffix == ".md":
+        return "text/markdown; charset=utf-8"
+    if path.suffix == ".txt":
+        return "text/plain; charset=utf-8"
+    if path.suffix == ".css":
+        return "text/css; charset=utf-8"
     if path.suffix == ".yaml":
-        return "application/yaml"
+        return "application/yaml; charset=utf-8"
     if path.suffix == ".js":
-        return "text/javascript"
+        return "text/javascript; charset=utf-8"
     return guessed or "application/octet-stream"
 
 
@@ -76,10 +84,36 @@ def collect_files(dist_dir: Path) -> list[Path]:
     return sorted(
         files,
         key=lambda path: (
-            path == dist_dir / "index.html",
+            (
+                2
+                if path == dist_dir / "index.html"
+                else 1
+                if path.suffix == ".html"
+                else 0
+            ),
             path.relative_to(dist_dir).as_posix(),
         ),
     )
+
+
+def object_names_for(path: Path, dist_dir: Path) -> tuple[str, ...]:
+    relative = path.relative_to(dist_dir).as_posix()
+    status_pages = {"400.html", "404.html", "500.html"}
+    if (
+        path.suffix == ".html"
+        and relative != "index.html"
+        and relative not in status_pages
+    ):
+        return relative, relative.removesuffix(".html")
+    return (relative,)
+
+
+def collect_uploads(dist_dir: Path) -> list[tuple[Path, str]]:
+    return [
+        (path, object_name)
+        for path in collect_files(dist_dir)
+        for object_name in object_names_for(path, dist_dir)
+    ]
 
 
 class OssClient:
@@ -241,10 +275,10 @@ def main() -> int:
         endpoint=os.environ["OSS_ENDPOINT"],
     )
 
-    files: list[Path] = []
+    uploads: list[tuple[Path, str]] = []
     if not args.skip_upload:
         try:
-            files = collect_files(dist_dir)
+            uploads = collect_uploads(dist_dir)
         except FileNotFoundError as exc:
             print(str(exc), file=sys.stderr)
             return 2
@@ -254,19 +288,16 @@ def main() -> int:
     print(f"prefix={deploy_prefix}")
 
     if args.dry_run:
-        print(f"dry_run=true files={len(files)}")
-        for path in files[:10]:
-            print(
-                "plan "
-                f"{deploy_prefix}{path.relative_to(dist_dir).as_posix()}"
-            )
-        if len(files) > 10:
+        print(f"dry_run=true objects={len(uploads)}")
+        for _, object_name in uploads[:10]:
+            print(f"plan {deploy_prefix}{object_name}")
+        if len(uploads) > 10:
             print("...")
         return 0
 
     if not args.skip_upload:
-        for index, local_path in enumerate(files, start=1):
-            key = deploy_prefix + local_path.relative_to(dist_dir).as_posix()
+        for index, (local_path, object_name) in enumerate(uploads, start=1):
+            key = deploy_prefix + object_name
             try:
                 client.put_file(local_path, key)
             except urllib.error.HTTPError as exc:
@@ -276,11 +307,16 @@ def main() -> int:
                     file=sys.stderr,
                 )
                 return 1
-            if index % 20 == 0 or index == len(files):
-                print(f"uploaded={index}/{len(files)}")
+            if index % 20 == 0 or index == len(uploads):
+                print(f"uploaded={index}/{len(uploads)}")
 
     for key in (
         f"{deploy_prefix}index.html",
+        f"{deploy_prefix}quickstart",
+        f"{deploy_prefix}quickstart.md",
+        f"{deploy_prefix}llms.txt",
+        f"{deploy_prefix}llms-full.txt",
+        f"{deploy_prefix}sitemap.xml",
         f"{deploy_prefix}openapi/calle.openapi.yaml",
     ):
         try:
@@ -295,10 +331,10 @@ def main() -> int:
 
     keys = client.list_prefix(deploy_prefix)
     print(f"listed_objects={len(keys)}")
-    if files:
+    if uploads:
         expected = {
-            deploy_prefix + path.relative_to(dist_dir).as_posix()
-            for path in files
+            deploy_prefix + object_name
+            for _, object_name in uploads
         }
         missing_objects = expected.difference(keys)
         if missing_objects:

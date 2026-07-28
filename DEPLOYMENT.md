@@ -43,11 +43,12 @@ The deployment workflow runs after a push to `main` or a manual dispatch:
 4. Start the `production` environment job.
 5. Download the exact artifact built by the validation job.
 6. Upload it to the explicit `OSS_DEPLOY_PREFIX` in OSS.
-7. Verify signed reads of `index.html` and
-   `openapi/calle.openapi.yaml`.
+7. Verify signed reads of the entry page, clean Quickstart route, Markdown and
+   LLM files, sitemap, and OpenAPI contract.
 8. List the destination prefix and confirm every build object exists.
-9. Fetch the entry page and OpenAPI document through `DOCS_PUBLIC_URL`, then
-   compare both files byte-for-byte with the build artifact.
+9. Fetch the entry page, clean Quickstart route, Markdown and LLM files,
+   sitemap, and OpenAPI document through `DOCS_PUBLIC_URL`, then compare them
+   byte-for-byte with the build artifact.
 
 The build job does not reference deployment secrets. Pull requests from forks
 only run CI and cannot access the `production` environment.
@@ -66,8 +67,14 @@ pnpm run validate
 script tests, and Playwright smoke tests.
 
 The build copies `openapi/calle.openapi.yaml` into the public static tree before
-Vite emits `dist/`. The Vite config uses relative asset paths so the build works
-behind either a domain root or a CDN path prefix.
+Zudoku emits `dist/`. The public domain must map the configured OSS prefix to
+the domain root because Zudoku assets use root-relative URLs.
+
+Zudoku writes clean routes as files such as `quickstart.html`. The deployment
+tool also uploads the same bytes as an extensionless `quickstart` object, and
+does the same for nested API Reference routes. This lets OSS serve
+`/quickstart` directly without returning an empty app shell or requiring a
+global SPA fallback.
 
 ## Private OSS and CDN
 
@@ -79,11 +86,16 @@ serving them.
 Recommended cache behavior:
 
 - `index.html`: no cache or short cache.
+- route HTML, extensionless route aliases, `.md`, `llms*.txt`, and
+  `sitemap.xml`: no cache or short cache.
 - `openapi/calle.openapi.yaml`: no cache or short cache.
 - `assets/*`: one year, immutable.
 
-The site uses hash routing, so routes such as `#/quickstart` and
-`#/api-reference` do not require server-side route rewrites.
+Configure the CDN or gateway to check exact OSS objects first and use
+`404.html` for unknown paths while preserving the HTTP 404 status. Do not use
+an `index.html` SPA fallback: crawlers would receive the wrong page content.
+The root entry page contains a small client bridge for old links such as
+`/#/quickstart` and `/#/api-reference`.
 
 ## Manual dry run
 

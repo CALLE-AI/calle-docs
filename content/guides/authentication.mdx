@@ -1,8 +1,11 @@
-# Authentication
+---
+title: Authentication
+description: Use API keys safely from trusted server environments.
+---
 
 CALL-E uses project API keys for server-to-server requests.
 
-<h2 id="api-keys">API keys</h2>
+## API keys
 
 The CALL-E team provisions API keys for approved projects.
 
@@ -16,7 +19,7 @@ export CALLE_API_KEY="calle_test_key"
 
 Do not commit API keys, print them in logs, send them to browser code, or store them in mobile apps. The CALL-E SDKs are server SDKs for trusted backend services and workers.
 
-<h2 id="authorization-header">Authorization header</h2>
+## Authorization header
 
 Send the API key as a bearer token:
 
@@ -51,7 +54,7 @@ client = CalleClient(
 )
 ```
 
-<h2 id="environments">Environments</h2>
+## Environments
 
 Use an explicit base URL in each environment so staging jobs do not accidentally send live calls.
 
@@ -61,7 +64,7 @@ export CALLE_BASE_URL="https://api.heycall-e.com"
 
 The example SDK servers and call scripts read `CALLE_BASE_URL` when you provide it. Keep test and production API keys separate, and do not reuse idempotency keys across environments.
 
-<h2 id="server-only">Server-only usage</h2>
+## Server-only usage
 
 Only call the Developer API from trusted server code:
 
@@ -72,7 +75,7 @@ Only call the Developer API from trusted server code:
 
 Do not call the Developer API directly from a browser, public frontend, or untrusted client. If a frontend user needs to start a call, send the request to your backend first, validate the user, and let your backend call CALL-E with its project API key.
 
-<h2 id="webhook-secrets">Webhook secrets</h2>
+## Webhook secrets
 
 Webhook secrets are different from API keys.
 
@@ -82,9 +85,9 @@ Use API keys to authenticate your outbound requests to CALL-E. Use webhook secre
 export CALLE_WEBHOOK_SECRET="whsec_test_key"
 ```
 
-Verify `CALL-E-Timestamp` and `CALL-E-Signature` against the raw request body. See the [Webhooks](#/webhooks) guide for runnable server examples.
+Verify `CALL-E-Timestamp` and `CALL-E-Signature` against the raw request body. See the [Webhooks](/webhooks) guide for runnable server examples.
 
-<h2 id="auth-errors">Auth errors</h2>
+## Auth errors
 
 `401 unauthorized` means the API key is missing, malformed, expired, or invalid. Check the `Authorization: Bearer` header and the environment variable loaded by the running process.
 

@@ -1,0 +1,546 @@
+:root {
+  --top-header-height: 4.5rem;
+  --top-nav-height: 3rem;
+  --side-nav-width: 18.75rem;
+  --padding-content-top: 2.5rem;
+  --sidecar-grid-cols: minmax(0, 42rem) minmax(13rem, 15rem);
+  --call-signal: #0a9f90;
+  --code-background: #0b0f14;
+  --code-chrome: #11161d;
+  --code-border: #242b35;
+  --code-foreground: #e6edf3;
+  --code-muted: #a4afbd;
+}
+
+.dark {
+  --call-signal: #35c9b8;
+}
+
+body {
+  min-width: 320px;
+  color: var(--foreground);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family:
+    "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas,
+    "Liberation Mono", monospace;
+}
+
+header[data-pagefind-ignore="all"] {
+  background: color-mix(in srgb, var(--background) 96%, transparent);
+}
+
+header[data-pagefind-ignore="all"]::after {
+  display: none;
+}
+
+header[data-pagefind-ignore="all"] img {
+  object-fit: contain;
+}
+
+.theme-menu {
+  display: flex;
+  align-items: center;
+}
+
+.theme-menu__trigger {
+  height: 2.25rem;
+  min-width: 2.5rem;
+  padding-inline: 0.625rem;
+  gap: 0.3rem;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+
+.theme-menu__trigger:hover,
+.theme-menu__trigger[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--call-signal) 34%, var(--border));
+  color: var(--foreground);
+}
+
+.theme-menu__trigger > svg:first-child {
+  color: var(--call-signal);
+}
+
+.theme-menu__chevron {
+  width: 0.75rem;
+  height: 0.75rem;
+  opacity: 0.6;
+}
+
+.theme-menu__label {
+  display: none;
+  font-size: 0.75rem;
+}
+
+.theme-menu__content {
+  min-width: 10rem;
+}
+
+.theme-menu__content [role="menuitemradio"] {
+  min-height: 2rem;
+}
+
+.theme-menu--mobile .theme-menu__label {
+  display: inline;
+}
+
+div:has(> .theme-menu--mobile) {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+div:has(> .theme-menu--mobile)
+  > [aria-label="Toggle table of contents"] {
+  min-width: 0;
+}
+
+.scroll-to-top {
+  position: fixed;
+  right: max(1.5rem, calc((100vw - 96rem) / 2 + 1.5rem));
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-color: color-mix(in srgb, var(--call-signal) 30%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background) 92%, transparent);
+  color: var(--foreground);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(0.5rem);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--background) 70%, transparent),
+    0 0.75rem 2rem color-mix(in srgb, var(--foreground) 13%, transparent);
+  backdrop-filter: blur(0.75rem);
+  transition:
+    opacity 160ms ease,
+    visibility 160ms ease,
+    transform 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.scroll-to-top[data-visible="true"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.scroll-to-top[data-visible="true"]:hover {
+  border-color: var(--call-signal);
+  color: var(--call-signal);
+  transform: translateY(-0.125rem);
+}
+
+.dark header a.shrink-0 img {
+  filter: invert(1);
+}
+
+header[data-pagefind-ignore="all"] nav[aria-label="Main"] a {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+header[data-pagefind-ignore="all"]
+  nav[aria-label="Main"]
+  a[href="https://dashboard.heycall-e.com/"] {
+  height: 2.25rem;
+  padding-inline: 1rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+header[data-pagefind-ignore="all"]
+  nav[aria-label="Main"]
+  a[href="https://dashboard.heycall-e.com/"]:hover {
+  background: color-mix(in srgb, var(--primary) 88%, black);
+  color: var(--primary-foreground);
+}
+
+nav[class*="overflow-y-auto"][class*="shrink-0"] {
+  padding-top: 1.5rem;
+}
+
+nav[class*="overflow-y-auto"][class*="shrink-0"] a {
+  min-height: 2rem;
+  color: var(--muted-foreground);
+}
+
+nav[class*="overflow-y-auto"][class*="shrink-0"] a:hover {
+  color: var(--foreground);
+}
+
+nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
+  color: var(--foreground);
+  box-shadow: inset 2px 0 0 var(--call-signal);
+}
+
+@media (min-width: 64rem) {
+  .scroll-to-top {
+    display: inline-flex;
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    :is(
+      a[href="/quickstart"],
+      a[href="/authentication"],
+      a[href="/calls"],
+      a[href="/webhooks"],
+      a[href="/errors"],
+      a[href="/sdks"],
+      a[href="/changelog"]
+    ) {
+    display: grid;
+    min-height: 3.5rem;
+    margin-block: 0.1875rem;
+    padding: 0.625rem 0.75rem;
+    align-content: center;
+    gap: 0.125rem;
+    border: 1px solid transparent;
+    color: color-mix(in srgb, var(--foreground) 86%, transparent);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    :is(
+      a[href="/quickstart"],
+      a[href="/authentication"],
+      a[href="/calls"],
+      a[href="/webhooks"],
+      a[href="/errors"],
+      a[href="/sdks"],
+      a[href="/changelog"]
+    )
+    > span {
+    width: 100%;
+    overflow: visible;
+    white-space: normal;
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    :is(
+      a[href="/quickstart"],
+      a[href="/authentication"],
+      a[href="/calls"],
+      a[href="/webhooks"],
+      a[href="/errors"],
+      a[href="/sdks"],
+      a[href="/changelog"]
+    )::after {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    :is(
+      a[href="/quickstart"],
+      a[href="/authentication"],
+      a[href="/calls"],
+      a[href="/webhooks"],
+      a[href="/errors"],
+      a[href="/sdks"],
+      a[href="/changelog"]
+    )[aria-current="page"] {
+    border-color: color-mix(
+      in srgb,
+      var(--call-signal) 24%,
+      var(--border)
+    );
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/quickstart"]::after {
+    content: "Create your first call.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/authentication"]::after {
+    content: "Secure API key setup.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/calls"]::after {
+    content: "Create, track, and read calls.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/webhooks"]::after {
+    content: "Receive terminal call events.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/errors"]::after {
+    content: "Recover from stable API errors.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/sdks"]::after {
+    content: "TypeScript and Python packages.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/changelog"]::after {
+    content: "Product and SDK updates.";
+  }
+}
+
+[data-pagefind-filter="section:markdown"] > .typography {
+  max-width: 42rem;
+  margin-inline: 0;
+}
+
+[data-pagefind-filter="section:markdown"] {
+  justify-content: start;
+}
+
+.typography {
+  color: color-mix(in srgb, var(--foreground) 92%, transparent);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.typography > header.flow-root > .text-sm.font-semibold.text-primary {
+  display: none;
+}
+
+.typography h1 {
+  color: var(--foreground);
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+.typography h2 {
+  margin-top: 2.5rem;
+  color: var(--foreground);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.34;
+  letter-spacing: -0.02em;
+}
+
+.typography h3 {
+  margin-top: 2rem;
+  color: var(--foreground);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.typography p,
+.typography li {
+  line-height: 1.75;
+}
+
+.typography :where(p, li, td, blockquote) a {
+  color: color-mix(in srgb, var(--primary) 82%, var(--foreground));
+  text-decoration-color: color-mix(in srgb, var(--primary) 38%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.typography :where(p, li, td, blockquote) a:hover {
+  color: var(--primary);
+  text-decoration-color: var(--primary);
+}
+
+.typography code.inline {
+  border-color: transparent;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.typography pre > .code-block-wrapper {
+  overflow: hidden;
+  border-color: var(--code-border);
+  border-radius: 0.5rem;
+  background: var(--code-background);
+  color: var(--code-foreground);
+  box-shadow: none;
+}
+
+.typography pre > .code-block-wrapper > div:first-child {
+  border-bottom: 1px solid var(--code-border);
+  background: var(--code-chrome);
+  color: var(--code-muted);
+}
+
+.typography .code-block,
+.typography code.shiki {
+  background-color: var(--code-background) !important;
+}
+
+code.shiki.not-inline {
+  --shiki-light-bg: var(--code-background) !important;
+  --shiki-dark-bg: var(--code-background) !important;
+}
+
+.typography pre > .code-block-wrapper .fill-foreground {
+  fill: var(--code-foreground);
+}
+
+.typography pre > .code-block-wrapper button:hover {
+  background: #1b222c;
+  color: var(--code-foreground);
+}
+
+.typography pre > .code-block-wrapper button:focus-visible {
+  outline: 2px solid var(--call-signal);
+  outline-offset: -2px;
+}
+
+.typography .code-block {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+aside[class*="overflow-y-auto"] {
+  color: var(--muted-foreground);
+}
+
+aside[class*="overflow-y-auto"] a:hover {
+  color: var(--foreground);
+}
+
+.docs-index {
+  display: grid;
+  width: min(42rem, calc(100% - 2rem));
+  min-height: 100vh;
+  margin: 0 auto;
+  align-content: center;
+  gap: 1rem;
+}
+
+.docs-index__eyebrow {
+  margin: 0;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.docs-index h1,
+.docs-index p {
+  margin: 0;
+}
+
+.docs-index h1 {
+  color: var(--foreground);
+  font-size: clamp(2.25rem, 8vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.docs-index > p:not(.docs-index__eyebrow) {
+  max-width: 34rem;
+  color: var(--muted-foreground);
+  font-size: 1.125rem;
+}
+
+.docs-index nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.docs-index a {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.docs-index a:first-child {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.docs-index a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (min-width: 64rem) {
+  header[data-pagefind-ignore="all"] button:has(.lucide-search) {
+    width: min(43vw, 34rem);
+    height: 2.25rem;
+    border-color: var(--border);
+    background: var(--background);
+    font-weight: 500;
+  }
+}
+
+@media (max-width: 63.999rem) {
+  :root {
+    --top-header-height: 4rem;
+    --padding-content-top: 2rem;
+  }
+
+  .typography h1 {
+    font-size: 2rem;
+  }
+
+  .typography .code-block {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 22.5rem) {
+  .theme-menu--mobile .theme-menu__label {
+    display: none;
+  }
+
+  .typography [aria-label="Page actions"] button:first-of-type span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top,
+  .scroll-to-top[data-visible="true"],
+  .scroll-to-top[data-visible="true"]:hover {
+    transform: none;
+    transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

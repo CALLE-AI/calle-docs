@@ -1,8 +1,11 @@
-# Errors
+---
+title: Errors
+description: Handle stable API errors and recovery paths.
+---
 
 CALL-E returns stable error envelopes for call task API failures.
 
-<h2 id="error-envelope">Error envelope</h2>
+## Error envelope
 
 ```json
 {
@@ -16,7 +19,7 @@ CALL-E returns stable error envelopes for call task API failures.
 
 SDK methods raise typed SDK errors while preserving the stable API error code and response details.
 
-<h2 id="stable-error-codes">Stable error codes</h2>
+## Stable error codes
 
 - `invalid_request`
 - `unauthorized`
@@ -38,13 +41,13 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 - `internal_error`
 - `not_found`
 
-<h2 id="recovery-guidance">Recovery guidance</h2>
+## Recovery guidance
 
 `unauthorized` means the API key is missing or invalid. Check the `Authorization: Bearer` header.
 
 `forbidden` means the key is valid but not allowed to use this resource or capability.
 
-See [Authentication](#/authentication) for API key setup, server-only usage, and environment separation.
+See [Authentication](/authentication) for API key setup, server-only usage, and environment separation.
 
 `rate_limit_exceeded` means the caller should retry after backoff.
 
