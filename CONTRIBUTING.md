@@ -49,6 +49,6 @@ Keep pull requests focused and include:
 - Screenshots for visual changes.
 - Confirmation that `pnpm run validate` passes.
 
-Do not include API keys, webhook secrets, phone numbers, customer data, private
+Do not include API keys, credentials, phone numbers, customer data, private
 URLs, or internal operational details in issues, examples, tests, or pull
 requests.

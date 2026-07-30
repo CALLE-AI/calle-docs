@@ -10,6 +10,7 @@ const guides = [
   { slug: "quickstart", title: "Quickstart" },
   { slug: "authentication", title: "Authentication" },
   { slug: "calls", title: "Calls" },
+  { slug: "goal-runs", title: "Goal Runs" },
   { slug: "webhooks", title: "Webhooks" },
   { slug: "errors", title: "Errors" },
   { slug: "sdks", title: "SDKs" },
@@ -49,6 +50,14 @@ const apiInfoHtml = readRequired(
 const apiCallsHtml = readRequired(
   "api-reference/calls.html",
   "Calls API Reference",
+);
+const apiGoalsHtml = readRequired(
+  "api-reference/goals.html",
+  "Goals API Reference",
+);
+const apiGoalRunsHtml = readRequired(
+  "api-reference/goal-runs.html",
+  "Goal Runs API Reference",
 );
 readRequired("api-reference/webhooks.html", "Webhooks API Reference");
 readRequired("api-reference/~schemas.html", "API schemas page");
@@ -142,6 +151,16 @@ if (
 ) {
   throw new Error("Calls API Reference is missing prerendered operations.");
 }
+if (
+  !apiGoalsHtml.includes("List Goals") ||
+  !apiGoalsHtml.includes("Get Goal") ||
+  !apiGoalRunsHtml.includes("Create Goal Run") ||
+  !apiGoalRunsHtml.includes("Get Goal Run")
+) {
+  throw new Error(
+    "Goal API Reference is missing prerendered Goal or Goal Run operations.",
+  );
+}
 if (apiCallsHtml.includes(">Try it<") || apiCallsHtml.includes(">Send Request<")) {
   throw new Error("API Reference unexpectedly exposes a request playground.");
 }
@@ -153,7 +172,12 @@ const openApi = readRequired(
 if (!openApi.includes("openapi: 3.1.0")) {
   throw new Error("OpenAPI document does not look like the public contract.");
 }
-if (!openApi.includes("/v1/calls") || !openApi.includes("/calle/webhook")) {
+if (
+  !openApi.includes("/v1/calls") ||
+  !openApi.includes("/v1/goals") ||
+  !openApi.includes("/v1/goals/{goal_id}/runs") ||
+  !openApi.includes("/calle/webhook")
+) {
   throw new Error("OpenAPI document is missing public endpoint paths.");
 }
 

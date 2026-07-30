@@ -29,8 +29,28 @@ from calle import CalleClient
 
 The current stable server SDK packages are:
 
-- TypeScript: `@call-e/calle@0.2.0`
+- TypeScript: `@call-e/calle@0.2.2`
 - Python: `calle-ai==0.2.0`
+
+These stable packages support the request-scoped Calls API. The Goal Runs
+API and both SDK source candidates are aligned on `0.6.0`; the registry
+packages remain Calls-only until that matching SDK release is published.
+
+## Goal Runs preview
+
+The Goal-based SDK surface keeps published contracts separate from the
+one-shot Calls API:
+
+- TypeScript: `client.goals.list(...)`, `get(...)`, `run(...)`, `getRun(...)`,
+  `waitForResult(...)`, and `runAndWait(...)`
+- Python: `client.goals.list(...)`, `get(...)`, `run(...)`, `get_run(...)`,
+  `wait_for_result(...)`, and `run_and_wait(...)`
+
+Run requests contain Goal identity, one phone number, per-Run variables, and an
+idempotency key. They do not accept request-scoped task text, prompts,
+`input_schema`, or `result_schema`; those fields are owned by the published
+RunSpec. See the [Goal Runs guide](/goal-runs) for the API contract and SDK
+examples.
 
 ## Source repositories
 
@@ -48,7 +68,8 @@ Each repository includes public source code, examples, and security guidance:
 
 ## Local examples
 
-Each SDK repository includes runnable examples for the server-side call task flow.
+Each SDK repository currently includes runnable examples for the server-side
+one-shot call task flow.
 
 TypeScript:
 
@@ -57,7 +78,6 @@ git clone https://github.com/CALLE-AI/server-sdk-typescript.git
 cd server-sdk-typescript
 pnpm install
 pnpm run example:create-and-wait
-pnpm run example:webhook
 ```
 
 Python:
@@ -67,12 +87,9 @@ git clone https://github.com/CALLE-AI/server-sdk-python.git
 cd server-sdk-python
 uv sync --all-groups
 uv run python examples/create_and_wait.py
-uv run python examples/webhook_server.py
 ```
 
-The webhook examples listen on `POST /calle/webhook` and verify `CALL-E-Timestamp` plus `CALL-E-Signature` before parsing JSON.
-
-## Supported methods
+## Stable 0.2 methods
 
 The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
 
@@ -87,8 +104,8 @@ const created = await client.calls.create(
   {
     task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients: [
-      { phones: ["<RECIPIENT_1_E164_PHONE>"], region: "US", locale: "en-US" },
-      { phones: ["<RECIPIENT_2_E164_PHONE>"], region: "US", locale: "en-US" },
+      { phones: ["<RECIPIENT_1_E164_PHONE>"] },
+      { phones: ["<RECIPIENT_2_E164_PHONE>"] },
     ],
     resultSchema: {
       type: "object",
@@ -126,17 +143,6 @@ const createdAndCompleted = await client.calls.createAndWait(
 const events = await client.calls.listEvents(createdAndCompleted.id, {
   limit: 50,
 });
-const verified = client.webhooks.verify({
-  rawBody,
-  timestamp: headers["CALL-E-Timestamp"],
-  signature: headers["CALL-E-Signature"],
-  secret: process.env.CALLE_WEBHOOK_SECRET!,
-});
-const event = client.webhooks.unwrap({
-  rawBody,
-  headers,
-  secret: process.env.CALLE_WEBHOOK_SECRET!,
-});
 ```
 
 Python:
@@ -145,8 +151,8 @@ Python:
 created = client.calls.create(
     task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients=[
-        {"phones": ["<RECIPIENT_1_E164_PHONE>"], "region": "US", "locale": "en-US"},
-        {"phones": ["<RECIPIENT_2_E164_PHONE>"], "region": "US", "locale": "en-US"},
+        {"phones": ["<RECIPIENT_1_E164_PHONE>"]},
+        {"phones": ["<RECIPIENT_2_E164_PHONE>"]},
     ],
     result_schema={
         "type": "object",
@@ -176,17 +182,6 @@ created_and_completed = client.calls.create_and_wait(
     interval_seconds=2,
 )
 events = client.calls.list_events(created_and_completed["id"], limit=50)
-verified = client.webhooks.verify(
-    raw_body=raw_body,
-    timestamp=headers["CALL-E-Timestamp"],
-    signature=headers["CALL-E-Signature"],
-    secret=os.environ["CALLE_WEBHOOK_SECRET"],
-)
-event = client.webhooks.unwrap(
-    raw_body=raw_body,
-    headers=headers,
-    secret=os.environ["CALLE_WEBHOOK_SECRET"],
-)
 ```
 
 ## Availability
@@ -201,7 +196,7 @@ pip install calle-ai
 Use pinned versions when your deployment process requires exact package reproducibility:
 
 ```bash
-pnpm add @call-e/calle@0.2.0
+pnpm add @call-e/calle@0.2.2
 pip install calle-ai==0.2.0
 ```
 

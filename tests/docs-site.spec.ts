@@ -4,6 +4,7 @@ const guides = [
   { path: "/quickstart", heading: "Quickstart" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
+  { path: "/goal-runs", heading: "Goal Runs" },
   { path: "/webhooks", heading: "Webhooks" },
   { path: "/errors", heading: "Errors" },
   { path: "/sdks", heading: "SDKs" },
@@ -39,21 +40,23 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
 test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {
   await page.goto("/quickstart");
 
-  const activeGuide = page.locator(
-    'nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/quickstart"]',
-  );
-  await expect(activeGuide).toBeVisible();
+  for (const guide of guides) {
+    const guideLink = page.locator(
+      `nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="${guide.path}"]`,
+    );
+    await expect(guideLink).toBeVisible();
 
-  const activeGuideHeight = await activeGuide.evaluate((element) => {
-    return element.getBoundingClientRect().height;
-  });
-  const descriptionContent = await activeGuide.evaluate((element) => {
-    return window.getComputedStyle(element, "::after").content;
-  });
+    const guideHeight = await guideLink.evaluate((element) => {
+      return element.getBoundingClientRect().height;
+    });
+    const descriptionContent = await guideLink.evaluate((element) => {
+      return window.getComputedStyle(element, "::after").content;
+    });
 
-  expect(activeGuideHeight).toBeGreaterThanOrEqual(56);
-  expect(descriptionContent).not.toBe("none");
-  expect(descriptionContent).not.toBe('""');
+    expect(guideHeight).toBeGreaterThanOrEqual(56);
+    expect(descriptionContent).not.toBe("none");
+    expect(descriptionContent).not.toBe('""');
+  }
 });
 
 test("offers system, light, and dark appearance modes", async ({ page }) => {
@@ -166,12 +169,20 @@ test("publishes crawler and OpenAPI artifacts", async ({ request }) => {
   expect(sitemapText).toContain(
     "<loc>https://docs.heycall-e.com/api-reference/calls</loc>",
   );
+  expect(sitemapText).toContain(
+    "<loc>https://docs.heycall-e.com/api-reference/goals</loc>",
+  );
+  expect(sitemapText).toContain(
+    "<loc>https://docs.heycall-e.com/api-reference/goal-runs</loc>",
+  );
 
   const openApi = await request.get("/openapi/calle.openapi.yaml");
   expect(openApi.status()).toBe(200);
   const openApiText = await openApi.text();
   expect(openApiText).toContain("openapi: 3.1.0");
   expect(openApiText).toContain("/v1/calls");
+  expect(openApiText).toContain("/v1/goals");
+  expect(openApiText).toContain("/v1/goals/{goal_id}/runs");
   expect(openApiText).toContain("/calle/webhook");
 
   const apiReference = await request.get("/api-reference");
@@ -196,6 +207,13 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
   await expect(page).toHaveURL(/\/calls#idempotency$/);
   await expect(
     page.getByRole("heading", { name: "Idempotency" }),
+  ).toBeVisible();
+
+  await page.goto("/#/goal-runs?section=create-a-run");
+  await expect(page).toHaveURL(/\/goal-runs#create-a-run$/);
+  await expect(page.locator("#create-a-run")).toHaveCount(1);
+  await expect(
+    page.getByRole("heading", { name: "Create a Goal Run" }),
   ).toBeVisible();
 
   await page.goto("/#/api-reference");
@@ -226,6 +244,62 @@ test("preserves CALL-E brand and favicon metadata", async ({ page }) => {
     "href",
     "/favicon.svg",
   );
+});
+
+test("uses the CALL-E Web palette for docs chrome", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/quickstart");
+
+  const guideNav = page.locator(
+    'nav[class*="overflow-y-auto"][class*="shrink-0"]',
+  );
+  const activeGuide = guideNav.locator('a[href="/quickstart"]');
+  const dashboard = page.getByRole("link", {
+    name: "Dashboard",
+    exact: true,
+  });
+
+  await expect(page.locator("body")).toHaveCSS("color", "rgb(46, 47, 51)");
+  await expect(guideNav).toHaveCSS(
+    "background-color",
+    "rgb(244, 249, 255)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "background-color",
+    "rgb(239, 246, 255)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "box-shadow",
+    /rgb\(37, 99, 235\).*2px/,
+  );
+  await expect(dashboard).toHaveCSS(
+    "background-color",
+    "rgb(38, 39, 43)",
+  );
+
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass("dark");
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(17, 24, 39)",
+  );
+  await expect(guideNav).toHaveCSS(
+    "background-color",
+    "rgb(17, 24, 39)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "background-color",
+    "rgb(30, 58, 95)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "box-shadow",
+    /rgb\(96, 165, 250\).*2px/,
+  );
+  await expect(dashboard).toHaveCSS(
+    "background-color",
+    "rgb(247, 250, 253)",
+  );
+  await expect(dashboard).toHaveCSS("color", "rgb(17, 24, 39)");
 });
 
 test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
@@ -262,6 +336,10 @@ test("preserves authentication, webhook, and SDK guidance", async ({
     }).first(),
   ).toBeVisible();
   await expect(page.getByText("transcript_turns").first()).toBeVisible();
+  await expect(
+    page.getByText(/does not use a webhook secret/),
+  ).toBeVisible();
+  await expect(page.getByText(/cryptographic proof of the sender/)).toBeVisible();
 
   await page.goto("/sdks");
   await expect(
@@ -295,6 +373,36 @@ test("connects the Calls guide to HTTP and related references", async ({
   ).toBeVisible();
 });
 
+test("documents the published Goal Run flow on a clean route", async ({
+  page,
+}) => {
+  await page.goto("/goal-runs");
+
+  await expect(
+    page.getByRole("heading", { name: "Goal Runs" }),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/goal-runs"]').first(),
+  ).toHaveAttribute("href", "/goal-runs");
+  await expect(
+    page.locator("pre").filter({
+      hasText: /POST[\s\S]*\/v1\/goals\/\$\{CALLE_GOAL_ID\}\/runs/,
+    }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Poll for results" }),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/errors"]').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/api-reference/goals"]').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/api-reference/goal-runs"]').first(),
+  ).toBeVisible();
+});
+
 test("renders a read-only OpenAPI reference", async ({ page }) => {
   await page.goto("/api-reference");
   await expect(
@@ -322,6 +430,14 @@ test("renders a read-only OpenAPI reference", async ({ page }) => {
   await expect(
     page.locator("h2#server-message"),
   ).toBeVisible();
+
+  await page.goto("/api-reference/goals");
+  await expect(page.locator("h2#list-goals")).toBeVisible();
+  await expect(page.locator("h2#get-goal")).toBeVisible();
+
+  await page.goto("/api-reference/goal-runs");
+  await expect(page.locator("h2#create-goal-run")).toBeVisible();
+  await expect(page.locator("h2#get-goal-run")).toBeVisible();
 });
 
 test("keeps the guide usable on a narrow screen", async ({ page }) => {
