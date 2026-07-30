@@ -75,17 +75,8 @@ Only call the Developer API from trusted server code:
 
 Do not call the Developer API directly from a browser, public frontend, or untrusted client. If a frontend user needs to start a call, send the request to your backend first, validate the user, and let your backend call CALL-E with its project API key.
 
-## Webhook secrets
-
-Webhook secrets are different from API keys.
-
-Use API keys to authenticate your outbound requests to CALL-E. Use webhook secrets to verify inbound `POST /calle/webhook` requests from CALL-E before parsing JSON or triggering side effects.
-
-```bash
-export CALLE_WEBHOOK_SECRET="whsec_test_key"
-```
-
-Verify `CALL-E-Timestamp` and `CALL-E-Signature` against the raw request body. See the [Webhooks](/webhooks) guide for runnable server examples.
+See [Webhooks](/webhooks) when your backend needs terminal call task
+notifications.
 
 ## Auth errors
 

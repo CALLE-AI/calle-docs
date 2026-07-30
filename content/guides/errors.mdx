@@ -58,11 +58,11 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `insufficient_balance` means the project cannot start more calls until billing is resolved.
 
-`unsupported_region` or `unsupported_language` means the request asks for a region or locale that CALL-E does not currently support.
+`unsupported_region` or `unsupported_language` means CALL-E could not resolve a supported calling configuration for the request.
 
 `no_recipients` means CALL-E could not infer any recipients from the task and no explicit `recipients` were provided.
 
-`invalid_recipient` means a recipient entry is malformed. Check that each explicit recipient uses supported fields such as `phones`, `region`, and `locale`.
+`invalid_recipient` means a recipient entry is malformed. Check that each explicit recipient includes a non-empty `phones` array.
 
 `invalid_phone` means a phone number is not valid E.164 format. Replace placeholders such as `<E164_PHONE>` with a phone number you own or are authorized to call.
 

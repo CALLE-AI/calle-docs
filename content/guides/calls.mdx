@@ -14,7 +14,7 @@ completion.
 
 `task` is the natural-language instruction for the call task. Keep it specific and outcome-oriented.
 
-`recipients` is optional when the task text already includes the phone target. Use it for explicit batch recipients. Each recipient can include `phones` in E.164 format plus optional `region` and `locale` hints.
+`recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers.
 
 Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
 
@@ -82,8 +82,8 @@ const call = await client.calls.create(
   {
     task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients: [
-      { phones: ["<RECIPIENT_1_E164_PHONE>"], region: "US", locale: "en-US" },
-      { phones: ["<RECIPIENT_2_E164_PHONE>"], region: "US", locale: "en-US" },
+      { phones: ["<RECIPIENT_1_E164_PHONE>"] },
+      { phones: ["<RECIPIENT_2_E164_PHONE>"] },
     ],
     resultSchema: {
       type: "object",
@@ -116,8 +116,8 @@ Python:
 call = client.calls.create(
     task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients=[
-        {"phones": ["<RECIPIENT_1_E164_PHONE>"], "region": "US", "locale": "en-US"},
-        {"phones": ["<RECIPIENT_2_E164_PHONE>"], "region": "US", "locale": "en-US"},
+        {"phones": ["<RECIPIENT_1_E164_PHONE>"]},
+        {"phones": ["<RECIPIENT_2_E164_PHONE>"]},
     ],
     result_schema={
         "type": "object",

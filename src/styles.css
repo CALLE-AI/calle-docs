@@ -4,7 +4,11 @@
   --side-nav-width: 18.75rem;
   --padding-content-top: 2.5rem;
   --sidecar-grid-cols: minmax(0, 42rem) minmax(13rem, 15rem);
-  --call-signal: #0a9f90;
+  --call-shell: #f4f9ff;
+  --call-action: #26272b;
+  --call-action-hover: #111827;
+  --call-action-foreground: #ffffff;
+  --call-signal: #2563eb;
   --code-background: #0b0f14;
   --code-chrome: #11161d;
   --code-border: #242b35;
@@ -13,7 +17,11 @@
 }
 
 .dark {
-  --call-signal: #35c9b8;
+  --call-shell: #111827;
+  --call-action: #f7fafd;
+  --call-action-hover: #ffffff;
+  --call-action-foreground: #111827;
+  --call-signal: #60a5fa;
 }
 
 body {
@@ -36,7 +44,7 @@ samp {
 }
 
 header[data-pagefind-ignore="all"] {
-  background: color-mix(in srgb, var(--background) 96%, transparent);
+  background: color-mix(in srgb, var(--call-shell) 96%, transparent);
 }
 
 header[data-pagefind-ignore="all"]::after {
@@ -163,20 +171,21 @@ header[data-pagefind-ignore="all"]
   height: 2.25rem;
   padding-inline: 1rem;
   border-radius: 999px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 24%, transparent);
+  background: var(--call-action);
+  color: var(--call-action-foreground);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--call-action) 24%, transparent);
 }
 
 header[data-pagefind-ignore="all"]
   nav[aria-label="Main"]
   a[href="https://dashboard.heycall-e.com/"]:hover {
-  background: color-mix(in srgb, var(--primary) 88%, black);
-  color: var(--primary-foreground);
+  background: var(--call-action-hover);
+  color: var(--call-action-foreground);
 }
 
 nav[class*="overflow-y-auto"][class*="shrink-0"] {
   padding-top: 1.5rem;
+  background: var(--call-shell);
 }
 
 nav[class*="overflow-y-auto"][class*="shrink-0"] a {
@@ -203,6 +212,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"],
@@ -226,6 +236,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"],
@@ -242,6 +253,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"],
@@ -258,6 +270,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"],
@@ -282,6 +295,11 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/calls"]::after {
     content: "Create, track, and read calls.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/goal-runs"]::after {
+    content: "Run published phone workflows.";
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/webhooks"]::after {

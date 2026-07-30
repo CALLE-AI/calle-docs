@@ -645,7 +645,7 @@ paths:
       tags:
         - webhooks
       summary: Server Message
-      description: CALL-E sends this request to your server when a call reaches a terminal state. Configure this URL with `webhook_url` on create call or through project-level webhook settings.
+      description: CALL-E sends this request after a call reaches a terminal state and its post-call outcome and requested structured results are finalized. Configure this URL with `webhook_url` on create call or through project-level webhook settings.
       security: []
       servers:
         - url: https://{yourserver}
@@ -656,8 +656,6 @@ paths:
               description: Hostname for your webhook receiver.
       parameters:
         - $ref: "#/components/parameters/WebhookEventId"
-        - $ref: "#/components/parameters/WebhookTimestamp"
-        - $ref: "#/components/parameters/WebhookSignature"
       requestBody:
         required: true
         content:
@@ -731,7 +729,7 @@ paths:
                   value:
                     ok: true
         "400":
-          description: Webhook rejected because the payload or signature was invalid.
+          description: Webhook rejected because the payload was invalid.
 components:
   securitySchemes:
     bearerAuth:
@@ -830,22 +828,6 @@ components:
         type: string
         pattern: "^evt_[A-Za-z0-9_-]+$"
       example: evt_123
-    WebhookTimestamp:
-      name: CALL-E-Timestamp
-      in: header
-      description: Unix timestamp used in the signed payload. Verify this header together with `CALL-E-Signature` before parsing JSON.
-      required: true
-      schema:
-        type: string
-      example: "1780309260"
-    WebhookSignature:
-      name: CALL-E-Signature
-      in: header
-      description: HMAC SHA-256 signature in the form `v1=<hex digest>`, computed over `timestamp + "." + raw_body` with your webhook secret.
-      required: true
-      schema:
-        type: string
-      example: v1=4d967f8f2b85f9c7d7f7ad1b9f8c5e3a5f1c2d3e4f5061728394050607080910
   responses:
     ErrorResponse:
       description: Stable API error.
@@ -1209,7 +1191,7 @@ components:
           description: Recipient country or region code used for routing and compliance checks, for example `US`.
     CallStatus:
       type: string
-      description: Current lifecycle state of a CALL-E call.
+      description: Current lifecycle state of a CALL-E call. `in_progress` includes post-call result finalization; terminal states are published only after the post-call outcome is available.
       enum:
         - queued
         - in_progress
@@ -1481,7 +1463,7 @@ components:
           type:
             - string
             - "null"
-          description: ISO 8601 timestamp when the call reached a terminal state. `null` while queued or in progress.
+          description: ISO 8601 timestamp when the complete terminal call result was published. `null` while queued or in progress.
           format: date-time
     DeveloperEvent:
       type: object
@@ -1580,7 +1562,7 @@ components:
           description: Terminal call task snapshot associated with the webhook event.
           $ref: "#/components/schemas/WebhookCallData"
     WebhookCallData:
-      description: Terminal call task state included in webhook events. This shape is the same stable `call_task` object returned by the calls API.
+      description: Complete terminal call task state included in webhook events. This shape is the same stable `call_task` object returned by the calls API after post-call outcome and requested structured-result finalization.
       allOf:
         - $ref: "#/components/schemas/CallTask"
     WebhookAcknowledgement:

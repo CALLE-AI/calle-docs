@@ -1,11 +1,16 @@
 ---
 title: Webhooks
-description: Verify terminal webhooks and process events safely.
+description: Receive terminal webhook events and process them safely.
 ---
 
 Use webhooks when your application needs to react to terminal call task results without polling.
 
 Phone values in examples are placeholders. Real webhook payloads echo the phone numbers from your call task.
+
+CALL-E publishes a terminal event only after the post-call summary, task
+completion judgment, confidence, evidence, and any requested structured results
+are finalized. The event `data` is the same complete terminal snapshot returned
+by `GET /v1/calls/{call_id}`.
 
 ## Terminal events
 
@@ -17,7 +22,7 @@ CALL-E sends terminal webhook events:
 
 `call.result_validation_failed` is sent when a completed call task had an internal structured-result validation failure for the task or a recipient. The payload does not expose validation details; invalid or unsupported structured results are returned as `null`. Failed or canceled terminal call tasks use `call.failed`.
 
-Each event has an `id`, `type`, `created_at`, and a `data` object containing the terminal call task fields.
+Each event has an `id`, `type`, `created_at`, and a `data` object containing the complete terminal call task fields.
 
 Recipient-level structured results appear inside the `recipients` array. They do not create separate recipient webhook events.
 
@@ -120,18 +125,23 @@ Example payload:
 }
 ```
 
-## Signature verification
+## Receive events
 
-Verify the signature against the raw request body before parsing JSON. The SDK helpers return the parsed event only after the timestamp and signature are valid.
+Current CALL-E webhook delivery does not use a webhook secret,
+`CALL-E-Timestamp`, or `CALL-E-Signature`. Treat the receiver as a public,
+untrusted-input boundary: validate the JSON shape, require
+`CALL-E-Event-Id`, and reject the request when that header does not match the
+body event `id`.
 
 TypeScript:
 
 ```ts
-const event = client.webhooks.unwrap({
-  rawBody,
-  headers,
-  secret: process.env.CALLE_WEBHOOK_SECRET!,
-});
+const event = JSON.parse(rawBody.toString("utf8"));
+const eventId = request.headers.get("CALL-E-Event-Id");
+
+if (!eventId || eventId !== event.id) {
+  return new Response("invalid event id", { status: 400 });
+}
 
 if (event.type === "call.completed") {
   console.log(event.data.id, event.data.recipients);
@@ -141,24 +151,23 @@ if (event.type === "call.completed") {
 Python:
 
 ```python
-event = client.webhooks.unwrap(
-    raw_body=raw_body,
-    headers=headers,
-    secret=os.environ["CALLE_WEBHOOK_SECRET"],
-)
+event = json.loads(raw_body)
+event_id = request.headers.get("CALL-E-Event-Id")
+
+if not event_id or event_id != event["id"]:
+    return {"error": "invalid_event_id"}, 400
 
 if event["type"] == "call.completed":
     print(event["data"]["id"], event["data"]["recipients"])
 ```
 
-## Example servers
+Return a `2xx` response after accepting the event. CALL-E retries delivery when
+the receiver returns a non-`2xx` response or the request fails.
 
-The SDK repositories include minimal webhook servers built with runtime standard libraries:
-
-- [TypeScript webhook server](https://github.com/CALLE-AI/server-sdk-typescript/blob/main/examples/webhook-server.ts)
-- [Python webhook server](https://github.com/CALLE-AI/server-sdk-python/blob/main/examples/webhook_server.py)
-
-Both examples listen on `POST /calle/webhook`, preserve the raw request body for signature verification, and return `200` only after `client.webhooks.unwrap` succeeds.
+HTTPS and event-id matching do not provide cryptographic proof of the sender.
+Before a sensitive side effect that requires origin assurance, fetch
+`GET /v1/calls/{call_id}` with your API key and compare its terminal snapshot
+with the event.
 
 ## Idempotent handling
 

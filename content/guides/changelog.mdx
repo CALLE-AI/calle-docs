@@ -5,6 +5,24 @@ description: Track CALL-E Developer API and SDK product updates.
 
 Product updates for the CALL-E Developer API and server SDKs.
 
+## July 29, 2026
+
+### Terminal webhook delivery
+
+Call tasks that include `webhook_url` now send terminal event notifications to
+that URL. Each notification includes a stable event id for idempotent
+processing, and delivery is retried when the receiver does not return a `2xx`
+response. CALL-E waits until the post-call outcome and requested structured
+results are finalized, so the webhook contains the same complete terminal
+snapshot returned by the Calls API.
+
+Current deliveries include `CALL-E-Event-Id` for deduplication and do not
+include a webhook secret, timestamp, or signature header. Receivers must treat
+the payload as untrusted input, validate the event shape, and compare the
+header event id with the body `id`. The Python and TypeScript SDKs keep their
+legacy signed-webhook helpers only for source compatibility and mark them
+deprecated.
+
 ## July 22, 2026
 
 ### Phone-only Goal Run requests in API 0.6
@@ -53,7 +71,7 @@ See [Goal Runs](/goal-runs) for request, polling, version-pinning, and SDK examp
 pnpm add @call-e/calle
 ```
 
-Use `CalleClient` to create a call task, wait for a terminal result, and verify webhook payloads.
+Use `CalleClient` to create a call task and wait for a terminal result.
 
 3. Python server SDK: The CALL-E Python server SDK is available on PyPI.
 
@@ -61,6 +79,6 @@ Use `CalleClient` to create a call task, wait for a terminal result, and verify 
 pip install calle-ai
 ```
 
-Import `CalleClient` from `calle` to create call tasks, poll results, and verify webhook payloads.
+Import `CalleClient` from `calle` to create call tasks and poll results.
 
 4. Server-side integrations: API keys and server SDKs are designed for trusted backend services, workers, and automation systems. Browser SDKs, scheduled call tasks, cancel call task APIs, and project-level webhook management are not part of this release.

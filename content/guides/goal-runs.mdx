@@ -247,7 +247,7 @@ curl "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}/runs/${GOAL_RUN_ID}" \
 |---|---|---:|---|
 | `goal_id` | Path | Yes | The Goal identity used when creating the Run. This prevents a Run id from being read through the wrong Goal. |
 | `goal_run_id` | Path | Yes | `GoalRun.id` returned by `POST`, not the nested telephone `run_id`. |
-| `Authorization` | Header | Yes | API key for the owning account. A missing, cross-owner, or mismatched resource returns `404`. |
+| `Authorization` | Header | Yes | API key for the owning account. A missing or invalid key returns `401`; a missing, cross-owner, or mismatched resource returns `404`. |
 
 `GET /v1/goals/{goal_id}/runs/{goal_run_id}` only reads persisted facts. It does not dispatch work, move the Goal's published pointer, or start result materialization.
 

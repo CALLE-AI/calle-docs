@@ -40,21 +40,23 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
 test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {
   await page.goto("/quickstart");
 
-  const activeGuide = page.locator(
-    'nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/quickstart"]',
-  );
-  await expect(activeGuide).toBeVisible();
+  for (const guide of guides) {
+    const guideLink = page.locator(
+      `nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="${guide.path}"]`,
+    );
+    await expect(guideLink).toBeVisible();
 
-  const activeGuideHeight = await activeGuide.evaluate((element) => {
-    return element.getBoundingClientRect().height;
-  });
-  const descriptionContent = await activeGuide.evaluate((element) => {
-    return window.getComputedStyle(element, "::after").content;
-  });
+    const guideHeight = await guideLink.evaluate((element) => {
+      return element.getBoundingClientRect().height;
+    });
+    const descriptionContent = await guideLink.evaluate((element) => {
+      return window.getComputedStyle(element, "::after").content;
+    });
 
-  expect(activeGuideHeight).toBeGreaterThanOrEqual(56);
-  expect(descriptionContent).not.toBe("none");
-  expect(descriptionContent).not.toBe('""');
+    expect(guideHeight).toBeGreaterThanOrEqual(56);
+    expect(descriptionContent).not.toBe("none");
+    expect(descriptionContent).not.toBe('""');
+  }
 });
 
 test("offers system, light, and dark appearance modes", async ({ page }) => {
@@ -244,6 +246,62 @@ test("preserves CALL-E brand and favicon metadata", async ({ page }) => {
   );
 });
 
+test("uses the CALL-E Web palette for docs chrome", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/quickstart");
+
+  const guideNav = page.locator(
+    'nav[class*="overflow-y-auto"][class*="shrink-0"]',
+  );
+  const activeGuide = guideNav.locator('a[href="/quickstart"]');
+  const dashboard = page.getByRole("link", {
+    name: "Dashboard",
+    exact: true,
+  });
+
+  await expect(page.locator("body")).toHaveCSS("color", "rgb(46, 47, 51)");
+  await expect(guideNav).toHaveCSS(
+    "background-color",
+    "rgb(244, 249, 255)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "background-color",
+    "rgb(239, 246, 255)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "box-shadow",
+    /rgb\(37, 99, 235\).*2px/,
+  );
+  await expect(dashboard).toHaveCSS(
+    "background-color",
+    "rgb(38, 39, 43)",
+  );
+
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveClass("dark");
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(17, 24, 39)",
+  );
+  await expect(guideNav).toHaveCSS(
+    "background-color",
+    "rgb(17, 24, 39)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "background-color",
+    "rgb(30, 58, 95)",
+  );
+  await expect(activeGuide).toHaveCSS(
+    "box-shadow",
+    /rgb\(96, 165, 250\).*2px/,
+  );
+  await expect(dashboard).toHaveCSS(
+    "background-color",
+    "rgb(247, 250, 253)",
+  );
+  await expect(dashboard).toHaveCSS("color", "rgb(17, 24, 39)");
+});
+
 test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await page.goto("/quickstart");
 
@@ -278,6 +336,10 @@ test("preserves authentication, webhook, and SDK guidance", async ({
     }).first(),
   ).toBeVisible();
   await expect(page.getByText("transcript_turns").first()).toBeVisible();
+  await expect(
+    page.getByText(/does not use a webhook secret/),
+  ).toBeVisible();
+  await expect(page.getByText(/cryptographic proof of the sender/)).toBeVisible();
 
   await page.goto("/sdks");
   await expect(
@@ -320,7 +382,7 @@ test("documents the published Goal Run flow on a clean route", async ({
     page.getByRole("heading", { name: "Goal Runs" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Goal Runs", exact: true }).first(),
+    page.locator('a[href="/goal-runs"]').first(),
   ).toHaveAttribute("href", "/goal-runs");
   await expect(
     page.locator("pre").filter({
