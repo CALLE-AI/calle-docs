@@ -32,12 +32,8 @@ paths:
                   recipients:
                     - phones:
                         - "<RECIPIENT_1_E164_PHONE>"
-                      region: US
-                      locale: en-US
                     - phones:
                         - "<RECIPIENT_2_E164_PHONE>"
-                      region: US
-                      locale: en-US
                   result_schema:
                     type: object
                     required:
