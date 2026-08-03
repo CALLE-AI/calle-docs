@@ -33,6 +33,6 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "typescript": "^5.9.0",
-    "zudoku": "0.82.3"
+    "zudoku": "0.82.5"
   }
 }
