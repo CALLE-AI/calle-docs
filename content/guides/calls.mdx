@@ -362,6 +362,21 @@ resultSchema: {
 - Add an evidence or summary field when the result triggers workflow automation.
 - Do not rely on `description` for validation. Use schema constraints for enforceable behavior.
 
+## Parallel and quorum-based dispatch
+
+The Calls API does not expose an operation for clients to cancel a call after
+it has been created. A call that is already in flight may therefore continue
+to completion even when your application no longer needs its result. The
+`canceled` resource status does not imply that clients can request
+cancellation.
+
+For workflows that need only a target number of confirmations, dispatch calls
+in controlled waves instead of starting every call at once. Count terminal
+results through polling or webhooks, and stop creating subsequent waves after
+the confirmation target is reached. Choose a wave size that balances response
+speed against the number of calls that may still be in flight when the target
+is met.
+
 ## Idempotency
 
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
