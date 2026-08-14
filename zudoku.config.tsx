@@ -149,13 +149,17 @@ const config = {
         { type: "doc", file: "webhooks", label: "Webhooks" },
         { type: "doc", file: "errors", label: "Errors" },
         { type: "doc", file: "sdks", label: "SDKs" },
-        { type: "doc", file: "changelog", label: "What's New" },
       ],
     },
     {
       type: "link",
       label: "API Reference",
       to: "/api-reference",
+    },
+    {
+      type: "doc",
+      file: "changelog",
+      label: "What's New",
     },
   ],
   apis: [
