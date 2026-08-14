@@ -19,57 +19,39 @@ information to make them easier to diagnose.
 
 CALL-E now supports phone keypad IVR interactions.
 
-### Dashboard Call Records and integration examples
+### Dashboard Call Records
 
-The Dashboard now includes a Call Records module for reviewing task history,
-conversation details, and call audio recordings. It also provides SDK and API
-integration examples and can display the instruction configured for each Goal.
+The Dashboard now includes Call Records for reviewing task history,
+conversations, and call audio recordings.
 
-### Durable multi-session tasks
+### SDK and API integration examples
+
+The Dashboard now includes SDK and API integration examples and can display the
+instruction associated with each Goal.
+
+### Durable multi-session execution
 
 Users can run tasks concurrently across different chat sessions while each
-individual session remains serial with one active task at a time. Accepted
-tasks continue through page refreshes, closed tabs, live connection
-interruptions, API restarts, and temporary service interruptions, then resume
-from their latest saved progress.
+session keeps one active task at a time. Accepted tasks continue through page
+refreshes, closed tabs, and temporary connection or service interruptions.
 
-A unified Session View restores messages, execution progress, available
-actions, Goal and Run states, command receipts, drafts, user-facing reasoning
-summaries, and final Goal results. The Dashboard now distinguishes `QUEUED`,
-`IN PROGRESS`, `DELAYED`, `ACTION REQUIRED`, `REAUTH REQUIRED`, `VERIFYING`,
-`STOPPING`, and terminal outcomes across current and background sessions.
+### Session recovery and clearer task status
+
+The Dashboard restores messages, progress, drafts, user-facing reasoning
+summaries, and final Goal results after reconnecting. Clearer task states remain
+synchronized across current and background sessions.
 
 ### Reliable commands and call control
 
-Messages, interaction answers, reauthorization, and Stop requests now use
-stable command identities and persistent receipts, so retries do not create
-duplicate work. Stop remains visible across navigation, applies only to the
-intended task, and resolves safely if the task completes at the same time.
-
-Uncertain call submissions are reconciled before retrying. If the original
-call cannot yet be confirmed, the Dashboard shows `VERIFYING` instead of
-automatically placing another call. Background tasks can also pause for
-reauthorization without storing long-lived user credentials.
+Messages, interaction answers, reauthorization, and Stop requests can be
+retried without creating duplicate work. Stop applies only to its intended
+task, while uncertain call submissions are verified before retrying.
 
 ### Dashboard reliability fixes
 
-Fixed issues that could lose drafts, messages, or accepted tasks after refresh
-or sign-in interruptions; leave tasks stuck after browser or service
-disconnects; show queued work as scheduled; duplicate messages, commands, or
-calls after ambiguous network responses; or leave the page stale after missed
-live updates.
-
-Stop outcomes are now evidence-based and race-safe, late task updates cannot
-overwrite newer state, account and company authorization stays isolated, and
-structured Goal results remain available without duplicate or rewritten
-assistant messages. The unified Session View is now the Dashboard's single
-server-backed source of execution state.
-
-### Dashboard local development
-
-`pnpm dev:calle` now starts the Web app, API, and durable worker together, with
-automatic local durable setup and support for custom local domains, HTTPS
-certificates, and Google sign-in callbacks.
+Fixed issues that could lose or stall accepted tasks, duplicate messages or
+calls, mislabel queued work, or leave the Dashboard out of sync. Stop outcomes
+now reflect confirmed results and preserve a task's true completion state.
 
 ## August 11, 2026
 
