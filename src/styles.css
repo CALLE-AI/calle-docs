@@ -215,7 +215,8 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
-      a[href="/sdks"]
+      a[href="/sdks"],
+      a[href="/changelog"]
     ) {
     display: grid;
     min-height: 3.5rem;
@@ -238,7 +239,8 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
-      a[href="/sdks"]
+      a[href="/sdks"],
+      a[href="/changelog"]
     )
     > span {
     width: 100%;
@@ -254,7 +256,8 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
-      a[href="/sdks"]
+      a[href="/sdks"],
+      a[href="/changelog"]
     )::after {
     color: var(--muted-foreground);
     font-size: 0.75rem;
@@ -270,7 +273,8 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
-      a[href="/sdks"]
+      a[href="/sdks"],
+      a[href="/changelog"]
     )[aria-current="page"] {
     border-color: color-mix(
       in srgb,
@@ -308,6 +312,11 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/sdks"]::after {
     content: "TypeScript and Python packages.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/changelog"]::after {
+    content: "Product and SDK updates.";
   }
 }
 

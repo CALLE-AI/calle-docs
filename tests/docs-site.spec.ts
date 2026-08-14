@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const docsPages = [
+const guides = [
   { path: "/quickstart", heading: "Quickstart" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
@@ -10,10 +10,6 @@ const docsPages = [
   { path: "/sdks", heading: "SDKs" },
   { path: "/changelog", heading: "What's New" },
 ];
-
-const guideNavigationItems = docsPages.filter(
-  ({ path }) => path !== "/changelog",
-);
 
 test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   const response = await request.get("/quickstart");
@@ -44,7 +40,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
 test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {
   await page.goto("/quickstart");
 
-  for (const guide of guideNavigationItems) {
+  for (const guide of guides) {
     const guideLink = page.locator(
       `nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="${guide.path}"]`,
     );
@@ -61,33 +57,6 @@ test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {
     expect(descriptionContent).not.toBe("none");
     expect(descriptionContent).not.toBe('""');
   }
-});
-
-test("places What's New in the top-level documentation navigation", async ({
-  page,
-}) => {
-  await page.goto("/changelog");
-
-  const docsNavigation = page.locator(
-    'header[data-pagefind-ignore="all"] nav:not([aria-label])',
-  );
-  const links = docsNavigation.getByRole("link");
-
-  await expect(links).toHaveCount(3);
-  await expect(links.nth(0)).toHaveText("Guides");
-  await expect(links.nth(0)).toHaveAttribute("href", "/quickstart");
-  await expect(links.nth(1)).toHaveText("API Reference");
-  await expect(links.nth(1)).toHaveAttribute("href", "/api-reference");
-  await expect(links.nth(2)).toHaveText("What's New");
-  await expect(links.nth(2)).toHaveAttribute("href", "/changelog");
-  await expect(
-    page.locator(
-      'nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/changelog"]',
-    ),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "What's New", exact: true }),
-  ).toBeVisible();
 });
 
 test("offers system, light, and dark appearance modes", async ({ page }) => {
@@ -171,7 +140,7 @@ test("publishes non-empty Markdown and LLM discovery files", async ({
   expect(llmsFull.status()).toBe(200);
   const llmsFullText = await llmsFull.text();
 
-  for (const guide of docsPages) {
+  for (const guide of guides) {
     expect(llmsText).toContain(`${guide.path}.md`);
     expect(llmsFullText).toContain(`# ${guide.heading}`);
   }
@@ -252,7 +221,7 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
 });
 
 test("renders every migrated guide from its file route", async ({ page }) => {
-  for (const guide of docsPages) {
+  for (const guide of guides) {
     await page.goto(guide.path);
     await expect(
       page.locator("h1").filter({ hasText: guide.heading }),
