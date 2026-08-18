@@ -3,7 +3,55 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
-Product updates for the CALL-E Developer API and server SDKs.
+## August 15, 2026
+
+### Clearer call plan CLI guidance
+
+The CLI documentation now points users to `calle call plan --help` to view the
+parameters supported by the `call plan` subcommand.
+
+### More informative MCP timeout errors
+
+Timeout failures for MCP `tools/call` requests now include additional error
+information to make them easier to diagnose.
+
+### Phone keypad IVR support
+
+CALL-E now supports phone keypad IVR interactions.
+
+### Dashboard Call Records
+
+The Dashboard now includes Call Records for reviewing task history,
+conversations, and call audio recordings.
+
+### SDK and API integration examples
+
+The Dashboard now includes SDK and API integration examples and can display the
+instruction associated with each Goal.
+
+### Durable multi-session execution
+
+Users can run tasks concurrently across different chat sessions while each
+session keeps one active task at a time. Accepted tasks continue through page
+refreshes, closed tabs, and temporary connection or service interruptions.
+
+### Session recovery and clearer task status
+
+The Dashboard restores messages, progress, drafts, user-facing reasoning
+summaries, and final Goal results after reconnecting. Clearer task states remain
+synchronized across current and background sessions.
+
+### Reliable commands and call control
+
+Messages, interaction answers, reauthorization, and Stop requests can be
+retried without creating duplicate work. Stop applies only to its intended
+task, while uncertain call submissions are verified before retrying.
+
+### Dashboard reliability fixes
+
+Fixed issues that could lose or stall accepted tasks, duplicate messages or
+calls, mislabel queued work, or leave the Dashboard out of sync. Stop outcomes
+now reflect confirmed results and preserve a task's true completion state.
 
 ## August 11, 2026
 
