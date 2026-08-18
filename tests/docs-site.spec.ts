@@ -4,6 +4,7 @@ const docsPages = [
   { path: "/quickstart", heading: "Quickstart" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
+  { path: "/supported-regions", heading: "Supported Regions" },
   { path: "/goal-runs", heading: "Goal Runs" },
   { path: "/webhooks", heading: "Webhooks" },
   { path: "/errors", heading: "Errors" },
@@ -39,6 +40,36 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
     "background-color",
     "rgb(11, 15, 20)",
   );
+});
+
+test("publishes the complete supported outbound region matrix", async ({
+  page,
+}) => {
+  await page.goto("/quickstart");
+  await expect(
+    page.getByRole("link", { name: "Supported Regions", exact: true }).first(),
+  ).toHaveAttribute("href", "/supported-regions");
+
+  await page.goto("/supported-regions");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Supported Regions" }),
+  ).toBeVisible();
+
+  const rows = page.locator("tbody tr");
+  await expect(rows).toHaveCount(34);
+  await expect(
+    rows.filter({ hasText: "Malaysia" }).getByRole("cell"),
+  ).toHaveText(["Malaysia", "MY", "+60", "English, Chinese", "Local"]);
+  await expect(
+    rows.filter({ hasText: "Honduras" }).getByRole("cell"),
+  ).toHaveText([
+    "Honduras",
+    "HN",
+    "+504",
+    "English, Spanish",
+    "International",
+  ]);
+  await expect(page.getByText("primarily intended for testing")).toBeVisible();
 });
 
 test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {

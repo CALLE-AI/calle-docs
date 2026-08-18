@@ -212,6 +212,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/supported-regions"],
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
@@ -235,6 +236,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/supported-regions"],
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
@@ -251,6 +253,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/supported-regions"],
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
@@ -267,6 +270,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/quickstart"],
       a[href="/authentication"],
       a[href="/calls"],
+      a[href="/supported-regions"],
       a[href="/goal-runs"],
       a[href="/webhooks"],
       a[href="/errors"],
@@ -291,6 +295,11 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/calls"]::after {
     content: "Create, track, and read calls.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/supported-regions"]::after {
+    content: "Check destination coverage.";
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
