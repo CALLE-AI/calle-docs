@@ -90,6 +90,43 @@ test("places What's New in the top-level documentation navigation", async ({
   ).toBeVisible();
 });
 
+test("keeps the wide docs article and table of contents together", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/changelog");
+
+  const spacing = await page
+    .locator('[data-pagefind-filter="section:markdown"]')
+    .evaluate((layout) => {
+      const article = layout.querySelector(":scope > .typography");
+      const tableOfContents = layout.querySelector(
+        'aside[class*="overflow-y-auto"]',
+      );
+      if (!(article instanceof HTMLElement)) {
+        throw new Error("Expected the docs article");
+      }
+      if (!(tableOfContents instanceof HTMLElement)) {
+        throw new Error("Expected the desktop table of contents");
+      }
+
+      const layoutRect = layout.getBoundingClientRect();
+      const articleRect = article.getBoundingClientRect();
+      const tableOfContentsRect = tableOfContents.getBoundingClientRect();
+
+      return {
+        leadingSpace: articleRect.left - layoutRect.left,
+        columnGap: tableOfContentsRect.left - articleRect.right,
+        trailingSpace: layoutRect.right - tableOfContentsRect.right,
+      };
+    });
+
+  expect(Math.abs(spacing.leadingSpace - spacing.trailingSpace)).toBeLessThanOrEqual(
+    1,
+  );
+  expect(spacing.columnGap).toBeLessThanOrEqual(64);
+});
+
 test("offers system, light, and dark appearance modes", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/quickstart");
