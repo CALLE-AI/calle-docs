@@ -86,7 +86,7 @@ test("places What's New in the top-level documentation navigation", async ({
     ),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "What's New", exact: true }),
+    page.getByRole("heading", { level: 1, name: "What's New" }),
   ).toBeVisible();
 });
 
