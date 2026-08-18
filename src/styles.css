@@ -317,7 +317,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 }
 
 [data-pagefind-filter="section:markdown"] {
-  justify-content: start;
+  justify-content: center;
 }
 
 .typography {
