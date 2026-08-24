@@ -387,6 +387,11 @@ Use a stable workflow key, not a random UUID generated at each retry.
 
 Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
 
+Before mapping a failed call to no answer or decline, read
+[Accepted call execution outcomes](/errors#accepted-call-execution-outcomes).
+Calls API `failure_code` values are not a published enum, and Goal Run error
+codes do not define the Calls API contract.
+
 When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`. The task-level `task_completed`, `completion_confidence`, and `evidence` fields come from the post-call summary and are available independently of your custom result schema.
 
 Each recipient attempt can include `transcript_turns`, an ordered list of structured transcript turns for that dial attempt. Each turn has `offset_seconds`, `speaker`, and `text`; `speaker` is `bot`, `user`, or `unknown`. The array is empty when no transcript is available.
