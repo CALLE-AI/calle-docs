@@ -3,69 +3,71 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## August 21, 2026
+
+**Safer `calle call start` result handling:** CALL-E CLI and `@call-e/core` now recognize JSON results returned through MCP
+content blocks while preserving the original response. This prevents valid
+`run_call` results from being treated as missing a `run_id`, helping users avoid
+unsafe retries when a call may already have started.
+
+**Longer call-planning timeout:** Call planning now uses a dedicated 150-second timeout, reducing failures caused
+by the previous 15-second default. An explicit `--timeout-seconds` value
+continues to override the planning timeout
+([#79](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/79)).
+
+**Reliable Goal publishing:** Fixed an issue that could leave a Goal in Draft while the Dashboard reported
+that publication was proceeding
+([#135](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/135)).
+
+**Correct call activity timelines:** Fixed cases where ringing or calling events could appear after a call had
+already ended
+([#112](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/112)).
+
+**Reliable Goal Run authorization:** Fixed an authorization issue that could cause an accepted Goal Run to fail
+before the outbound call started
+([#106](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/106)).
+
 ## August 15, 2026
 
-### Clearer call plan CLI guidance
-
-The CLI documentation now points users to `calle call plan --help` to view the
+**Clearer call plan CLI guidance:** The CLI documentation now points users to `calle call plan --help` to view the
 parameters supported by the `call plan` subcommand.
 
-### More informative MCP timeout errors
-
-Timeout failures for MCP `tools/call` requests now include additional error
+**More informative MCP timeout errors:** Timeout failures for MCP `tools/call` requests now include additional error
 information to make them easier to diagnose.
 
-### Phone keypad IVR support
+**Phone keypad IVR support:** CALL-E now supports phone keypad IVR interactions.
 
-CALL-E now supports phone keypad IVR interactions.
-
-### Dashboard Call Records
-
-The Dashboard now includes Call Records for reviewing task history,
+**Dashboard Call Records:** The Dashboard now includes Call Records for reviewing task history,
 conversations, and call audio recordings.
 
-### SDK and API integration examples
-
-The Dashboard now includes SDK and API integration examples and can display the
+**SDK and API integration examples:** The Dashboard now includes SDK and API integration examples and can display the
 instruction associated with each Goal.
 
-### Durable multi-session execution
-
-Users can run tasks concurrently across different chat sessions while each
+**Durable multi-session execution:** Users can run tasks concurrently across different chat sessions while each
 session keeps one active task at a time. Accepted tasks continue through page
 refreshes, closed tabs, and temporary connection or service interruptions.
 
-### Session recovery and clearer task status
-
-The Dashboard restores messages, progress, drafts, user-facing reasoning
+**Session recovery and clearer task status:** The Dashboard restores messages, progress, drafts, user-facing reasoning
 summaries, and final Goal results after reconnecting. Clearer task states remain
 synchronized across current and background sessions.
 
-### Reliable commands and call control
-
-Messages, interaction answers, reauthorization, and Stop requests can be
+**Reliable commands and call control:** Messages, interaction answers, reauthorization, and Stop requests can be
 retried without creating duplicate work. Stop applies only to its intended
 task, while uncertain call submissions are verified before retrying.
 
-### Dashboard reliability fixes
-
-Fixed issues that could lose or stall accepted tasks, duplicate messages or
+**Dashboard reliability fixes:** Fixed issues that could lose or stall accepted tasks, duplicate messages or
 calls, mislabel queued work, or leave the Dashboard out of sync. Stop outcomes
 now reflect confirmed results and preserve a task's true completion state.
 
 ## August 11, 2026
 
-### Dashboard-issued API keys
-
-Developer API authentication now accepts the `iams_live_` API keys shown in
+**Dashboard-issued API keys:** Developer API authentication now accepts the `iams_live_` API keys shown in
 the CALL-E dashboard. The server SDK configuration remains unchanged: pass the
 key through `CALLE_API_KEY`, and the SDK sends it as a Bearer credential.
 
 ## July 29, 2026
 
-### Terminal webhook delivery
-
-Call tasks that include `webhook_url` now send terminal event notifications to
+**Terminal webhook delivery:** Call tasks that include `webhook_url` now send terminal event notifications to
 that URL. Each notification includes a stable event id for idempotent
 processing, and delivery is retried when the receiver does not return a `2xx`
 response. CALL-E waits until the post-call outcome and requested structured
@@ -81,9 +83,7 @@ deprecated.
 
 ## July 22, 2026
 
-### Phone-only Goal Run requests in API 0.6
-
-Create Goal Run requests now use a top-level `phone` plus `variables`. The `target` wrapper and per-Run `region`, `locale`, and `display_name` fields have been removed. Voice region and callee locale are fixed by the published Goal; recipient names needed by the conversation belong in the Goal's input schema and are supplied through `variables`.
+**Phone-only Goal Run requests in API 0.6:** Create Goal Run requests now use a top-level `phone` plus `variables`. The `target` wrapper and per-Run `region`, `locale`, and `display_name` fields have been removed. Voice region and callee locale are fixed by the published Goal; recipient names needed by the conversation belong in the Goal's input schema and are supplied through `variables`.
 
 The TypeScript and Python SDK source candidates now implement the matching
 `client.goals` surface at version `0.6.0`, including Goal discovery, Run
@@ -91,7 +91,7 @@ creation, Run reads, and result-or-error polling. Existing Calls and Webhooks
 surfaces remain compatible; registry packages stay on their current stable
 versions until the 0.6.0 release is published.
 
-### Simplified Goal Runs API 0.5
+**Simplified Goal Runs API 0.5:** This release includes:
 
 1. Useful Goal metadata: Goal list and get responses now include the current published `title` and `description` alongside the input and result schemas.
 
@@ -103,7 +103,7 @@ versions until the 0.6.0 release is published.
 
 ## July 21, 2026
 
-### Goal Runs API preview
+**Goal Runs API preview:** This preview includes:
 
 1. Published Goal interface: Read the current normalized input schema, result schema, and RunSpec identity with `GET /v1/goals/{goal_id}`.
 
@@ -117,7 +117,7 @@ See [Goal Runs](/goal-runs) for request, polling, version-pinning, and SDK examp
 
 ## June 8, 2026
 
-### What's New: Developer API and server SDKs
+**Developer API and server SDKs:** This release includes:
 
 1. Developer API: Create outbound call tasks, retrieve call task details, list call task events, and receive terminal webhook messages from a trusted server environment.
 
