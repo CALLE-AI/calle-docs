@@ -46,6 +46,30 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 - `internal_error`
 - `not_found`
 
+## Accepted call execution outcomes
+
+The stable `APIError.code` values above describe an HTTP request failure. They
+are separate from the outcome of a call task or Goal Run that was accepted and
+later reached a terminal state.
+
+| Surface | Stable contract |
+| --- | --- |
+| Developer API request | `APIError.code` uses the stable values listed above. |
+| Calls API call task | Lifecycle `status` is stable. `failure_code` is a nullable string without a published enum; `failure_message` is nullable human-readable context. |
+| Goal Runs API | `GoalRunError.code` is a separate enum that includes `no_answer` and `declined`. |
+
+For Calls API resources, treat `failure_code` and `failure_message` as
+diagnostic context. Preserve the raw values for support, but do not branch
+retry, reporting, or analytics logic on a particular string.
+
+The Goal Run codes `no_answer` and `declined` do not define Calls API
+`failure_code` values. The Calls API currently does not guarantee a distinct
+no-answer or callee-decline value at the call-task, recipient, or attempt
+level. If the documented Calls fields do not establish that distinction, keep
+the business outcome unresolved. Do not infer that a recipient declined from
+a generic `failed` state or an undocumented failure message, and do not
+automatically retry based only on an undocumented failure string.
+
 ## Recovery guidance
 
 `unauthorized` means the API key is missing or invalid. Check the `Authorization: Bearer` header.

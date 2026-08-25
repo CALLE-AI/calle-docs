@@ -439,6 +439,29 @@ test("connects the Calls guide to HTTP and related references", async ({
   await expect(
     callsBody.locator('p a[href="/webhooks"]'),
   ).toBeVisible();
+
+  const outcomeGuidance = callsBody.getByRole("link", {
+    name: "Accepted call execution outcomes",
+  });
+  await expect(outcomeGuidance).toHaveAttribute(
+    "href",
+    "/errors#accepted-call-execution-outcomes",
+  );
+  await outcomeGuidance.click();
+
+  await expect(page).toHaveURL(/\/errors#accepted-call-execution-outcomes$/);
+  await expect(
+    page.getByRole("heading", { name: "Accepted call execution outcomes" }),
+  ).toBeVisible();
+  const callsOutcomeWarning = page.locator("main p").filter({
+    hasText: "do not define Calls API",
+  });
+  await expect(callsOutcomeWarning).toContainText(
+    "keep the business outcome unresolved",
+  );
+  await expect(
+    callsOutcomeWarning.locator("code").filter({ hasText: "failure_code" }),
+  ).toBeVisible();
 });
 
 test("documents the published Goal Run flow on a clean route", async ({
