@@ -440,6 +440,36 @@ test("connects the Calls guide to HTTP and related references", async ({
     callsBody.locator('p a[href="/webhooks"]'),
   ).toBeVisible();
 
+  await expect(
+    callsBody.getByRole("heading", {
+      name: "Classify the final endpoint",
+    }),
+  ).toBeVisible();
+  await expect(callsBody).toContainText(
+    "does not return a built-in AMD disposition",
+  );
+  await expect(callsBody).toContainText(
+    "You control the property name and enum values",
+  );
+  await expect(callsBody).toContainText(
+    "recipientResultSchema:",
+  );
+  await expect(callsBody).toContainText(
+    "call.recipients[i].structuredResult",
+  );
+  await expect(callsBody).toContainText(
+    'call["recipients"][i]["structured_result"]',
+  );
+  await expect(callsBody).toContainText(
+    "recipients[i].structured_result over HTTP",
+  );
+  await expect(callsBody).toContainText(
+    'enum: ["human", "ivr", "voicemail", "unknown"]',
+  );
+  await expect(callsBody).toContainText(
+    "request omits recipient_result_schema",
+  );
+
   const outcomeGuidance = callsBody.getByRole("link", {
     name: "Accepted call execution outcomes",
   });
