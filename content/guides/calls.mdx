@@ -187,6 +187,28 @@ resultSchema: {
 
 When a result drives automation, add an evidence field so your system can inspect why CALL-E made the classification.
 
+### Classify the final endpoint
+
+The Calls API does not return a built-in AMD disposition or `answered_by` field. Define the classification with a per-recipient Structured Result. You control the property name and enum values.
+
+```ts
+recipientResultSchema: {
+  type: "object",
+  required: ["answered_by"],
+  properties: {
+    answered_by: {
+      type: "string",
+      enum: ["human", "ivr", "voicemail", "unknown"],
+      description:
+        "Classify the final endpoint. If an IVR transfers the call to a person, use human.",
+    },
+  },
+  additionalProperties: false,
+}
+```
+
+Read `call.recipients[i].structuredResult` in TypeScript, `call["recipients"][i]["structured_result"]` in Python, or `recipients[i].structured_result` over HTTP. CALL-E returns `null` when it cannot produce a schema-valid recipient result or when the request omits `recipient_result_schema`. The example uses `unknown` as a schema-valid fallback.
+
 ### Sales handoff
 
 Use this pattern when a prospect should be routed to a human if they ask for help or show strong interest.
