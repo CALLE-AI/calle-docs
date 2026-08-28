@@ -3,6 +3,24 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## August 28, 2026
+
+**CLI supported regions discovery:** The CALL-E CLI now includes
+`calle regions list` for reviewing supported country, region, and language
+combinations—including call direction, availability, configuration values, and
+additional setup requirements—before running `plan_call`.
+
+**Goal call analysis:** The Dashboard can now analyze Call Records associated
+with a Goal and provide recommendations for improving future calls.
+
+**Clearer call failure outcomes:** Call results now distinguish platform or
+provider failures from confirmed callee declines and provide clearer diagnostic
+information for failed calls
+([#206](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/206),
+[#82](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/82),
+[#111](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/111),
+[#195](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/195)).
+
 ## August 21, 2026
 
 **Safer `calle call start` result handling:** CALL-E CLI and `@call-e/core` now recognize JSON results returned through MCP
