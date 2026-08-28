@@ -461,7 +461,12 @@ paths:
         - goal-runs
       summary: Create Goal Run
       description: |-
-        Create one singleton Goal Run for a published Goal.
+        Create one singleton Goal Run for a published Goal. CALL-E starts an outbound call to the
+        `phone` supplied in the request.
+
+        CALL-E does not currently provide Developer API endpoints for inbound calling. Use the
+        [CALL-E dashboard](https://dashboard.heycall-e.com/) to purchase numbers and configure
+        Inbound Goals.
 
         In a delivery-confirmation integration, `phone` identifies one customer and `variables`
         provide that order's reference and proposed window. CALL-E atomically resolves and pins the
