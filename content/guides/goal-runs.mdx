@@ -1,13 +1,15 @@
 ---
 title: Goal Runs
-description: Run a published Goal with one phone number and schema-validated variables.
+description: Start outbound calls from a published Goal with one phone number and schema-validated variables.
 ---
 
-Run a published Goal when your application repeats the same validated phone workflow for different targets.
+Start outbound calls from a published Goal when your application repeats the same validated phone workflow for different targets.
 
 **API 0.6** · **Server-side** · **Asynchronous**
 
 A Goal owns its call behavior, voice region and locale, input schema, result schema, and provider contract. A Goal Run supplies only one E.164 phone number, per-Run variables, and a business-stable idempotency key.
+
+CALL-E does not currently provide Developer API endpoints for inbound calling. Use the [CALL-E dashboard](https://dashboard.heycall-e.com/) to purchase numbers and configure Inbound Goals.
 
 Use the one-shot [Calls](/calls) API when each request needs new task text or a request-scoped result schema. Goal Runs are a separate contract and do not replace or reinterpret `/v1/calls`.
 
