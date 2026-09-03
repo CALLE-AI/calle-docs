@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CALL-E Developer API
-  version: 0.6.0
+  version: 0.7.0
   description: Developer API contract used by the CALL-E TypeScript and Python SDKs.
 servers:
   - url: https://api.heycall-e.com
@@ -32,12 +32,8 @@ paths:
                   recipients:
                     - phones:
                         - "<RECIPIENT_1_E164_PHONE>"
-                      region: US
-                      locale: en-US
                     - phones:
                         - "<RECIPIENT_2_E164_PHONE>"
-                      region: US
-                      locale: en-US
                   result_schema:
                     type: object
                     required:
@@ -328,6 +324,8 @@ paths:
         `after` value; clients must not parse or construct cursor values. `title` and `description`
         help operators recognize each published workflow, but integrations should still store the
         intended `goal_id` at publish time and must not execute the first list item blindly.
+        Candidates whose published RunSpec is not execution-ready are omitted without preventing
+        later executable Goals from appearing in the page.
       parameters:
         - $ref: "#/components/parameters/GoalListLimit"
         - $ref: "#/components/parameters/GoalListAfter"
@@ -399,8 +397,6 @@ paths:
           $ref: "#/components/responses/ErrorResponse"
         "403":
           $ref: "#/components/responses/ErrorResponse"
-        "409":
-          $ref: "#/components/responses/ErrorResponse"
         "429":
           $ref: "#/components/responses/ErrorResponse"
         "500":
@@ -461,12 +457,7 @@ paths:
         - goal-runs
       summary: Create Goal Run
       description: |-
-        Create one singleton Goal Run for a published Goal. CALL-E starts an outbound call to the
-        `phone` supplied in the request.
-
-        CALL-E does not currently provide Developer API endpoints for inbound calling. Use the
-        [CALL-E dashboard](https://dashboard.heycall-e.com/) to purchase numbers and configure
-        Inbound Goals.
+        Create one singleton Goal Run for a published Goal.
 
         In a delivery-confirmation integration, `phone` identifies one customer and `variables`
         provide that order's reference and proposed window. CALL-E atomically resolves and pins the
@@ -525,6 +516,7 @@ paths:
                     id: rgrp_delivery_ord_8472
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
+                    call_id: null
                     status: queued
                     run_spec:
                       id: rspec_delivery_v4
@@ -602,6 +594,7 @@ paths:
                     id: rgrp_delivery_ord_8472
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
+                    call_id: calling_call_delivery_ord_8472
                     status: completed
                     run_spec:
                       id: rspec_delivery_v4
@@ -619,6 +612,7 @@ paths:
                     id: rgrp_delivery_ord_8472
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
+                    call_id: null
                     status: failed
                     run_spec:
                       id: rspec_delivery_v4
@@ -1003,6 +997,7 @@ components:
         - id
         - goal_id
         - run_id
+        - call_id
         - run_spec
         - status
         - result
@@ -1026,6 +1021,17 @@ components:
           type: string
           description: Internal execution member exposed for correlation; do not use it in the Goal Run polling path.
           minLength: 1
+        call_id:
+          type:
+            - string
+            - "null"
+          description: |-
+            Calling call identifier selected for this Goal Run when that trusted fact is available,
+            or `null` before a call identifier is persisted or when no identifier is available. This
+            is different from the Goal Run `id` and nested `run_id`; it does not expose other provider
+            diagnostics and must not be treated as an independent answered-call boolean.
+          minLength: 1
+          maxLength: 255
         run_spec:
           description: Read-only identity and version of the exact RunSpec pinned by this Run.
           $ref: "#/components/schemas/GoalRunSpecSnapshot"

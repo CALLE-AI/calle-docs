@@ -416,12 +416,14 @@ test("preserves authentication, webhook, and SDK guidance", async ({
     "href",
     "https://github.com/CALLE-AI/server-sdk-typescript",
   );
+  await expect(page.getByText("@call-e/calle@0.7.0").first()).toBeVisible();
+  await expect(page.getByText("calle-ai==0.7.0").first()).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Not currently public" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "CALLE-AI/server-sdk-python" }),
-  ).toHaveAttribute(
-    "href",
-    "https://github.com/CALLE-AI/server-sdk-python",
-  );
+  ).toHaveCount(0);
 });
 
 test("connects the Calls guide to HTTP and related references", async ({

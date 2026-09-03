@@ -100,7 +100,7 @@ curl "https://api.heycall-e.com/v1/goals?limit=20" \
 }
 ```
 
-When `next_cursor` is non-null, pass it unchanged as `after` on the next request. Cursors are opaque and results use stable Goal identity order. Hidden, draft, paused, retired, unpublished, and other owners' Goals are not returned.
+When `next_cursor` is non-null, pass it unchanged as `after` on the next request. Cursors are opaque and results use stable Goal identity order. Hidden, draft, paused, retired, unpublished, and other owners' Goals are not returned. A published Goal that is not execution-ready is skipped without preventing later executable Goals from appearing in the page.
 
 The list is a discovery and recovery tool, not title search. `title` and `description` help a developer recognize each published workflow, but they are not stable identity. Do not execute `data[0]` blindly: persist the `goal_id` received when the intended Goal is published.
 
@@ -220,6 +220,7 @@ The first accepted request and an exact idempotent replay both return `201 Creat
   "object": "goal_run",
   "goal_id": "goal_delivery_confirmation",
   "run_id": "run_delivery_ord_8472",
+  "call_id": null,
   "status": "in_progress",
   "run_spec": {
     "id": "rspec_delivery_v4",
@@ -234,7 +235,7 @@ The first accepted request and an exact idempotent replay both return `201 Creat
 
 `201` means CALL-E durably accepted responsibility for the Run. It does not mean the provider accepted the call, the recipient answered, or the structured result is ready.
 
-Save `GoalRun.id` from the response as `GOAL_RUN_ID`. The `Location` response header contains the same resource path, and `Retry-After` suggests when to begin polling. The response deliberately omits `phone` and `variables`; keep your own correlation between the idempotency key and order record.
+Save `GoalRun.id` from the response as `GOAL_RUN_ID`. The `Location` response header contains the same resource path, and `Retry-After` suggests when to begin polling. The response deliberately omits `phone` and `variables`; keep your own correlation between the idempotency key and order record. `call_id` is the selected calling-call identifier when that persisted fact is available, or `null` otherwise. It is not an answered-call signal.
 
 ## Poll for results
 
@@ -261,6 +262,7 @@ The response deliberately has one completion rule: stop polling when either `res
   "object": "goal_run",
   "goal_id": "goal_delivery_confirmation",
   "run_id": "run_delivery_ord_8472",
+  "call_id": "calling_call_delivery_ord_8472",
   "status": "completed",
   "run_spec": {
     "id": "rspec_delivery_v4",
@@ -336,7 +338,8 @@ See [Errors](/errors) for the HTTP error catalog. HTTP errors mean the API reque
 
 ## SDK examples
 
-The following methods define the API 0.6 SDK surface. The currently stable 0.2 packages remain Calls-only until matching TypeScript and Python minors are released.
+The following methods are available in the stable TypeScript and Python `0.7.0`
+packages.
 
 TypeScript uses camelCase on the existing `client.goals` resource:
 
