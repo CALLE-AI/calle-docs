@@ -447,7 +447,14 @@ test("connects the Calls guide to HTTP and related references", async ({
     "recipients[].attempts[].provider_call_id",
   );
   await expect(callsBody).toContainText(
-    "Do not pass a provider_call_id to /v1/calls/{call_id}",
+    "call.recipients[i].attempts[j].providerCallId",
+  );
+  await expect(callsBody).toContainText(
+    "the webhook's top-level id identifies the event",
+  );
+  await expect(callsBody).toContainText("not interchangeable");
+  await expect(callsBody).toContainText(
+    "Do not pass a provider_call_id to /v1/calls/{call_id} or client.calls.get()",
   );
 
   await expect(

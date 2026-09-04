@@ -77,14 +77,18 @@ curl --fail-with-body --silent --show-error \
 
 ## Call identifiers
 
-The top-level call task `id` (for example, `call_...`) is the Developer API
-resource identifier. Use it with the GET endpoints above and to correlate
-events and webhooks.
+CALL-E identifies the overall call task and each provider attempt separately.
 
-To match an API attempt with Dashboard Call Records, use its
-`recipients[].attempts[].provider_call_id` when available. A call task can
-contain multiple recipients or attempts, so match each attempt separately. Do
-not pass a `provider_call_id` to `/v1/calls/{call_id}`.
+| Identifier | Scope and use |
+| --- | --- |
+| Top-level `id` (`call_...`) | Identifies the whole call task. Use it with `GET /v1/calls/{call_id}` and `GET /v1/calls/{call_id}/events`. Event-list items expose it as `call_id`. In a terminal webhook, the CallTask ID is `data.id`; the webhook's top-level `id` identifies the event. |
+| `recipients[].attempts[].provider_call_id` | Identifies one provider attempt when non-null. Use it to match the attempt with Dashboard Call Records. Raw HTTP and Python use `recipients[].attempts[].provider_call_id`; TypeScript uses `call.recipients[i].attempts[j].providerCallId`. |
+
+These are separate, opaque identifiers. Neither is a reformatted version of
+the other, and they are not interchangeable. A call task can contain multiple
+recipients and attempts, and `provider_call_id` may be `null`, so inspect each
+attempt separately. Do not pass a `provider_call_id` to
+`/v1/calls/{call_id}` or `client.calls.get()`.
 
 TypeScript:
 
