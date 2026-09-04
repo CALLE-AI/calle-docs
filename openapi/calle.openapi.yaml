@@ -1314,7 +1314,7 @@ components:
           type:
             - string
             - "null"
-          description: Opaque provider identifier for one outbound attempt. Use it for support and Dashboard Call Records correlation when available; do not pass it as the call_id path parameter.
+          description: Provider identifier for this call attempt. Use it to match Dashboard Call Records. Do not use it as call_id.
         failure_code:
           type:
             - string
@@ -1400,7 +1400,7 @@ components:
       properties:
         id:
           type: string
-          description: Public CALL-E call task identifier for Developer API operations. Store this id to fetch state, list events, and correlate terminal webhooks using data.id. The webhook's top-level id identifies the event; this id is also distinct from each attempt's provider_call_id.
+          description: CALL-E call task identifier. Use it as call_id to fetch the call and list its events. Terminal webhooks return it as data.id; the webhook's top-level id identifies the event.
         object:
           type: string
           description: Always `call_task` for call task responses.
