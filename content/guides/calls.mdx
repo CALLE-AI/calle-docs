@@ -77,10 +77,11 @@ curl --fail-with-body --silent --show-error \
 
 ## Call identifiers
 
-| Purpose | HTTP and Python | TypeScript |
-| --- | --- | --- |
-| Calls API `call_id` | Top-level `id` (`call_...`) | `call.id` |
-| Dashboard Call Records | `recipients[].attempts[].provider_call_id` | `call.recipients[i].attempts[j].providerCallId` |
+- **Calls API `call_id`:** use the top-level `id` (`call_...`) in HTTP and
+  Python, or `call.id` in TypeScript.
+- **Dashboard Call Record ID:** use
+  `recipients[].attempts[].provider_call_id` in HTTP and Python, or
+  `call.recipients[i].attempts[j].providerCallId` in TypeScript.
 
 Use `call_id` with `GET /v1/calls/{call_id}` and
 `GET /v1/calls/{call_id}/events`. Do not use `provider_call_id` as `call_id`;
