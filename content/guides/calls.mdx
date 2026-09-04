@@ -75,6 +75,21 @@ curl --fail-with-body --silent --show-error \
   "https://api.heycall-e.com/v1/calls/$CALLE_CALL_ID/events?limit=50"
 ```
 
+## Call identifiers
+
+- **Calls API `call_id`:** use the top-level `id` (`call_...`) in HTTP and
+  Python, or `call.id` in TypeScript.
+- **Dashboard Call Record ID:** use
+  `recipients[].attempts[].provider_call_id` in HTTP and Python, or
+  `call.recipients[i].attempts[j].providerCallId` in TypeScript.
+
+Use `call_id` with `GET /v1/calls/{call_id}` and
+`GET /v1/calls/{call_id}/events`. Do not use `provider_call_id` as `call_id`;
+it identifies one attempt and may be `null`.
+
+Event-list items expose the CallTask ID as `call_id`. Terminal webhooks expose
+it as `data.id`; the webhook's top-level `id` identifies the event.
+
 TypeScript:
 
 ```ts

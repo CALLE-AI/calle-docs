@@ -441,6 +441,22 @@ test("connects the Calls guide to HTTP and related references", async ({
   ).toBeVisible();
 
   await expect(
+    callsBody.getByRole("heading", { name: "Call identifiers" }),
+  ).toBeVisible();
+  await expect(callsBody).toContainText(
+    "recipients[].attempts[].provider_call_id",
+  );
+  await expect(callsBody).toContainText(
+    "call.recipients[i].attempts[j].providerCallId",
+  );
+  await expect(callsBody).toContainText(
+    "the webhook's top-level id identifies the event",
+  );
+  await expect(callsBody).toContainText(
+    "Do not use provider_call_id as call_id",
+  );
+
+  await expect(
     callsBody.getByRole("heading", {
       name: "Classify the final endpoint",
     }),
