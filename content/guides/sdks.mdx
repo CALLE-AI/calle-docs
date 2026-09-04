@@ -29,14 +29,13 @@ from calle import CalleClient
 
 The current stable server SDK packages are:
 
-- TypeScript: `@call-e/calle@0.2.2`
-- Python: `calle-ai==0.2.0`
+- TypeScript: `@call-e/calle@0.7.0`
+- Python: `calle-ai==0.7.0`
 
-These stable packages support the request-scoped Calls API. The Goal Runs
-API and both SDK source candidates are aligned on `0.6.0`; the registry
-packages remain Calls-only until that matching SDK release is published.
+These stable packages support both the request-scoped Calls API and the Goal
+Runs SDK surface described below.
 
-## Goal Runs preview
+## Goal Runs
 
 The Goal-based SDK surface keeps published contracts separate from the
 one-shot Calls API:
@@ -52,23 +51,24 @@ idempotency key. They do not accept request-scoped task text, prompts,
 RunSpec. See the [Goal Runs guide](/goal-runs) for the API contract and SDK
 examples.
 
-## Source repositories
+## Source code
 
-The SDKs are maintained as separate repositories so they can have independent release cadence, CI, package metadata, and language-specific examples.
+The TypeScript SDK is maintained in a public repository. The Python package is
+available from PyPI, but its source repository is not currently public.
 
 | Runtime | Package | Repository |
 | --- | --- | --- |
 | TypeScript | `@call-e/calle` | [CALLE-AI/server-sdk-typescript](https://github.com/CALLE-AI/server-sdk-typescript) |
-| Python | `calle-ai` | [CALLE-AI/server-sdk-python](https://github.com/CALLE-AI/server-sdk-python) |
+| Python | `calle-ai` | Not currently public |
 
-Each repository includes public source code, examples, and security guidance:
+The TypeScript repository includes public source code, examples, and security
+guidance:
 
 - [TypeScript security policy](https://github.com/CALLE-AI/server-sdk-typescript/blob/main/SECURITY.md)
-- [Python security policy](https://github.com/CALLE-AI/server-sdk-python/blob/main/SECURITY.md)
 
 ## Local examples
 
-Each SDK repository currently includes runnable examples for the server-side
+The TypeScript SDK repository includes runnable examples for the server-side
 one-shot call task flow.
 
 TypeScript:
@@ -80,16 +80,7 @@ pnpm install
 pnpm run example:create-and-wait
 ```
 
-Python:
-
-```bash
-git clone https://github.com/CALLE-AI/server-sdk-python.git
-cd server-sdk-python
-uv sync --all-groups
-uv run python examples/create_and_wait.py
-```
-
-## Stable 0.2 methods
+## Calls API
 
 The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
 
@@ -196,8 +187,8 @@ pip install calle-ai
 Use pinned versions when your deployment process requires exact package reproducibility:
 
 ```bash
-pnpm add @call-e/calle@0.2.2
-pip install calle-ai==0.2.0
+pnpm add @call-e/calle@0.7.0
+pip install calle-ai==0.7.0
 ```
 
 ## Supported scope
