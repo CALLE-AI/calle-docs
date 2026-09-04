@@ -75,6 +75,17 @@ curl --fail-with-body --silent --show-error \
   "https://api.heycall-e.com/v1/calls/$CALLE_CALL_ID/events?limit=50"
 ```
 
+## Call identifiers
+
+The top-level call task `id` (for example, `call_...`) is the Developer API
+resource identifier. Use it with the GET endpoints above and to correlate
+events and webhooks.
+
+To match an API attempt with Dashboard Call Records, use its
+`recipients[].attempts[].provider_call_id` when available. A call task can
+contain multiple recipients or attempts, so match each attempt separately. Do
+not pass a `provider_call_id` to `/v1/calls/{call_id}`.
+
 TypeScript:
 
 ```ts

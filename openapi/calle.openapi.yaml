@@ -1314,7 +1314,7 @@ components:
           type:
             - string
             - "null"
-          description: Provider call identifier for support correlation when available.
+          description: Provider call identifier for support and Dashboard Call Records correlation when available.
         failure_code:
           type:
             - string
@@ -1400,7 +1400,7 @@ components:
       properties:
         id:
           type: string
-          description: Public CALL-E call task identifier. Store this id to fetch state, list events, and correlate webhooks.
+          description: Public CALL-E call task identifier for Developer API operations. Store this id to fetch state, list events, and correlate webhooks. Use each attempt's provider_call_id, when available, to correlate with Dashboard Call Records.
         object:
           type: string
           description: Always `call_task` for call task responses.

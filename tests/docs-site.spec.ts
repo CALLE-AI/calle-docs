@@ -441,6 +441,16 @@ test("connects the Calls guide to HTTP and related references", async ({
   ).toBeVisible();
 
   await expect(
+    callsBody.getByRole("heading", { name: "Call identifiers" }),
+  ).toBeVisible();
+  await expect(callsBody).toContainText(
+    "recipients[].attempts[].provider_call_id",
+  );
+  await expect(callsBody).toContainText(
+    "Do not pass a provider_call_id to /v1/calls/{call_id}",
+  );
+
+  await expect(
     callsBody.getByRole("heading", {
       name: "Classify the final endpoint",
     }),
