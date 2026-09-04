@@ -819,7 +819,7 @@ components:
     CallId:
       name: call_id
       in: path
-      description: Public CALL-E call identifier returned by create call. It starts with `call_` and is safe to store in your workflow records.
+      description: Top-level CallTask `id` returned by Create Call. It starts with `call_`.
       required: true
       schema:
         type: string
