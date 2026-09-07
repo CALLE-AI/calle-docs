@@ -100,6 +100,9 @@ call = client.calls.create_and_wait(
 
 The terminal call task includes a stable status, a schema-valid structured result, and task-level outcome fields from the post-call summary. When CALL-E cannot produce a schema-valid result from the evidence, `structured_result` is `null`.
 
+See [Task completion](/calls#task-completion) for how to interpret
+`task_completed` (`taskCompleted` in TypeScript) and `completion_confidence`.
+
 TypeScript:
 
 ```ts
