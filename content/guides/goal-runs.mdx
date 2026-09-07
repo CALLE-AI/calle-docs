@@ -172,6 +172,8 @@ curl "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}" \
 
 The response is an interface, not a version selector. `title` and `description` explain the current published workflow without exposing its prompt. The response never exposes provider configuration, materialization guidance, or authoring history.
 
+For TypeScript field names and a configuration-reading example, see [SDK examples](#sdk-examples).
+
 <a id="create-a-run"></a>
 
 ## Create a Goal Run
@@ -341,7 +343,36 @@ See [Errors](/errors) for the HTTP error catalog. HTTP errors mean the API reque
 The following methods are available in the stable TypeScript and Python `0.7.0`
 packages.
 
-TypeScript uses camelCase on the existing `client.goals` resource:
+REST responses and Python Goal dictionaries use snake_case. The TypeScript SDK
+maps these fields to camelCase:
+
+| REST / Python | TypeScript |
+| --- | --- |
+| `published_run_spec` | `publishedRunSpec` |
+| `input_schema` | `inputSchema` |
+| `result_schema` | `resultSchema` |
+
+Read the published configuration before starting a Run:
+
+```ts
+const goal = await client.goals.get("goal_delivery_confirmation");
+const publishedRunSpec = goal.publishedRunSpec;
+console.log(publishedRunSpec.version);
+console.log(publishedRunSpec.inputSchema);
+console.log(publishedRunSpec.resultSchema);
+```
+
+A successful `client.goals.get(...)` returns a Goal with a required
+`publishedRunSpec`. Accessing `goal.published_run_spec` is a TypeScript type error;
+in JavaScript, it returns `undefined` because that field name is absent. This
+does not mean the Goal is unpublished. For an active Goal with no published
+RunSpec, `get(...)` throws a `CalleAPIError` with `code === "goal_not_published"`.
+See [Common integration errors](#common-errors) for other failures.
+
+The SDK preserves property names inside the schemas and `variables`, such as
+`customer_name`; use the names defined by the published input schema.
+
+List Goals, start a Run, and wait for its result with `client.goals`:
 
 ```ts
 const goals = await client.goals.list({ limit: 20 });
