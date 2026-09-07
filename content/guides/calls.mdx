@@ -420,6 +420,20 @@ Pass an idempotency key when a workflow step might retry. The key maps to the `I
 
 Use a stable workflow key, not a random UUID generated at each retry.
 
+## Task completion
+
+`task_completed` is CALL-E's post-call judgment of whether the task reached
+a clear end state for the user. `completion_confidence` is confidence in that
+judgment, and `evidence` supports it. These fields do not require a custom
+result schema.
+
+A `true` value or high confidence does not establish that a person answered
+or that your business objective was met. Check the business answer in
+`structured_result` against the call transcript. Use the
+[custom answered_by example](#classify-the-final-endpoint) to extract an
+endpoint classification alongside your business result. Keep `unknown`
+answers unresolved.
+
 ## Polling and events
 
 Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
@@ -429,7 +443,7 @@ Before mapping a failed call to no answer or decline, read
 Calls API `failure_code` values are not a published enum, and Goal Run error
 codes do not define the Calls API contract.
 
-When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`. The task-level `task_completed`, `completion_confidence`, and `evidence` fields come from the post-call summary and are available independently of your custom result schema.
+When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`.
 
 Each recipient attempt can include `transcript_turns`, an ordered list of structured transcript turns for that dial attempt. Each turn has `offset_seconds`, `speaker`, and `text`; `speaker` is `bot`, `user`, or `unknown`. The array is empty when no transcript is available.
 
