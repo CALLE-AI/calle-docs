@@ -1325,7 +1325,10 @@ components:
           type:
             - string
             - "null"
-          description: Machine-readable failure reason when this attempt failed.
+          description: |-
+            Diagnostic failure reason when this attempt failed. No published enum.
+
+            Preserve raw values for support; do not branch retry, reporting, or analytics logic on specific values. See [Accepted call execution outcomes](https://docs.heycall-e.com/errors#accepted-call-execution-outcomes).
         failure_message:
           type:
             - string
@@ -1460,7 +1463,10 @@ components:
           type:
             - string
             - "null"
-          description: Machine-readable failure reason when `status` is `failed`; otherwise `null`.
+          description: |-
+            Diagnostic failure reason when `status` is `failed`; otherwise `null`. No published enum.
+
+            Preserve raw values for support; do not branch retry, reporting, or analytics logic on specific values. See [Accepted call execution outcomes](https://docs.heycall-e.com/errors#accepted-call-execution-outcomes).
         failure_message:
           type:
             - string
