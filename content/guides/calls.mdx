@@ -424,14 +424,15 @@ Use a stable workflow key, not a random UUID generated at each retry.
 
 `task_completed` is CALL-E's post-call judgment of whether the task reached
 a clear end state for the user. `completion_confidence` is confidence in that
-judgment, and `evidence` supports it. These fields are independent of your
-custom result schema.
+judgment, and `evidence` supports it. These fields do not require a custom
+result schema.
 
 A `true` value or high confidence does not establish that a person answered
 or that your business objective was met. Check the business answer in
-`structured_result` against the call transcript. To distinguish a person from
-IVR or voicemail, use the [custom answered_by example](#classify-the-final-endpoint)
-alongside your business result. Keep `unknown` answers unresolved.
+`structured_result` against the call transcript. Use the
+[custom answered_by example](#classify-the-final-endpoint) to extract an
+endpoint classification alongside your business result. Keep `unknown`
+answers unresolved.
 
 ## Polling and events
 
