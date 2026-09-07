@@ -21,17 +21,15 @@ Do not commit API keys, print them in logs, send them to browser code, or store 
 
 ## Authorization header
 
-Send the API key as a bearer token. This read-only request lists up to one
-executable published Goal without starting a call:
+Check API access with a read-only request:
 
 ```bash
 curl -i "https://api.heycall-e.com/v1/goals?limit=1" \
   -H "Authorization: Bearer $CALLE_API_KEY"
 ```
 
-`-i` includes the HTTP status and response headers. `200 OK` confirms access to
-this endpoint, even when the `data` array is empty. See [Auth errors](#auth-errors)
-for the meanings of `401` and `403`.
+`-i` shows the HTTP status and headers. `200 OK` means the request succeeded,
+even if `data` is empty. See [Auth errors](#auth-errors) for `401` and `403`.
 
 SDK clients set this header for you.
 
