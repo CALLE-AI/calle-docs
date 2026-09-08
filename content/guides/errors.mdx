@@ -62,6 +62,10 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `account_concurrency_exceeded` (HTTP 429) means the account has reached its configured task allowance for the selected line class. Shared platform lines default to one active task, and eligible dedicated purchased numbers default to ten. The same account shares each allowance across API keys, MCP, and Dashboard. Wait for a task to finish before starting a new attempt.
 
+On a default shared line, the error message explains how to increase concurrency: complete identity verification (KYC), [purchase a dedicated phone number](https://dashboard.heycall-e.com/account/numbers/buy), and select the activated number as the default outbound number. KYC alone does not increase the shared-line allowance. The default purchased-number allowance is 10 tasks; account-specific configuration may differ.
+
+`details.line_type` and `details.max_active_tasks` identify the denied allowance. Shared-line responses also include `details.upgrade.max_active_tasks`, `details.upgrade.kyc_required`, and `details.upgrade.purchase_url`. Use these values when presenting the upgrade action. Local/test API responses link to the TEST Dashboard. Purchased-number exhaustion asks the user to wait and does not include another purchase action.
+
 `llm_token_budget_exceeded` (HTTP 429) means the account's current token allowance is exhausted. Wait for the configured usage window to reset or contact your account administrator.
 
 `account_concurrency_unavailable` and `llm_token_budget_unavailable` (HTTP 503) mean the corresponding control could not be checked. Planning does not start when admission cannot be verified.

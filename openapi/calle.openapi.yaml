@@ -172,7 +172,7 @@ paths:
         "422":
           $ref: "#/components/responses/ErrorResponse"
         "429":
-          description: An account concurrency limit (`account_concurrency_exceeded`), or LLM token budget (`llm_token_budget_exceeded`) was reached. Account admission is checked before planning.
+          description: An account concurrency limit (`account_concurrency_exceeded`), or LLM token budget (`llm_token_budget_exceeded`) was reached. Account admission is checked before planning. Concurrency errors identify the effective line type and limit. Shared-line errors include KYC and dedicated-number purchase guidance in the message and `details.upgrade`; purchased-line errors ask the user to wait for capacity without another purchase suggestion. Configured limits override the default 1 / 10 values.
           content:
             application/json:
               schema:
@@ -180,8 +180,14 @@ paths:
               example:
                 error:
                   code: account_concurrency_exceeded
-                  message: This account has reached its task concurrency limit for the selected outbound line. Wait for a task to finish and retry.
-                  details: {}
+                  message: Your default shared line (such as us/all) is at its account concurrency limit of 1. This limit is shared across API, MCP, and Dashboard. Wait for an active task to finish, then retry. For up to 10 concurrent tasks, complete identity verification (KYC), purchase a dedicated phone number, and select the activated number as your default outbound number. [Verify identity and buy a number](https://dashboard.heycall-e.com/account/numbers/buy).
+                  details:
+                    line_type: platform_default
+                    max_active_tasks: 1
+                    upgrade:
+                      max_active_tasks: 10
+                      kyc_required: true
+                      purchase_url: https://dashboard.heycall-e.com/account/numbers/buy
         "500":
           $ref: "#/components/responses/ErrorResponse"
         "503":

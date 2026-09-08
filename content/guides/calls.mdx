@@ -364,7 +364,7 @@ resultSchema: {
 
 ## Idempotency
 
-A shared-platform-line task supports one phone number. Batch tasks require an eligible dedicated purchased number selected as the account default outbound number. The configured task allowance applies across API, MCP, and Dashboard: by default, each account has one shared-platform-line slot and ten purchased-number slots, including planning. A purchased number keeps its purchased-line allowance when selected as the account default. Waiting for user input or confirmation releases planning capacity.
+A shared-platform-line task supports one phone number. Batch tasks require an eligible dedicated purchased number selected as the account default outbound number. The configured task allowance applies across API, MCP, and Dashboard: by default, each account has one shared-platform-line slot and ten purchased-number slots, including planning. To use the purchased-number allowance, complete identity verification (KYC), [buy a dedicated number](https://dashboard.heycall-e.com/account/numbers/buy), and select the activated number as the account default outbound number. A purchased number keeps its purchased-line allowance when selected as the account default. Waiting for user input or confirmation releases planning capacity.
 
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
 
