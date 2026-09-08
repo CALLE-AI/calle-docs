@@ -364,6 +364,8 @@ resultSchema: {
 
 ## Idempotency
 
+A default-line task supports one phone number. Batch tasks require an eligible purchased number selected as the account default outbound number. The account normally permits one active default-line task, including planning. Waiting for user input or confirmation releases planning capacity.
+
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
 
 Use a stable workflow key, not a random UUID generated at each retry.
@@ -398,3 +400,5 @@ completed = client.calls.wait_for_result(
 
 events = client.calls.list_events(call["id"], limit=50)
 ```
+
+Persisted creation failures replay their original HTTP status and error. A duplicate still being created returns `409 idempotency_conflict` with `details.reason_code=creation_in_progress`.

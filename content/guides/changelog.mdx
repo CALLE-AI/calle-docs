@@ -5,6 +5,12 @@ description: Track CALL-E Developer API and SDK product updates.
 
 Product updates for the CALL-E Developer API and server SDKs.
 
+## September 8, 2026
+
+### Account task admission and creation retries
+
+Default-line task capacity is shared across API, MCP, and Dashboard. Account concurrency and token-budget denials have distinct 429 codes; unavailable controls return distinct 503 codes. Calls API idempotent retries preserve the original creation error.
+
 ## July 29, 2026
 
 ### Terminal webhook delivery

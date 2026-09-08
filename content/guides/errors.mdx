@@ -25,6 +25,10 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 - `unauthorized`
 - `forbidden`
 - `rate_limit_exceeded`
+- `account_concurrency_exceeded`
+- `account_concurrency_unavailable`
+- `llm_token_budget_exceeded`
+- `llm_token_budget_unavailable`
 - `insufficient_balance`
 - `unsupported_region`
 - `unsupported_language`
@@ -56,6 +60,12 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `rate_limit_exceeded` means the caller should retry after backoff.
 
+`account_concurrency_exceeded` (HTTP 429) means the account already has its allowed number of active default-line tasks. The same account shares capacity across API keys, MCP, and Dashboard. Wait for the active task to finish before starting a new attempt.
+
+`llm_token_budget_exceeded` (HTTP 429) means the account's current token allowance is exhausted. Wait for the configured usage window to reset or contact your account administrator.
+
+`account_concurrency_unavailable` and `llm_token_budget_unavailable` (HTTP 503) mean the corresponding control could not be checked. Planning does not start when admission cannot be verified.
+
 `insufficient_balance` means the project cannot start more calls until billing is resolved.
 
 `unsupported_region` or `unsupported_language` means CALL-E could not resolve a supported calling configuration for the request.
@@ -70,7 +80,9 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `recipient_result_schema_invalid` means the per-recipient `recipient_result_schema` is not a valid supported JSON Schema object.
 
-`idempotency_conflict` means the same idempotency key was reused with a different request body. Reuse keys only for the same external workflow operation.
+`idempotency_conflict` (HTTP 409) means the key was reused with different input or the original creation is still in progress. For the latter, `details.reason_code` is `creation_in_progress`; retry with the same key and input.
+
+For Calls API requests, a persisted creation failure replays the same HTTP status and error body. Once the underlying limit or service issue is resolved, use a new key for a new attempt. If creation succeeded but the call later failed, the original call remains the result of an exact replay.
 
 `not_found` means a call, Goal, or Goal Run does not exist or is not visible to the current API key. Owner mismatch and hidden Goals use the same code.
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CALL-E Developer API
-  version: 0.6.0
+  version: 0.7.0
   description: Developer API contract used by the CALL-E TypeScript and Python SDKs.
 servers:
   - url: https://api.heycall-e.com
@@ -15,7 +15,7 @@ paths:
       tags:
         - calls
       summary: Create Call
-      description: Create an asynchronous call. Use `result_schema` and `recipient_result_schema` to ask CALL-E to extract structured JSON results from terminal call evidence.
+      description: Create an asynchronous call. Use `result_schema` and `recipient_result_schema` to ask CALL-E to extract structured JSON results from terminal call evidence. The default outbound line supports one phone number per task. Batch calls require an eligible purchased number selected as the account default outbound number; otherwise creation returns `422 call_not_ready`. Each authenticated user can create up to 20 call plans in any rolling 24-hour period; additional requests return `429 rate_limit_exceeded` before planning begins.
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -26,18 +26,14 @@ paths:
               $ref: "#/components/schemas/CreateCallRequest"
             examples:
               batchLunch:
-                summary: Check Friday lunch availability for two recipients.
+                summary: Check Friday lunch availability for two recipients using an eligible purchased outbound number.
                 value:
                   task: Call each recipient and ask whether they can attend Friday lunch in San Francisco.
                   recipients:
                     - phones:
                         - "<RECIPIENT_1_E164_PHONE>"
-                      region: US
-                      locale: en-US
                     - phones:
                         - "<RECIPIENT_2_E164_PHONE>"
-                      region: US
-                      locale: en-US
                   result_schema:
                     type: object
                     required:
@@ -176,9 +172,27 @@ paths:
         "422":
           $ref: "#/components/responses/ErrorResponse"
         "429":
-          $ref: "#/components/responses/ErrorResponse"
+          description: A call-plan rate limit, account concurrency limit (`account_concurrency_exceeded`), or LLM token budget (`llm_token_budget_exceeded`) was reached. Account admission is checked before planning.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error:
+                  code: rate_limit_exceeded
+                  message: The 24-hour call plan limit has been reached.
+                  details:
+                    limit: 20
+                    window_hours: 24
+                    count: 20
         "500":
           $ref: "#/components/responses/ErrorResponse"
+        "503":
+          description: The provider or an account control is unavailable (`provider_unavailable`, `account_concurrency_unavailable`, or `llm_token_budget_unavailable`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /v1/calls/{call_id}:
     get:
       operationId: getCall
@@ -328,6 +342,8 @@ paths:
         `after` value; clients must not parse or construct cursor values. `title` and `description`
         help operators recognize each published workflow, but integrations should still store the
         intended `goal_id` at publish time and must not execute the first list item blindly.
+        Candidates whose published RunSpec is not execution-ready are omitted without preventing
+        later executable Goals from appearing in the page.
       parameters:
         - $ref: "#/components/parameters/GoalListLimit"
         - $ref: "#/components/parameters/GoalListAfter"
@@ -398,8 +414,6 @@ paths:
         "401":
           $ref: "#/components/responses/ErrorResponse"
         "403":
-          $ref: "#/components/responses/ErrorResponse"
-        "409":
           $ref: "#/components/responses/ErrorResponse"
         "429":
           $ref: "#/components/responses/ErrorResponse"
@@ -520,6 +534,7 @@ paths:
                     id: rgrp_delivery_ord_8472
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
+                    call_id: null
                     status: queued
                     run_spec:
                       id: rspec_delivery_v4
@@ -597,6 +612,7 @@ paths:
                     id: rgrp_delivery_ord_8472
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
+                    call_id: calling_call_delivery_ord_8472
                     status: completed
                     run_spec:
                       id: rspec_delivery_v4
@@ -614,6 +630,7 @@ paths:
                     id: rgrp_delivery_ord_8472
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
+                    call_id: null
                     status: failed
                     run_spec:
                       id: rspec_delivery_v4
@@ -739,7 +756,7 @@ components:
     IdempotencyKey:
       name: Idempotency-Key
       in: header
-      description: Stable caller-provided key used to make create-call retries safe. Reusing the same key with the same request returns the original call instead of creating a duplicate.
+      description: Stable caller-provided key used to make create-call retries safe. Reusing the same key with the same request returns the original call instead of creating a duplicate. A persisted creation failure replays its original HTTP status and error body; use a new key for a new attempt after resolving the error. While creation is still in progress, a duplicate returns `409 idempotency_conflict` with `details.reason_code=creation_in_progress`. A different request using the same key returns `409 idempotency_conflict`.
       required: false
       schema:
         type: string
@@ -998,6 +1015,7 @@ components:
         - id
         - goal_id
         - run_id
+        - call_id
         - run_spec
         - status
         - result
@@ -1021,6 +1039,17 @@ components:
           type: string
           description: Internal execution member exposed for correlation; do not use it in the Goal Run polling path.
           minLength: 1
+        call_id:
+          type:
+            - string
+            - "null"
+          description: |-
+            Calling call identifier selected for this Goal Run when that trusted fact is available,
+            or `null` before a call identifier is persisted or when no identifier is available. This
+            is different from the Goal Run `id` and nested `run_id`; it does not expose other provider
+            diagnostics and must not be treated as an independent answered-call boolean.
+          minLength: 1
+          maxLength: 255
         run_spec:
           description: Read-only identity and version of the exact RunSpec pinned by this Run.
           $ref: "#/components/schemas/GoalRunSpecSnapshot"
@@ -1124,7 +1153,7 @@ components:
           type:
             - array
             - "null"
-          description: Optional explicit recipients for this call task. Omit it when the task text already contains the phone targets CALL-E should use.
+          description: Optional explicit recipients for this call task. Omit it when the task text already contains the phone targets CALL-E should use. The default outbound line permits one phone number in total across all recipients. Multiple targets require an eligible purchased outbound number; this also applies to targets inferred from task text.
           minItems: 1
           items:
             $ref: "#/components/schemas/CallTaskRecipientRequest"
@@ -1596,6 +1625,10 @@ components:
             - unauthorized
             - forbidden
             - rate_limit_exceeded
+            - account_concurrency_exceeded
+            - account_concurrency_unavailable
+            - llm_token_budget_exceeded
+            - llm_token_budget_unavailable
             - insufficient_balance
             - unsupported_region
             - unsupported_language
