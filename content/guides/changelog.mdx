@@ -9,7 +9,7 @@ Product updates for the CALL-E Developer API and server SDKs.
 
 ### Account task admission and creation retries
 
-Default-line task capacity is shared across API, MCP, and Dashboard. Account concurrency and token-budget denials have distinct 429 codes; unavailable controls return distinct 503 codes. Calls API idempotent retries preserve the original creation error.
+Task capacity is shared across API, MCP, and Dashboard for each account and line class: shared platform lines default to 1 concurrent task, while eligible dedicated purchased numbers default to 10. Selecting a purchased number as the account default outbound number keeps its purchased-line allowance. Account concurrency and token-budget denials have distinct 429 codes; unavailable controls return distinct 503 codes. Calls API idempotent retries preserve the original creation error. Call creation follows configured account controls without a separate fixed daily creation cap.
 
 ## July 29, 2026
 

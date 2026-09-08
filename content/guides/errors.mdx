@@ -60,7 +60,7 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `rate_limit_exceeded` means the caller should retry after backoff.
 
-`account_concurrency_exceeded` (HTTP 429) means the account already has its allowed number of active default-line tasks. The same account shares capacity across API keys, MCP, and Dashboard. Wait for the active task to finish before starting a new attempt.
+`account_concurrency_exceeded` (HTTP 429) means the account has reached its configured task allowance for the selected line class. Shared platform lines default to one active task, and eligible dedicated purchased numbers default to ten. The same account shares each allowance across API keys, MCP, and Dashboard. Wait for a task to finish before starting a new attempt.
 
 `llm_token_budget_exceeded` (HTTP 429) means the account's current token allowance is exhausted. Wait for the configured usage window to reset or contact your account administrator.
 

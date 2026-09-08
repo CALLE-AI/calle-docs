@@ -15,7 +15,7 @@ paths:
       tags:
         - calls
       summary: Create Call
-      description: Create an asynchronous call. Use `result_schema` and `recipient_result_schema` to ask CALL-E to extract structured JSON results from terminal call evidence. The default outbound line supports one phone number per task. Batch calls require an eligible purchased number selected as the account default outbound number; otherwise creation returns `422 call_not_ready`. Each authenticated user can create up to 20 call plans in any rolling 24-hour period; additional requests return `429 rate_limit_exceeded` before planning begins.
+      description: Create an asynchronous call. Use `result_schema` and `recipient_result_schema` to ask CALL-E to extract structured JSON results from terminal call evidence. Shared platform outbound lines support one phone number per task. Batch calls require an eligible purchased number selected as the account default outbound number; otherwise creation returns `422 call_not_ready`. Account concurrency and LLM token usage are controlled by the effective account configuration. Task concurrency defaults to 1 on shared platform lines and 10 on eligible dedicated purchased numbers; selecting a purchased number as the account default does not make it a shared platform line.
       parameters:
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
@@ -172,19 +172,16 @@ paths:
         "422":
           $ref: "#/components/responses/ErrorResponse"
         "429":
-          description: A call-plan rate limit, account concurrency limit (`account_concurrency_exceeded`), or LLM token budget (`llm_token_budget_exceeded`) was reached. Account admission is checked before planning.
+          description: An account concurrency limit (`account_concurrency_exceeded`), or LLM token budget (`llm_token_budget_exceeded`) was reached. Account admission is checked before planning.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
               example:
                 error:
-                  code: rate_limit_exceeded
-                  message: The 24-hour call plan limit has been reached.
-                  details:
-                    limit: 20
-                    window_hours: 24
-                    count: 20
+                  code: account_concurrency_exceeded
+                  message: This account has reached its task concurrency limit for the selected outbound line. Wait for a task to finish and retry.
+                  details: {}
         "500":
           $ref: "#/components/responses/ErrorResponse"
         "503":
