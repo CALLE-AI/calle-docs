@@ -146,11 +146,11 @@ const config = {
         { type: "doc", file: "quickstart", label: "Quickstart" },
         { type: "doc", file: "authentication", label: "Authentication" },
         { type: "doc", file: "calls", label: "Calls" },
-        { type: "doc", file: "regions", label: "Regions & languages" },
         { type: "doc", file: "goal-runs", label: "Goal Runs" },
         { type: "doc", file: "webhooks", label: "Webhooks" },
         { type: "doc", file: "errors", label: "Errors" },
         { type: "doc", file: "sdks", label: "SDKs" },
+        { type: "doc", file: "regions", label: "Regions & languages" },
       ],
     },
     {

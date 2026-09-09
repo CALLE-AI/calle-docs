@@ -10,7 +10,11 @@ description: Supported destinations, languages, and line regions.
 
 import { RegionsTable } from "../../src/components/RegionsTable.js";
 
-Temporary regional restrictions may affect availability for listed destinations.
+:::warning{title="Temporary regional restrictions"}
+
+In response to ongoing cyberattacks, we have implemented additional risk controls. **Some destinations listed below may be temporarily restricted.**
+
+:::
 
 [Source coverage table](${REGIONS_SOURCE_URL})
 
