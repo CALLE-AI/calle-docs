@@ -3,6 +3,25 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## September 7, 2026
+
+**Clearer call failure reporting:** Improved call failure details and corrected
+cases where platform or connection failures were reported as recipient declines
+([#206](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/206),
+[#82](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/82),
+[#111](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/111),
+[#195](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/195)).
+
+**Developer API calls in Call Records:** Calls created through the Developer API
+now appear in Dashboard Call Records and can be found using their provider call ID
+([#151](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/151)).
+
+**KYC for purchased numbers:** Identity verification (KYC) is now required before
+purchased numbers can make outbound calls, strengthening security and compliance.
+The shared number pool is intended only for development and testing; for
+production, use your own purchased numbers with completed KYC or connect through
+a SIP integration.
+
 ## September 3, 2026
 
 **Server SDK 0.7.0:** The stable TypeScript and Python packages now include
