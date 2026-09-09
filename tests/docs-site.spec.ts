@@ -32,6 +32,12 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   await expect(
     page.getByRole("link", { name: "API Reference", exact: true }).first(),
   ).toHaveAttribute("href", "/api-reference");
+  const coverageLink = page.getByRole("link", { name: "Regions & languages", exact: true });
+  await expect(coverageLink).toBeVisible();
+  await expect(coverageLink).toHaveAttribute(
+    "href",
+    "https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages",
+  );
   await expect(
     page.locator("pre").filter({ hasText: "pnpm add @call-e/calle" }).first(),
   ).toBeVisible();

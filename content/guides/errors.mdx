@@ -84,6 +84,10 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `unsupported_region` or `unsupported_language` means CALL-E could not resolve a supported calling configuration for the request.
 
+Check the [supported regions and languages](https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages)
+for the destination and locale you requested. Correct phone formatting alone
+does not resolve a coverage error.
+
 `no_recipients` means CALL-E could not infer any recipients from the task and no explicit `recipients` were provided.
 
 `invalid_recipient` means a recipient entry is malformed. Check that each explicit recipient includes a non-empty `phones` array.
@@ -95,6 +99,9 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 `recipient_result_schema_invalid` means the per-recipient `recipient_result_schema` is not a valid supported JSON Schema object.
 
 `idempotency_conflict` means the same idempotency key was reused with a different request body. Reuse keys only for the same external workflow operation.
+
+For a lost Calls API create response or an application restart, follow
+[Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response).
 
 `not_found` means a call, Goal, or Goal Run does not exist or is not visible to the current API key. Owner mismatch and hidden Goals use the same code.
 

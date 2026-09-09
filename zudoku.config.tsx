@@ -143,6 +143,11 @@ const config = {
       collapsible: false,
       items: [
         { type: "doc", file: "quickstart", label: "Quickstart" },
+        {
+          type: "link",
+          label: "Regions & languages",
+          to: "https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages",
+        },
         { type: "doc", file: "authentication", label: "Authentication" },
         { type: "doc", file: "calls", label: "Calls" },
         { type: "doc", file: "goal-runs", label: "Goal Runs" },
