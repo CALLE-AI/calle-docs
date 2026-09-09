@@ -16,6 +16,10 @@ completion.
 
 `recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers.
 
+Check the [supported regions and languages](/regions)
+before choosing a recipient's `region` and `locale`. A valid E.164 number does
+not establish that its destination is supported.
+
 Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
 
 `result_schema` is a JSON Schema object for the whole call task. CALL-E validates the structured result against it before returning the terminal call task state. Object schemas are strict by default, so fields not declared in `properties` are rejected.
@@ -89,6 +93,10 @@ it identifies one attempt and may be `null`.
 
 Event-list items expose the CallTask ID as `call_id`. Terminal webhooks expose
 it as `data.id`; the webhook's top-level `id` identifies the event.
+
+Persist the returned Call ID with your workflow record. The Calls API does not
+provide a list endpoint: `GET /v1/calls` cannot recover IDs you did not save.
+See [Recover after a restart or lost response](#recover-after-a-restart-or-lost-response).
 
 TypeScript:
 
@@ -399,6 +407,24 @@ resultSchema: {
 - Add an evidence or summary field when the result triggers workflow automation.
 - Do not rely on `description` for validation. Use schema constraints for enforceable behavior.
 
+## Call status
+
+The call task's `status` has exactly five values:
+
+| Status | Terminal? | Meaning |
+| --- | --- | --- |
+| `queued` | No | The call task is queued. |
+| `in_progress` | No | The call task is running, including post-call finalization. |
+| `completed` | Yes | The call task completed. Check its results for the business outcome. |
+| `failed` | Yes | The call task failed. Keep the failure fields as diagnostic context. |
+| `canceled` | Yes | The call task was canceled. |
+
+`no_answer`, `busy`, and `voicemail` are not Calls API lifecycle statuses.
+Recipient and attempt objects have their own status enums; do not substitute
+them for the top-level call status. A `completed` state does not establish
+that a person answered or that your business objective succeeded. See
+[Task completion](#task-completion) for interpreting the business result.
+
 ## Parallel and quorum-based dispatch
 
 The Calls API does not expose an operation for clients to cancel a call after
@@ -419,6 +445,28 @@ is met.
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
 
 Use a stable workflow key, not a random UUID generated at each retry.
+
+### Recover after a restart or lost response
+
+Save the idempotency key and original request with your workflow record before
+sending `POST /v1/calls`. Save the returned Call ID as soon as the response
+arrives. Keep that record across application restarts.
+
+| What you saved | Recovery action |
+| --- | --- |
+| Call ID | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
+| Original request and idempotency key, but no Call ID | Repeat the create request with the same key and unchanged body. The documented idempotency contract returns the original call instead of creating a duplicate. Save its ID. |
+| Neither the Call ID nor the original request and key | Reconcile the original operation before submitting a replacement. A lost response does not prove that the first request was rejected. |
+
+For an idempotent replay, preserve the entire request, including `metadata`,
+schemas, and `webhook_url`. Rebuilding it with a new timestamp or other changed
+value can produce `idempotency_conflict`. Check the saved request if this occurs;
+do not generate a new key just to bypass the conflict.
+
+A retry that recovers an existing operation and an intentionally new call are
+different actions. Use a new key only for an intentionally new operation after
+resolving the prior one. Keep local workflow identifiers in `metadata` for
+correlation; they do not replace the `Idempotency-Key` header.
 
 ## Task completion
 

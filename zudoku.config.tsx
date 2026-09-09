@@ -12,6 +12,7 @@ const legacyHashRedirect = `
     "/quickstart",
     "/authentication",
     "/calls",
+    "/regions",
     "/goal-runs",
     "/webhooks",
     "/errors",
@@ -149,6 +150,7 @@ const config = {
         { type: "doc", file: "webhooks", label: "Webhooks" },
         { type: "doc", file: "errors", label: "Errors" },
         { type: "doc", file: "sdks", label: "SDKs" },
+        { type: "doc", file: "regions", label: "Regions & languages" },
       ],
     },
     {

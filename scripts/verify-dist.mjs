@@ -10,6 +10,7 @@ const guides = [
   { slug: "quickstart", title: "Quickstart" },
   { slug: "authentication", title: "Authentication" },
   { slug: "calls", title: "Calls" },
+  { slug: "regions", title: "Regions & languages" },
   { slug: "goal-runs", title: "Goal Runs" },
   { slug: "webhooks", title: "Webhooks" },
   { slug: "errors", title: "Errors" },

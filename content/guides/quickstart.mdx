@@ -8,7 +8,7 @@ Create a CALL-E call task, wait for the terminal result, and read the structured
 This quickstart uses the one-shot Calls API. If your application repeats a workflow that has already been authored and published in CALL-E, start with [Goal Runs](/goal-runs) instead.
 
 Outbound calling is not available in every country or region. Check the current
-[supported regions and languages](https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages)
+[supported regions and languages](/regions)
 before building an integration. A phone number can be valid E.164 and still be
 rejected with `unsupported_region`; see [Errors](/errors) for recovery guidance.
 
@@ -100,7 +100,8 @@ call = client.calls.create_and_wait(
 
 The terminal call task includes a stable status, a schema-valid structured result, and task-level outcome fields from the post-call summary. When CALL-E cannot produce a schema-valid result from the evidence, `structured_result` is `null`.
 
-See [Task completion](/calls#task-completion) for how to interpret
+See [Call status](/calls#call-status) for lifecycle and terminal states, and
+[Task completion](/calls#task-completion) for how to interpret
 `task_completed` (`taskCompleted` in TypeScript) and `completion_confidence`.
 
 TypeScript:
@@ -146,3 +147,7 @@ Example output:
   }
 }
 ```
+
+Before adding automatic retries, follow
+[Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response)
+to persist the original request, idempotency key, and Call ID.
