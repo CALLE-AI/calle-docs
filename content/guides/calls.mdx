@@ -475,12 +475,45 @@ a clear end state for the user. `completion_confidence` is confidence in that
 judgment, and `evidence` supports it. These fields do not require a custom
 result schema.
 
+Read execution, task completion, and the business answer separately:
+
+| Field | Question it answers | How to use it |
+| --- | --- | --- |
+| `status` | Has the call task finished executing? | Use the [lifecycle states](#call-status) to decide whether to keep waiting. `completed` alone does not establish task or business success. |
+| `task_completed` | Did CALL-E judge that the requested task reached a clear end state? | Read it with `completion_confidence` and `evidence`. Confidence applies to this judgment, not to the likelihood of a favorable business answer. |
+| `structured_result` | What business answer was extracted? | Check the fields defined by your result schema and the supporting transcript before taking a business action. |
+
 A `true` value or high confidence does not establish that a person answered
 or that your business objective was met. Check the business answer in
 `structured_result` against the call transcript. Use the
 [custom answered_by example](#classify-the-final-endpoint) to extract an
 endpoint classification alongside your business result. Keep `unknown`
 answers unresolved.
+
+### Example: an answered question with an unfavorable result
+
+Suppose the task is: "Ask whether a table for two is available at 7 p.m.
+Do not make a reservation." The restaurant says no tables are available.
+With a caller-defined `table_available` result field, an illustrative terminal
+response excerpt is:
+
+```json
+{
+  "status": "completed",
+  "task_completed": true,
+  "evidence": ["The restaurant confirmed that no table for two is available at 7 p.m."],
+  "structured_result": {
+    "table_available": "no"
+  }
+}
+```
+
+The availability question reached a clear answer, even though the answer was
+unfavorable. The application should report "No table available", not
+"Reservation successful". If the requested task were to make a reservation,
+the application would need evidence of a confirmed booking; this example does
+not establish that outcome. A `null` result or an `unknown` answer must remain
+unresolved rather than becoming a yes or no from `status` alone.
 
 ## Polling and events
 
