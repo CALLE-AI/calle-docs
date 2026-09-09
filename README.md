@@ -54,6 +54,16 @@ The build copies `openapi/calle.openapi.yaml` to
 `public/openapi/calle.openapi.yaml` and asks Zudoku to emit the static site to
 `dist/`.
 
+Region and language coverage is maintained only in the
+[call-e-integrations README](https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages).
+`pnpm run dev` and `pnpm run build` fetch that section and generate
+`content/guides/regions.mdx`; do not edit the generated file. Fetch or format
+errors stop the build rather than publish an empty table. The page also refreshes
+from the source when opened, so source-table changes reach readers without a docs
+release. If that request fails, the page retains its dated build snapshot.
+Search, Markdown exports, and `llms-full.txt` contain the snapshot from the latest
+docs build.
+
 Each guide is published in both human- and agent-readable forms:
 
 - `/quickstart` is a prerendered HTML page.

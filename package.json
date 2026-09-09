@@ -15,8 +15,9 @@
   },
   "scripts": {
     "sync:openapi": "node scripts/sync-openapi.mjs",
-    "dev": "pnpm run sync:openapi && zudoku dev",
-    "build": "pnpm run sync:openapi && zudoku build && node scripts/augment-llms.mjs",
+    "sync:regions": "node scripts/sync-regions.mjs",
+    "dev": "pnpm run sync:openapi && pnpm run sync:regions && zudoku dev",
+    "build": "pnpm run sync:openapi && pnpm run sync:regions && zudoku build && node scripts/augment-llms.mjs",
     "verify:dist": "node scripts/verify-dist.mjs",
     "validate": "pnpm run typecheck && pnpm run build && pnpm run verify:dist && pnpm run test:deploy && pnpm run test",
     "preview": "zudoku preview",

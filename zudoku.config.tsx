@@ -12,6 +12,7 @@ const legacyHashRedirect = `
     "/quickstart",
     "/authentication",
     "/calls",
+    "/regions",
     "/goal-runs",
     "/webhooks",
     "/errors",
@@ -143,13 +144,9 @@ const config = {
       collapsible: false,
       items: [
         { type: "doc", file: "quickstart", label: "Quickstart" },
-        {
-          type: "link",
-          label: "Regions & languages",
-          to: "https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages",
-        },
         { type: "doc", file: "authentication", label: "Authentication" },
         { type: "doc", file: "calls", label: "Calls" },
+        { type: "doc", file: "regions", label: "Regions & languages" },
         { type: "doc", file: "goal-runs", label: "Goal Runs" },
         { type: "doc", file: "webhooks", label: "Webhooks" },
         { type: "doc", file: "errors", label: "Errors" },
