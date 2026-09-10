@@ -214,6 +214,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/calls"],
       a[href="/regions"],
       a[href="/goal-runs"],
+      a[href="/goal-contacts"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"]
@@ -238,6 +239,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/calls"],
       a[href="/regions"],
       a[href="/goal-runs"],
+      a[href="/goal-contacts"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"]
@@ -255,6 +257,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/calls"],
       a[href="/regions"],
       a[href="/goal-runs"],
+      a[href="/goal-contacts"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"]
@@ -272,6 +275,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
       a[href="/calls"],
       a[href="/regions"],
       a[href="/goal-runs"],
+      a[href="/goal-contacts"],
       a[href="/webhooks"],
       a[href="/errors"],
       a[href="/sdks"]
@@ -304,6 +308,11 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
   nav[class*="overflow-y-auto"][class*="shrink-0"]
     a[href="/goal-runs"]::after {
     content: "Run published phone workflows.";
+  }
+
+  nav[class*="overflow-y-auto"][class*="shrink-0"]
+    a[href="/goal-contacts"]::after {
+    content: "Append contacts to ongoing Goals.";
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/webhooks"]::after {

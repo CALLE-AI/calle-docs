@@ -7,6 +7,7 @@ const docsPages = [
   { path: "/calls", heading: "Calls" },
   { path: "/regions", heading: "Regions & languages" },
   { path: "/goal-runs", heading: "Goal Runs" },
+  { path: "/goal-contacts", heading: "Goal Contacts" },
   { path: "/webhooks", heading: "Webhooks" },
   { path: "/errors", heading: "Errors" },
   { path: "/sdks", heading: "SDKs" },
@@ -659,6 +660,21 @@ test("documents the published Goal Run flow on a clean route", async ({
   ).toBeVisible();
 });
 
+test("renders the contact append HTTP example", async ({ page }) => {
+  await page.goto("/goal-contacts");
+  await expect(
+    page.getByRole("heading", { name: "Goal Contacts", level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.locator("pre").filter({
+      hasText: /POST[\s\S]*\/v1\/goals\/\$\{CALLE_GOAL_ID\}\/subjects/,
+    }).first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('a[href="/api-reference/goals"]').first(),
+  ).toBeVisible();
+});
+
 test("renders a read-only OpenAPI reference", async ({ page }) => {
   await page.goto("/api-reference");
   await expect(
@@ -690,6 +706,7 @@ test("renders a read-only OpenAPI reference", async ({ page }) => {
   await page.goto("/api-reference/goals");
   await expect(page.locator("h2#list-goals")).toBeVisible();
   await expect(page.locator("h2#get-goal")).toBeVisible();
+  await expect(page.locator("h2#append-subjects-to-a-goal")).toBeVisible();
 
   await page.goto("/api-reference/goal-runs");
   await expect(page.locator("h2#create-goal-run")).toBeVisible();

@@ -56,6 +56,10 @@ client = CalleClient(
 )
 ```
 
+## Goal ownership
+
+For [Goal Contacts](/goal-contacts), use an API key belonging to the same owner as the outbound Goal created in CALL-E Web. The server derives ownership from the key; do not send an owner id. A missing Goal and a Goal owned by someone else both return `404`.
+
 ## Environments
 
 Use an explicit base URL in each environment so staging jobs do not accidentally send live calls.

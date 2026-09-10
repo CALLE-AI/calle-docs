@@ -12,6 +12,7 @@ const guides = [
   { slug: "calls", title: "Calls" },
   { slug: "regions", title: "Regions & languages" },
   { slug: "goal-runs", title: "Goal Runs" },
+  { slug: "goal-contacts", title: "Goal Contacts" },
   { slug: "webhooks", title: "Webhooks" },
   { slug: "errors", title: "Errors" },
   { slug: "sdks", title: "SDKs" },

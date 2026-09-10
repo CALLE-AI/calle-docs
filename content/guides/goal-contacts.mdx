@@ -1,0 +1,92 @@
+---
+title: Goal Contacts
+description: Append contacts from your server to an outbound Goal created in CALL-E Web.
+---
+
+Send contacts from your application to an outbound Goal created in [CALL-E Web](https://dashboard.heycall-e.com/). Use this workflow when new contacts should join the same ongoing Goal and its reviewed call strategy.
+
+## Before you start
+
+Create the outbound Goal in CALL-E Web and keep its `goal_id` in your server-side configuration. Use a [Developer API key](/authentication) belonging to the same owner. You do not need to publish a Goal Run interface before enrolling contacts.
+
+`GET /v1/goals` lists published, executable Goals. It is not a directory of every Goal that accepts contacts: draft and paused Goals are absent from that listing.
+
+Contact enrollment and call authorization are separate. Adding contacts does not confirm or expand a call strategy, grant Voice authorization, or resume a paused Goal.
+
+| Goal state | Contact enrollment |
+| --- | --- |
+| `draft` | Accepted; calls still require confirmation. |
+| `active` | Accepted; progression remains subject to the existing strategy, authorization, and execution rules. |
+| `paused` | Accepted; the Goal stays paused. |
+| `retired` | New enrollment requests are rejected. |
+
+## Append a batch
+
+Use `POST /v1/goals/{goal_id}/subjects` from trusted server code. Each request accepts an `items` array of 1–5,000 contacts and requires an `Idempotency-Key`. Split larger integrations into separate batches with a stable key for each batch.
+
+The API accepts JSON items only. Do not send an uploaded file or a workspace `document_ref`.
+
+Send phone numbers with a country code; CALL-E normalizes them before identifying contacts within the owner account. `display_name`, `email`, and `timezone` are optional profile fields. Deduplicate normalized phone numbers within each batch before sending it; duplicates within one batch are rejected.
+
+Replace the phone placeholder with a number you are authorized to contact:
+
+```bash
+curl -X POST "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}/subjects" \
+  -H "Authorization: Bearer $CALLE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: crm-contact-batch-2026-09-10-001" \
+  -d '{
+    "items": [
+      {
+        "contact_profile": {
+          "phone_number": "<E164_PHONE>",
+          "display_name": "Taylor"
+        },
+        "membership": "active"
+      }
+    ]
+  }'
+```
+
+A successful request returns `200` with a checkpoint and counts. For example, adding one new contact to an empty Goal returns:
+
+```json
+{
+  "checkpoint_ref": "checkpoint_example",
+  "goal_id": "goal_example",
+  "item_count": 1,
+  "created_subject_count": 1,
+  "created_goal_subject_count": 1,
+  "updated_goal_subject_count": 0,
+  "withdrawn_goal_subject_count": 0,
+  "active_subject_count_after": 1,
+  "committed_at": "2026-09-10T00:00:00Z"
+}
+```
+
+The response does not echo contact details. Keep `checkpoint_ref` with your batch record. `created_subject_count` counts new contacts in the owner account; `created_goal_subject_count` counts contacts newly enrolled in this Goal.
+
+See the [Goals API Reference](/api-reference/goals) for the complete request and response schemas.
+
+## Retry safely
+
+Reuse the same idempotency key and body when retrying the same batch. The response replays the original checkpoint and counts; those counts describe the original import, not additional work performed by the retry. Reusing a key with a different body returns `409`.
+
+Each batch appends to the Goal. A contact absent from a later batch remains unchanged. To withdraw a contact explicitly, submit its phone number with `membership: "withdrawn"`; omitting `membership` defaults to `"active"`. Phone identity determines whether a contact is new or already present; an existing contact's supplied profile can be updated without creating a second contact.
+
+Invalid rows reject the batch without committing part of it. Correct the input before submitting a new operation.
+
+## Request failures
+
+- `400`: correct invalid input, such as a missing key, an empty or oversized batch, an unsupported field, or duplicate phone identities within the batch.
+- `401`: check the API key.
+- `404`: verify the Goal id and that the API key belongs to the same owner. Missing and other-owner Goals use the same response.
+- `409`: resolve an idempotency conflict or a Goal state that cannot accept the request. Retired and inbound Goals cannot receive new contact batches; `capacity_blocked` means the batch would exceed available contact capacity.
+
+See [Errors](/errors) for the stable error envelope.
+
+## Continue in CALL-E Web
+
+Review the contact list and call strategy in CALL-E Web. Confirm the strategy there when you are ready to authorize progression, or resume a paused Goal through its existing controls. An enrollment response does not mean a call has been placed.
+
+For one application-requested call using a published interface, see [Goal Runs](/goal-runs). For new task instructions with each request, see [Calls](/calls).

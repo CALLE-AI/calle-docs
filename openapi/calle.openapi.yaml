@@ -450,6 +450,69 @@ paths:
           $ref: "#/components/responses/ErrorResponse"
         "503":
           $ref: "#/components/responses/ErrorResponse"
+  /v1/goals/{goal_id}/subjects:
+    post:
+      operationId: enrollGoalSubjects
+      tags:
+      - goals
+      summary: Append subjects to a Goal
+      description: |-
+        Append or update contacts in an existing outbound Goal owned by the API key account. A
+        Goal created in CALL-E Web does not need to be published. Draft, active, and paused
+        Goals accept batches; retired and inbound Goals reject them. Missing and other-owner
+        Goals both return 404.
+
+        Each batch contains 1–5,000 items. Phone numbers must include a country code and are
+        normalized by CALL-E; normalized phone numbers identify contacts within the owner
+        account. Duplicate phone numbers within one batch are rejected. Omitted contacts are
+        unchanged; membership withdrawn explicitly withdraws a contact. Invalid batches commit
+        no contacts.
+
+        A required Idempotency-Key identifies the batch within this Goal. Replaying the same
+        key and content returns the same checkpoint; changed content returns 409
+        idempotency_conflict. The response contains only a checkpoint and counts, never
+        contact details. Appending contacts does not confirm a Strategy, grant authorization,
+        resume a paused Goal, or create a call by itself.
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Stable key for this batch. Reuse only with the same content when retrying.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollGoalSubjectsRequest'
+            example:
+              items:
+              - contact_profile:
+                  phone_number: '<E164_PHONE>'
+                  display_name: Ada
+      responses:
+        '200':
+          description: Committed batch checkpoint, including exact replays.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollGoalSubjectsResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/ErrorResponse'
   /v1/goals/{goal_id}/runs:
     post:
       operationId: createGoalRun
@@ -842,6 +905,118 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
+    EnrollGoalSubjectItem:
+      additionalProperties: false
+      properties:
+        contact_profile:
+          $ref: '#/components/schemas/GoalSubjectContactProfile'
+        membership:
+          default: active
+          enum:
+          - active
+          - withdrawn
+          title: Membership
+          type: string
+      required:
+      - contact_profile
+      title: EnrollGoalSubjectItem
+      type: object
+    GoalSubjectContactProfile:
+      additionalProperties: false
+      properties:
+        display_name:
+          anyOf:
+          - maxLength: 255
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Display Name
+        phone_number:
+          maxLength: 64
+          minLength: 1
+          title: Phone Number
+          type: string
+          description: Phone number including country code; CALL-E normalizes it before identifying the subject.
+        email:
+          anyOf:
+          - maxLength: 320
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Email
+        timezone:
+          anyOf:
+          - maxLength: 255
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Timezone
+      required:
+      - phone_number
+      title: GoalSubjectContactProfile
+      type: object
+    EnrollGoalSubjectsRequest:
+      additionalProperties: false
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/EnrollGoalSubjectItem'
+          maxItems: 5000
+          minItems: 1
+          title: Items
+          type: array
+      required:
+      - items
+      title: EnrollGoalSubjectsRequest
+      type: object
+    EnrollGoalSubjectsResponse:
+      additionalProperties: false
+      properties:
+        checkpoint_ref:
+          title: Checkpoint Ref
+          type: string
+        goal_id:
+          title: Goal Id
+          type: string
+        item_count:
+          title: Item Count
+          type: integer
+        created_subject_count:
+          title: Created Subject Count
+          type: integer
+        created_goal_subject_count:
+          title: Created Goal Subject Count
+          type: integer
+        updated_goal_subject_count:
+          title: Updated Goal Subject Count
+          type: integer
+        withdrawn_goal_subject_count:
+          title: Withdrawn Goal Subject Count
+          type: integer
+        active_subject_count_after:
+          title: Active Subject Count After
+          type: integer
+        committed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Committed At
+      required:
+      - checkpoint_ref
+      - goal_id
+      - item_count
+      - created_subject_count
+      - created_goal_subject_count
+      - updated_goal_subject_count
+      - withdrawn_goal_subject_count
+      - active_subject_count_after
+      - committed_at
+      title: EnrollGoalSubjectsResponse
+      type: object
     GoalList:
       type: object
       description: |-
@@ -1610,6 +1785,7 @@ components:
           type: string
           enum:
             - invalid_request
+            - capacity_blocked
             - unauthorized
             - forbidden
             - rate_limit_exceeded

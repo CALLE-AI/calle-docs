@@ -147,6 +147,7 @@ const config = {
         { type: "doc", file: "authentication", label: "Authentication" },
         { type: "doc", file: "calls", label: "Calls" },
         { type: "doc", file: "goal-runs", label: "Goal Runs" },
+        { type: "doc", file: "goal-contacts", label: "Goal Contacts" },
         { type: "doc", file: "webhooks", label: "Webhooks" },
         { type: "doc", file: "errors", label: "Errors" },
         { type: "doc", file: "sdks", label: "SDKs" },

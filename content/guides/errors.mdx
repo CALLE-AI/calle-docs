@@ -37,6 +37,7 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 - `result_schema_invalid`
 - `recipient_result_schema_invalid`
 - `idempotency_conflict`
+- `capacity_blocked`
 - `goal_not_published`
 - `goal_not_executable`
 - `goal_not_ready`
@@ -105,7 +106,7 @@ For a lost Calls API create response or an application restart, follow
 
 `not_found` means a call, Goal, or Goal Run does not exist or is not visible to the current API key. Owner mismatch and hidden Goals use the same code.
 
-`goal_not_published` means an active Goal has no published RunSpec. `goal_not_executable` means the Goal is draft, paused, or retired. Existing Goal Run ids remain readable after a lifecycle change.
+For Goal Run creation, `goal_not_published` means an active Goal has no published RunSpec, and `goal_not_executable` means the Goal is draft, paused, or retired. Existing Goal Run ids remain readable after a lifecycle change. [Contact enrollment](/goal-contacts) accepts draft and paused outbound Goals without publishing or resuming them.
 
 `goal_not_ready` means the exact published RunSpec or provider contract does not currently pass the execution gate.
 

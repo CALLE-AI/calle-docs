@@ -3,6 +3,10 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## Unreleased
+
+**Append Goal contacts through the Developer API:** `POST /v1/goals/{goal_id}/subjects` accepts batches of contacts for an outbound Goal created in CALL-E Web by the same owner. Requests use an API key and a stable `Idempotency-Key`. Enrollment preserves existing contacts and does not grant call authorization or resume a paused Goal. See [Goal Contacts](/goal-contacts).
+
 ## September 7, 2026
 
 **Clearer call failure reporting:** Improved call failure details and corrected
