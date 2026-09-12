@@ -3,6 +3,25 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## September 10, 2026
+
+**Windows-compatible agent commands:** Updated agent integrations now run correctly
+in PowerShell and Command Prompt, fixing failures caused by Unix-only command
+syntax ([#111](https://github.com/CALLE-AI/call-e-integrations/issues/111)).
+
+**Reliable CLI selection:** Agent integrations now verify and launch the correct
+CALL-E CLI, preventing command conflicts when the Developer API SDK is also
+installed ([#109](https://github.com/CALLE-AI/call-e-integrations/issues/109)).
+
+**Multiline call goals on Windows:** The updated agent launcher preserves multiline
+goals, Unicode text, and quoted arguments without shell parsing errors
+([#159](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/159)).
+
+**Structured MCP results:** Call planning, execution, and status tools now return
+structured results directly, so MCP integrations can access their fields without
+parsing JSON from text blocks
+([#158](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/158)).
+
 ## September 7, 2026
 
 **Clearer call failure reporting:** Improved call failure details and corrected
