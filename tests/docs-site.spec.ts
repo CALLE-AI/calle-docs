@@ -51,7 +51,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
 
 const regionSection = `Use these country codes with recipient settings.
 
-| Country | Country Code | Calling Code | Languages | Line Region |
+| Country | Country Code | Calling Code | Languages | Default Line |
 | --- | --- | --- | --- | --- |
 | Updated test destination | ZZ | +999 | Test language | International |
 
@@ -95,6 +95,7 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme,
   }));
   await page.goto("/regions");
+  await expect(page.getByRole("columnheader", { name: "Default Line" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Updated test destination" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
   await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
@@ -112,7 +113,7 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
 
 test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const tableHeader = "| Country | Country Code | Calling Code | Languages | Line Region |";
+  const tableHeader = "| Country | Country Code | Calling Code | Languages | Default Line |";
   const html = await request.get("/regions");
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");
