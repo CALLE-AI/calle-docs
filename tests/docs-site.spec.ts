@@ -75,6 +75,8 @@ Unrelated examples.`;
 test("extracts only valid region coverage from the source README", () => {
   expect(extractRegions(regionsReadme)).toBe(regionSection);
   expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
+  expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
+    .toBe(regionSection.replace("Default Line", "Line Region"));
   for (const invalid of [
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
     regionsReadme.replace("| Languages |", "| Renamed column |"),
@@ -100,6 +102,13 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
   await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
   await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
 
+  await page.route(REGIONS_README_URL, (route) => route.fulfill({
+    contentType: "text/plain",
+    body: regionsReadme.replace("Default Line", "Line Region"),
+  }));
+  await page.reload();
+  await expect(page.getByRole("columnheader", { name: "Line Region" })).toBeVisible();
+
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -113,13 +122,13 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
 
 test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const tableHeader = "| Country | Country Code | Calling Code | Languages | Default Line |";
+  const tableHeader = /\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|/;
   const html = await request.get("/regions");
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");
-  expect(await markdown.text()).toContain(tableHeader);
+  expect(await markdown.text()).toMatch(tableHeader);
   const llmsFull = await request.get("/llms-full.txt");
-  expect(await llmsFull.text()).toContain(tableHeader);
+  expect(await llmsFull.text()).toMatch(tableHeader);
 
   for (const response of [
     { status: 503, body: "Unavailable" },
