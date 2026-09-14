@@ -72,6 +72,29 @@ automatically retry based only on an undocumented failure string.
 
 ## Recovery guidance
 
+### Choose the next action
+
+First distinguish an HTTP request failure from an accepted call's result.
+The [complete Python example](/quickstart#run-a-complete-example) saves both
+the original request and the returned Call ID for that purpose.
+
+| Observation | What to check and do next |
+| --- | --- |
+| `invalid_request`, recipient, phone, or schema validation error | Correct the rejected input using the field-specific guidance below. Preserve the error code and details; do not retry unchanged invalid input. |
+| `unauthorized` or `forbidden` | Check the key and its access to the resource. Keep credentials out of logs and support posts. |
+| `insufficient_balance` | Resolve the account's billing condition before attempting more calls. A provider failure alone does not prove the balance is exhausted. |
+| `rate_limit_exceeded` | Back off. For a retry of the same operation, retain the original request and idempotency key. Do not replace an uncertain call with a new key. |
+| `provider_unavailable` on a Goal Run create request | This code applies before durable Goal Run acceptance. Preserve the request and error details; a later accepted Goal Run failure belongs to that run's `error` field. |
+| Timeout, malformed response, or server error without a saved Call ID | The response alone may not establish acceptance. Follow [Calls recovery](/calls#recover-after-a-restart-or-lost-response); retain the original request and key. |
+| A saved Call ID, including a polling error or terminal failure | Retrieve that call and inspect its status, failure context, and available transcript. Keep the ID for support. Do not issue another create request to discover its outcome. |
+
+The `provider_unavailable` Goal Run contract does not establish the cause of an
+arbitrary Calls API `503`. For support, retain the SDK version, UTC timestamp,
+HTTP status, error code/details, and existing Call ID if available. Redact
+credentials, phone numbers, and private transcript content before sharing.
+
+### Code-specific guidance
+
 `unauthorized` means the API key is missing or invalid. Check the `Authorization: Bearer` header.
 
 `forbidden` means the key is valid but not allowed to use this resource or capability.
