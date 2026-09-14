@@ -51,7 +51,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
 
 const regionSection = `Use these country codes with recipient settings.
 
-| Country | Country Code | Calling Code | Languages | Line Region |
+| Country | Country Code | Calling Code | Languages | Default Line |
 | --- | --- | --- | --- | --- |
 | Updated test destination | ZZ | +999 | Test language | International |
 
@@ -74,6 +74,8 @@ Unrelated examples.`;
 
 test("extracts only valid region coverage from the source README", () => {
   expect(extractRegions(regionsReadme)).toBe(regionSection);
+  expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
+    .toBe(regionSection.replace("Default Line", "Line Region"));
   expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
   for (const invalid of [
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
@@ -112,7 +114,7 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
 
 test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const tableHeader = "| Country | Country Code | Calling Code | Languages | Line Region |";
+  const tableHeader = "| Country | Country Code | Calling Code | Languages | Default Line |";
   const html = await request.get("/regions");
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");

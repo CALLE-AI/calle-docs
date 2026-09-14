@@ -17,8 +17,7 @@ export function extractRegions(readme) {
     !section ||
     !rows ||
     rows.length < 3 ||
-    rows[0] !==
-      "| Country | Country Code | Calling Code | Languages | Line Region |" ||
+    !/^\| Country \| Country Code \| Calling Code \| Languages \| (?:Line Region|Default Line) \|$/.test(rows[0]) ||
     !/^\|(?:[ \t]*:?-+:?[ \t]*\|){5}$/.test(rows[1]) ||
     rows.some((row) => row.split("|").length !== 7) ||
     rows.slice(2).some((row) =>
