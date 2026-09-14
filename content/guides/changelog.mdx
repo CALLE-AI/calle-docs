@@ -3,6 +3,24 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## September 14, 2026
+
+**Updated concurrent call limits:** The shared number pool supports 1 simultaneous
+call, purchased numbers support 10 simultaneous calls, and SIP integrations have
+no CALL-E-imposed concurrent call limit. These limits refer to calls active at the
+same time, not call initiation rate (calls per second, or CPS).
+
+**Updated billing model:** Calls are now billed in 10-second increments, with total
+cost consisting of a Call fee and a Success fee. The Call fee covers actual carrier
+charges and model resource usage, including a small preparation and pre-connection
+model cost even when a call is not connected.
+
+The Success fee applies only when the task's defined business success criteria are
+met. A connected call, an answered call, or a completed conversation alone does not
+qualify as success. For example, a reservation task succeeds only when the requested
+booking is confirmed—not simply when someone answers or discusses availability.
+Call fees may still apply when those success criteria are not met.
+
 ## September 10, 2026
 
 **Windows-compatible agent commands:** Updated agent integrations now run correctly

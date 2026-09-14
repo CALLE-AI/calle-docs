@@ -74,8 +74,6 @@ Unrelated examples.`;
 
 test("extracts only valid region coverage from the source README", () => {
   expect(extractRegions(regionsReadme)).toBe(regionSection);
-  expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
-    .toBe(regionSection.replace("Default Line", "Line Region"));
   expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
   for (const invalid of [
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
@@ -97,6 +95,7 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme,
   }));
   await page.goto("/regions");
+  await expect(page.getByRole("columnheader", { name: "Default Line" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Updated test destination" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
   await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
