@@ -394,6 +394,12 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
 
   await page.goto("/#/api-reference");
   await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+
+  await page.goto("/#api-reference");
+  await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+
+  await page.goto("/#not-a-docs-route");
+  await expect(page).not.toHaveURL(/\/quickstart/);
 });
 
 test("renders every migrated guide from its file route", async ({ page }) => {
