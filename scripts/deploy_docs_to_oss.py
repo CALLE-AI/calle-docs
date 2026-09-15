@@ -186,20 +186,32 @@ class OssClient:
         return len(self.request("GET", key)[:256])
 
     def list_prefix(self, prefix: str) -> list[str]:
-        query = urllib.parse.urlencode({"prefix": prefix, "max-keys": "1000"})
-        date, authorization = self.sign("GET", "")
-        request = urllib.request.Request(
-            f"https://{self.host}/?{query}",
-            headers={"Date": date, "Authorization": authorization},
-            method="GET",
-        )
-        with urllib.request.urlopen(request, timeout=30) as response:
-            root = ET.fromstring(response.read())
-        return [
-            node.text
-            for node in root.iter()
-            if node.tag.endswith("Key") and node.text
-        ]
+        keys: list[str] = []
+        params = {"prefix": prefix, "max-keys": "1000"}
+        while True:
+            query = urllib.parse.urlencode(params)
+            date, authorization = self.sign("GET", "")
+            request = urllib.request.Request(
+                f"https://{self.host}/?{query}",
+                headers={"Date": date, "Authorization": authorization},
+                method="GET",
+            )
+            with urllib.request.urlopen(request, timeout=30) as response:
+                root = ET.fromstring(response.read())
+            keys.extend(
+                node.text
+                for node in root.findall("{*}Contents/{*}Key")
+                if node.text
+            )
+            truncated = root.findtext("{*}IsTruncated")
+            if truncated == "false":
+                return keys
+            if truncated != "true":
+                raise ValueError("OSS listing has an invalid IsTruncated value")
+            marker = root.findtext("{*}NextMarker")
+            if not marker or marker <= params.get("marker", ""):
+                raise ValueError("OSS listing is missing an advancing NextMarker")
+            params["marker"] = marker
 
     def public_head_status(self, key: str) -> int:
         request = urllib.request.Request(
