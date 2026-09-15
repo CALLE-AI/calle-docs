@@ -33,11 +33,8 @@ const legacyHashRedirect = `
     route === "/api-reference" ||
     route.startsWith("/api-1/") ||
     route.startsWith("/tag/") ||
-    route.startsWith("tag/") ||
     route.startsWith("/description/") ||
-    route.startsWith("description/") ||
-    route === "/models" ||
-    route === "models"
+    route === "/models"
   ) {
     window.location.replace("/api-reference");
     return;
