@@ -528,6 +528,37 @@ When the terminal `structured_result` is `null`, CALL-E did not produce a schema
 
 Each recipient attempt can include `transcript_turns`, an ordered list of structured transcript turns for that dial attempt. Each turn has `offset_seconds`, `speaker`, and `text`; `speaker` is `bot`, `user`, or `unknown`. The array is empty when no transcript is available.
 
+### Read transcript turns
+
+Read `recipients[].attempts[].transcript_turns` in Python or HTTP responses,
+and `recipients[].attempts[].transcriptTurns` in the TypeScript SDK. Each turn
+keeps the `offset_seconds` field in both SDKs. A null offset means the timestamp
+is unavailable; zero means the start of the attempt.
+
+The runnable [Python reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_transcript.py)
+and [TypeScript reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read-transcript.ts)
+label each recipient and attempt, keep `unknown` separate from `user`, and display
+null offsets as `time unavailable` without changing the input. An unknown speaker
+is not evidence that the recipient answered. Interpret the result using
+[Task completion](#task-completion).
+
+From a checkout of the docs repository, run the synthetic checks with Python 3.11+
+or Node.js 22.18+ (native TypeScript support):
+
+```bash
+python examples/read_transcript.py
+node examples/read-transcript.ts
+```
+
+These commands make no API requests. They cover bot, user, unknown, zero and null
+offsets, and an empty transcript. To read a real result in your application, pass
+the completed Python/HTTP call object to `transcript_lines`, or the completed
+TypeScript SDK call object to `transcriptLines`, and iterate the returned lines.
+Transcript text may contain private data; keep the output private.
+
+### Poll for results
+
+
 TypeScript:
 
 ```ts
