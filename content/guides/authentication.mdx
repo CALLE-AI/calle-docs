@@ -8,13 +8,14 @@ CALL-E uses project API keys for server-to-server requests.
 ## API keys
 
 Create and manage API keys in the [CALL-E dashboard](https://dashboard.heycall-e.com/account/api-keys).
-Production API keys use the `iams_live_` prefix.
 Pass the complete dashboard value directly to the SDK; no client-side token exchange is required.
 
-Store the key in your backend secret manager or runtime environment:
+Store the key in your backend secret manager or runtime environment. Replace
+`<YOUR_CALLE_API_KEY>` below with the complete key from the dashboard; the
+placeholder is not a working credential:
 
 ```bash
-export CALLE_API_KEY="iams_live_example"
+export CALLE_API_KEY="<YOUR_CALLE_API_KEY>"
 ```
 
 Do not commit API keys, print them in logs, send them to browser code, or store them in mobile apps. The CALL-E SDKs are server SDKs for trusted backend services and workers.
