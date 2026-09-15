@@ -7,7 +7,8 @@ const legacyHashRedirect = `
 (() => {
   if (window.location.pathname !== "/") return;
 
-  const [route, query = ""] = window.location.hash.slice(1).split("?", 2);
+  const [rawRoute, query = ""] = window.location.hash.slice(1).split("?", 2);
+  const route = rawRoute.startsWith("/") || rawRoute === "" ? rawRoute : \`/\${rawRoute}\`;
   const guideRoutes = new Set([
     "/quickstart",
     "/authentication",
@@ -31,15 +32,17 @@ const legacyHashRedirect = `
   if (
     route === "/api-reference" ||
     route.startsWith("/api-1/") ||
-    route.startsWith("tag/") ||
-    route.startsWith("description/") ||
-    route === "models"
+    route.startsWith("/tag/") ||
+    route.startsWith("/description/") ||
+    route === "/models"
   ) {
     window.location.replace("/api-reference");
     return;
   }
 
-  window.location.replace("/quickstart");
+  if (rawRoute === "") {
+    window.location.replace("/quickstart");
+  }
 })();
 `;
 

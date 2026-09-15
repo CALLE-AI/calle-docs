@@ -394,6 +394,28 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
 
   await page.goto("/#/api-reference");
   await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+
+  for (const hash of [
+    "api-reference",
+    "tag/Calls",
+    "/tag/Calls",
+    "description/auth",
+    "/description/auth",
+    "models",
+    "/models",
+  ]) {
+    await page.goto(`/#${hash}`);
+    await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+  }
+
+  await page.goto("/#calls?section=idempotency");
+  await expect(page).toHaveURL(/\/calls#idempotency$/);
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/quickstart$/);
+
+  await page.goto("/#not-a-docs-route");
+  await expect(page).toHaveURL(/\/#not-a-docs-route$/);
 });
 
 test("renders every migrated guide from its file route", async ({ page }) => {
