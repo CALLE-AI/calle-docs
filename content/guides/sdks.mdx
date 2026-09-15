@@ -53,13 +53,12 @@ examples.
 
 ## Source code
 
-The TypeScript SDK is maintained in a public repository. The Python package is
-available from PyPI, but its source repository is not currently public.
+Both SDKs are maintained in public repositories.
 
 | Runtime | Package | Repository |
 | --- | --- | --- |
 | TypeScript | `@call-e/calle` | [CALLE-AI/server-sdk-typescript](https://github.com/CALLE-AI/server-sdk-typescript) |
-| Python | `calle-ai` | Not currently public |
+| Python | `calle-ai` | [CALLE-AI/server-sdk-python](https://github.com/CALLE-AI/server-sdk-python) |
 
 The TypeScript repository includes public source code, examples, and security
 guidance:
@@ -177,7 +176,8 @@ events = client.calls.list_events(created_and_completed["id"], limit=50)
 
 ## Availability
 
-Install the stable server SDK package for your runtime:
+Install the stable server SDK package for your runtime. The Python SDK requires
+Python 3.11 or later; Python 3.9 and 3.10 are not supported.
 
 ```bash
 pnpm add @call-e/calle
