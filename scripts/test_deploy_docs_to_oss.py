@@ -1,8 +1,12 @@
+import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 from scripts.deploy_docs_to_oss import (
+    OssClient,
     cache_control_for,
     collect_files,
     collect_uploads,
@@ -14,6 +18,75 @@ from scripts.deploy_docs_to_oss import (
 
 
 class DeployDocsToOssTests(unittest.TestCase):
+    def test_list_prefix_reads_beyond_1000_objects(self) -> None:
+        keys = [f"site/file-{index:04d}" for index in range(1001)]
+        for namespace in (
+            "",
+            ' xmlns="http://doc.oss-cn-hangzhou.aliyuncs.com"',
+        ):
+            with self.subTest(namespace=namespace):
+                first_page = (
+                    f"<ListBucketResult{namespace}><IsTruncated>true</IsTruncated>"
+                    f"<NextMarker>{keys[999]}</NextMarker>"
+                    + "".join(
+                        f"<Contents><Key>{key}</Key></Contents>"
+                        for key in keys[:1000]
+                    )
+                    + "</ListBucketResult>"
+                )
+                last_page = (
+                    f"<ListBucketResult{namespace}><IsTruncated>false</IsTruncated>"
+                    f"<Contents><Key>{keys[1000]}</Key></Contents></ListBucketResult>"
+                )
+                with patch(
+                    "scripts.deploy_docs_to_oss.urllib.request.urlopen",
+                    side_effect=[
+                        io.BytesIO(first_page.encode()),
+                        io.BytesIO(last_page.encode()),
+                    ],
+                ) as urlopen:
+                    client = OssClient("test", "test", "bucket", "example.com")
+                    actual = client.list_prefix("site/")
+
+                self.assertEqual(actual, keys)
+                queries = [
+                    parse_qs(urlsplit(call.args[0].full_url).query)
+                    for call in urlopen.call_args_list
+                ]
+                self.assertEqual(
+                    queries,
+                    [
+                        {"prefix": ["site/"], "max-keys": ["1000"]},
+                        {
+                            "prefix": ["site/"],
+                            "max-keys": ["1000"],
+                            "marker": [keys[999]],
+                        },
+                    ],
+                )
+
+    def test_list_prefix_rejects_invalid_pagination(self) -> None:
+        first_page = (
+            b"<ListBucketResult><IsTruncated>true</IsTruncated>"
+            b"<NextMarker>site/b</NextMarker></ListBucketResult>"
+        )
+        for pagination in (
+            "<IsTruncated>true</IsTruncated>",
+            "<IsTruncated>true</IsTruncated><NextMarker>site/b</NextMarker>",
+            "<IsTruncated>true</IsTruncated><NextMarker>site/a</NextMarker>",
+            "",
+        ):
+            with self.subTest(pagination=pagination):
+                last_page = (
+                    f"<ListBucketResult>{pagination}</ListBucketResult>".encode()
+                )
+                with patch(
+                    "scripts.deploy_docs_to_oss.urllib.request.urlopen",
+                    side_effect=[io.BytesIO(first_page), io.BytesIO(last_page)],
+                ), self.assertRaisesRegex(ValueError, "OSS listing"):
+                    client = OssClient("test", "test", "bucket", "example.com")
+                    client.list_prefix("site/")
+
     def test_parse_bucket(self) -> None:
         self.assertEqual(parse_bucket("oss://docs-bucket/"), "docs-bucket")
         self.assertEqual(parse_bucket("oss://docs-bucket"), "docs-bucket")
