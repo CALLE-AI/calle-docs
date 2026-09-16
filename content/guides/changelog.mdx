@@ -3,6 +3,70 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## September 14, 2026
+
+**Updated concurrent call limits:** The shared number pool supports 1 simultaneous
+call, purchased numbers support 10 simultaneous calls, and SIP integrations have
+no CALL-E-imposed concurrent call limit. These limits refer to calls active at the
+same time, not call initiation rate (calls per second, or CPS).
+
+**Updated billing model:** Calls are now billed in 10-second increments, with total
+cost consisting of a Call fee and a Success fee. The Call fee covers actual carrier
+charges and model resource usage, including a small preparation and pre-connection
+model cost even when a call is not connected.
+
+The Success fee applies only when the task's defined business success criteria are
+met. A connected call, an answered call, or a completed conversation alone does not
+qualify as success. For example, a reservation task succeeds only when the requested
+booking is confirmed—not simply when someone answers or discusses availability.
+Call fees may still apply when those success criteria are not met.
+
+## September 10, 2026
+
+**Windows-compatible agent commands:** Updated agent integrations now run correctly
+in PowerShell and Command Prompt, fixing failures caused by Unix-only command
+syntax ([#111](https://github.com/CALLE-AI/call-e-integrations/issues/111)).
+
+**Reliable CLI selection:** Agent integrations now verify and launch the correct
+CALL-E CLI, preventing command conflicts when the Developer API SDK is also
+installed ([#109](https://github.com/CALLE-AI/call-e-integrations/issues/109)).
+
+**Multiline call goals on Windows:** The updated agent launcher preserves multiline
+goals, Unicode text, and quoted arguments without shell parsing errors
+([#159](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/159)).
+
+**Structured MCP results:** Call planning, execution, and status tools now return
+structured results directly, so MCP integrations can access their fields without
+parsing JSON from text blocks
+([#158](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/158)).
+
+## September 7, 2026
+
+**Clearer call failure reporting:** Improved call failure details and corrected
+cases where platform or connection failures were reported as recipient declines
+([#206](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/206),
+[#82](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/82),
+[#111](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/111),
+[#195](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/195)).
+
+**Developer API calls in Call Records:** Calls created through the Developer API
+now appear in Dashboard Call Records and can be found using their provider call ID
+([#151](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/151)).
+
+**KYC for purchased numbers:** Identity verification (KYC) is now required before
+purchased numbers can make outbound calls, strengthening security and compliance.
+The shared number pool is intended only for development and testing; for
+production, use your own purchased numbers with completed KYC or connect through
+a SIP integration.
+
+## September 3, 2026
+
+**Server SDK 0.7.0:** The stable TypeScript and Python packages now include
+the Calls and Goal Runs client surfaces. Goal Run responses expose the nullable
+`call_id` field for call correlation when that persisted identifier is
+available. The TypeScript SDK source is available under the MIT License at
+[CALLE-AI/server-sdk-typescript](https://github.com/CALLE-AI/server-sdk-typescript).
+
 ## August 28, 2026
 
 **CLI supported regions discovery:** The CALL-E CLI now includes
@@ -12,14 +76,6 @@ additional setup requirements—before running `plan_call`.
 
 **Goal call analysis:** The Dashboard can now analyze Call Records associated
 with a Goal and provide recommendations for improving future calls.
-
-**Clearer call failure outcomes:** Call results now distinguish platform or
-provider failures from confirmed callee declines and provide clearer diagnostic
-information for failed calls
-([#206](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/206),
-[#82](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/82),
-[#111](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/111),
-[#195](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/195)).
 
 ## August 21, 2026
 

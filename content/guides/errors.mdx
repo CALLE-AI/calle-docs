@@ -72,6 +72,29 @@ automatically retry based only on an undocumented failure string.
 
 ## Recovery guidance
 
+### Choose the next action
+
+First distinguish an HTTP request failure from an accepted call's result.
+The [complete Python example](/quickstart#run-a-complete-example) saves both
+the original request and the returned Call ID for that purpose.
+
+| Observation | What to check and do next |
+| --- | --- |
+| `invalid_request`, recipient, phone, or schema validation error | Correct the rejected input using the field-specific guidance below. Preserve the error code and details; do not retry unchanged invalid input. |
+| `unauthorized` or `forbidden` | Check the key and its access to the resource. Keep credentials out of logs and support posts. |
+| `insufficient_balance` | Resolve the account's billing condition before attempting more calls. A provider failure alone does not prove the balance is exhausted. |
+| `rate_limit_exceeded` | Back off. For a retry of the same operation, retain the original request and idempotency key. Do not replace an uncertain call with a new key. |
+| `provider_unavailable` on a Goal Run create request | This code applies before durable Goal Run acceptance. Preserve the request and error details; a later accepted Goal Run failure belongs to that run's `error` field. |
+| Timeout, malformed response, or server error without a saved Call ID | The response alone may not establish acceptance. Follow [Calls recovery](/calls#recover-after-a-restart-or-lost-response); retain the original request and key. |
+| A saved Call ID, including a polling error or terminal failure | Retrieve that call and inspect its status, failure context, and available transcript. Keep the ID for support. Do not issue another create request to discover its outcome. |
+
+The `provider_unavailable` Goal Run contract does not establish the cause of an
+arbitrary Calls API `503`. For support, retain the SDK version, UTC timestamp,
+HTTP status, error code/details, and existing Call ID if available. Redact
+credentials, phone numbers, and private transcript content before sharing.
+
+### Code-specific guidance
+
 `unauthorized` means the API key is missing or invalid. Check the `Authorization: Bearer` header.
 
 `forbidden` means the key is valid but not allowed to use this resource or capability.
@@ -84,6 +107,10 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `unsupported_region` or `unsupported_language` means CALL-E could not resolve a supported calling configuration for the request.
 
+Check the [supported regions and languages](/regions)
+for the destination and locale you requested. Correct phone formatting alone
+does not resolve a coverage error.
+
 `no_recipients` means CALL-E could not infer any recipients from the task and no explicit `recipients` were provided.
 
 `invalid_recipient` means a recipient entry is malformed. Check that each explicit recipient includes a non-empty `phones` array.
@@ -95,6 +122,9 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 `recipient_result_schema_invalid` means the per-recipient `recipient_result_schema` is not a valid supported JSON Schema object.
 
 `idempotency_conflict` means the same idempotency key was reused with a different request body. Reuse keys only for the same external workflow operation.
+
+For a lost Calls API create response or an application restart, follow
+[Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response).
 
 `not_found` means a call, Goal, or Goal Run does not exist or is not visible to the current API key. Owner mismatch and hidden Goals use the same code.
 

@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { extractRegions, REGIONS_README_URL } from "../src/regions.mjs";
 
 const docsPages = [
   { path: "/quickstart", heading: "Quickstart" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
+  { path: "/regions", heading: "Regions & languages" },
   { path: "/goal-runs", heading: "Goal Runs" },
   { path: "/webhooks", heading: "Webhooks" },
   { path: "/errors", heading: "Errors" },
@@ -32,6 +34,12 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   await expect(
     page.getByRole("link", { name: "API Reference", exact: true }).first(),
   ).toHaveAttribute("href", "/api-reference");
+  const coverageLink = page.getByRole("link", { name: /^Regions & languages/ });
+  await expect(coverageLink).toBeVisible();
+  await expect(coverageLink).toHaveAttribute(
+    "href",
+    "/regions",
+  );
   await expect(
     page.locator("pre").filter({ hasText: "pnpm add @call-e/calle" }).first(),
   ).toBeVisible();
@@ -39,6 +47,106 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
     "background-color",
     "rgb(11, 15, 20)",
   );
+});
+
+const regionSection = `Use these country codes with recipient settings.
+
+| Country | Country Code | Calling Code | Languages | Default Line |
+| --- | --- | --- | --- | --- |
+| Updated test destination | ZZ | +999 | Test language | International |
+
+**Notes**
+
+- **International** uses an international line.`;
+const regionsReadme = `# Integrations
+
+Unrelated introduction.
+
+## Supported Regions and Languages
+
+${regionSection}
+
+---
+
+## Examples
+
+Unrelated examples.`;
+
+test("extracts only valid region coverage from the source README", () => {
+  expect(extractRegions(regionsReadme)).toBe(regionSection);
+  expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
+  expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
+    .toBe(regionSection.replace("Default Line", "Line Region"));
+  for (const invalid of [
+    regionsReadme.replace("Supported Regions and Languages", "Removed section"),
+    regionsReadme.replace("| Languages |", "| Renamed column |"),
+    regionsReadme.replace("Test language", "Test | language"),
+    regionsReadme.replace("Test language", ""),
+    regionsReadme.replace("Test language", "{process.env}"),
+    regionsReadme.replace("Test language", "<script>alert(1)</script>"),
+    regionsReadme.replace("**Notes**", 'import Example from "example";'),
+    regionsReadme.replace("**Notes**", '  import Example from "example";'),
+  ]) {
+    expect(() => extractRegions(invalid)).toThrow("unsupported format");
+  }
+});
+
+test("refreshes region coverage without rebuilding the docs", async ({ page }) => {
+  await page.route(REGIONS_README_URL, (route) => route.fulfill({
+    contentType: "text/plain",
+    body: regionsReadme,
+  }));
+  await page.goto("/regions");
+  await expect(page.getByRole("columnheader", { name: "Default Line" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Updated test destination" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
+  await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
+
+  await page.route(REGIONS_README_URL, (route) => route.fulfill({
+    contentType: "text/plain",
+    body: regionsReadme.replace("Default Line", "Line Region"),
+  }));
+  await page.reload();
+  await expect(page.getByRole("columnheader", { name: "Line Region" })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  for (const guide of ["/quickstart", "/calls", "/errors"]) {
+    await page.goto(guide);
+    await page.locator('main p a[href="/regions"]').first().click();
+    await expect(page).toHaveURL(/\/regions$/);
+  }
+});
+
+test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const tableHeader = /\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|/;
+  const html = await request.get("/regions");
+  expect(await html.text()).toContain("<table");
+  const markdown = await request.get("/regions.md");
+  expect(await markdown.text()).toMatch(tableHeader);
+  const llmsFull = await request.get("/llms-full.txt");
+  expect(await llmsFull.text()).toMatch(tableHeader);
+
+  for (const response of [
+    { status: 503, body: "Unavailable" },
+    { status: 200, body: regionsReadme.replace("Test language", "{unsafeMdx()}") },
+  ]) {
+    await page.route(REGIONS_README_URL, (route) => route.fulfill(response));
+    await page.goto("/regions");
+    await expect(page.getByRole("status")).toContainText("Could not refresh coverage");
+    await expect(page.getByRole("table")).toBeVisible();
+    expect(await page.getByRole("row").count()).toBeGreaterThan(2);
+    await expect(page.getByText("unsafeMdx()")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    const tableRegion = page.getByRole("region", { name: "Region and language coverage" });
+    await tableRegion.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => tableRegion.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    await page.unroute(REGIONS_README_URL);
+  }
 });
 
 test("uses the roomy CALL-E guide navigation on desktop", async ({ page }) => {
@@ -286,6 +394,28 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
 
   await page.goto("/#/api-reference");
   await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+
+  for (const hash of [
+    "api-reference",
+    "tag/Calls",
+    "/tag/Calls",
+    "description/auth",
+    "/description/auth",
+    "models",
+    "/models",
+  ]) {
+    await page.goto(`/#${hash}`);
+    await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+  }
+
+  await page.goto("/#calls?section=idempotency");
+  await expect(page).toHaveURL(/\/calls#idempotency$/);
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/quickstart$/);
+
+  await page.goto("/#not-a-docs-route");
+  await expect(page).toHaveURL(/\/#not-a-docs-route$/);
 });
 
 test("renders every migrated guide from its file route", async ({ page }) => {
@@ -416,12 +546,11 @@ test("preserves authentication, webhook, and SDK guidance", async ({
     "href",
     "https://github.com/CALLE-AI/server-sdk-typescript",
   );
+  await expect(page.getByText("@call-e/calle@0.7.0").first()).toBeVisible();
+  await expect(page.getByText("calle-ai==0.7.0").first()).toBeVisible();
   await expect(
     page.getByRole("link", { name: "CALLE-AI/server-sdk-python" }),
-  ).toHaveAttribute(
-    "href",
-    "https://github.com/CALLE-AI/server-sdk-python",
-  );
+  ).toHaveAttribute("href", "https://github.com/CALLE-AI/server-sdk-python");
 });
 
 test("connects the Calls guide to HTTP and related references", async ({
@@ -439,6 +568,22 @@ test("connects the Calls guide to HTTP and related references", async ({
   await expect(
     callsBody.locator('p a[href="/webhooks"]'),
   ).toBeVisible();
+
+  await expect(
+    callsBody.getByRole("heading", { name: "Call identifiers" }),
+  ).toBeVisible();
+  await expect(callsBody).toContainText(
+    "recipients[].attempts[].provider_call_id",
+  );
+  await expect(callsBody).toContainText(
+    "call.recipients[i].attempts[j].providerCallId",
+  );
+  await expect(callsBody).toContainText(
+    "the webhook's top-level id identifies the event",
+  );
+  await expect(callsBody).toContainText(
+    "Do not use provider_call_id as call_id",
+  );
 
   await expect(
     callsBody.getByRole("heading", {
@@ -491,6 +636,25 @@ test("connects the Calls guide to HTTP and related references", async ({
   );
   await expect(
     callsOutcomeWarning.locator("code").filter({ hasText: "failure_code" }),
+  ).toBeVisible();
+});
+
+test("links result examples to task completion and endpoint classification", async ({
+  page,
+}) => {
+  for (const route of ["/quickstart", "/webhooks"]) {
+    await page.goto(route);
+    await page.locator('p a[href="/calls#task-completion"]').click();
+    await expect(page).toHaveURL(/\/calls#task-completion$/);
+    await expect(
+      page.getByRole("heading", { name: "Task completion" }),
+    ).toBeVisible();
+  }
+
+  await page.getByRole("link", { name: "custom answered_by example" }).click();
+  await expect(page).toHaveURL(/\/calls#classify-the-final-endpoint$/);
+  await expect(
+    page.getByRole("heading", { name: "Classify the final endpoint" }),
   ).toBeVisible();
 });
 

@@ -4,4 +4,6 @@ artifacts/
 playwright-report/
 test-results/
 __pycache__/
+.venv/
 .DS_Store
+content/guides/regions.mdx

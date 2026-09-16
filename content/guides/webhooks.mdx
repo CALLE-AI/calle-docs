@@ -28,6 +28,9 @@ Recipient-level structured results appear inside the `recipients` array. They do
 
 Attempt transcripts appear as `recipients[].attempts[].transcript_turns`. Each turn includes `offset_seconds`, `speaker`, and `text`; the array is empty when no transcript is available.
 
+See [Task completion](/calls#task-completion) for how to interpret
+`task_completed` and `completion_confidence` in the payload.
+
 Example payload:
 
 ```json
