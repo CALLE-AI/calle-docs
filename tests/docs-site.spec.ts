@@ -51,7 +51,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
 
 const regionSection = `Use these country codes with recipient settings.
 
-| Country | Country Code | Calling Code | Languages | Line Region |
+| Country | Country Code | Calling Code | Languages | Default Line |
 | --- | --- | --- | --- | --- |
 | Updated test destination | ZZ | +999 | Test language | International |
 
@@ -75,6 +75,8 @@ Unrelated examples.`;
 test("extracts only valid region coverage from the source README", () => {
   expect(extractRegions(regionsReadme)).toBe(regionSection);
   expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
+  expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
+    .toBe(regionSection.replace("Default Line", "Line Region"));
   for (const invalid of [
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
     regionsReadme.replace("| Languages |", "| Renamed column |"),
@@ -95,9 +97,17 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme,
   }));
   await page.goto("/regions");
+  await expect(page.getByRole("columnheader", { name: "Default Line" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Updated test destination" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
   await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
+
+  await page.route(REGIONS_README_URL, (route) => route.fulfill({
+    contentType: "text/plain",
+    body: regionsReadme.replace("Default Line", "Line Region"),
+  }));
+  await page.reload();
+  await expect(page.getByRole("columnheader", { name: "Line Region" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -112,13 +122,13 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
 
 test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const tableHeader = "| Country | Country Code | Calling Code | Languages | Line Region |";
+  const tableHeader = /\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|/;
   const html = await request.get("/regions");
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");
-  expect(await markdown.text()).toContain(tableHeader);
+  expect(await markdown.text()).toMatch(tableHeader);
   const llmsFull = await request.get("/llms-full.txt");
-  expect(await llmsFull.text()).toContain(tableHeader);
+  expect(await llmsFull.text()).toMatch(tableHeader);
 
   for (const response of [
     { status: 503, body: "Unavailable" },
@@ -384,6 +394,28 @@ test("bridges legacy hash routes to clean URLs", async ({ page }) => {
 
   await page.goto("/#/api-reference");
   await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+
+  for (const hash of [
+    "api-reference",
+    "tag/Calls",
+    "/tag/Calls",
+    "description/auth",
+    "/description/auth",
+    "models",
+    "/models",
+  ]) {
+    await page.goto(`/#${hash}`);
+    await expect(page).toHaveURL(/\/api-reference(?:\/calls)?$/);
+  }
+
+  await page.goto("/#calls?section=idempotency");
+  await expect(page).toHaveURL(/\/calls#idempotency$/);
+
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/quickstart$/);
+
+  await page.goto("/#not-a-docs-route");
+  await expect(page).toHaveURL(/\/#not-a-docs-route$/);
 });
 
 test("renders every migrated guide from its file route", async ({ page }) => {
@@ -517,11 +549,8 @@ test("preserves authentication, webhook, and SDK guidance", async ({
   await expect(page.getByText("@call-e/calle@0.7.0").first()).toBeVisible();
   await expect(page.getByText("calle-ai==0.7.0").first()).toBeVisible();
   await expect(
-    page.getByRole("cell", { name: "Not currently public" }),
-  ).toBeVisible();
-  await expect(
     page.getByRole("link", { name: "CALLE-AI/server-sdk-python" }),
-  ).toHaveCount(0);
+  ).toHaveAttribute("href", "https://github.com/CALLE-AI/server-sdk-python");
 });
 
 test("connects the Calls guide to HTTP and related references", async ({

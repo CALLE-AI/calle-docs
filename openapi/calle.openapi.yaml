@@ -1163,6 +1163,8 @@ components:
 
             This is useful for batch calls where each recipient needs their own outcome, such as `can_attend`, `confirmed`, `requested_callback`, or `interest_level`.
 
+            Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
+
             Do not use reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, or timing fields as custom result fields. Use names such as `customer_summary`, `notes`, or `reason` instead.
 
             Field `description` values are passed to the extraction model and should explain how enum values should be selected. Descriptions guide extraction but are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
