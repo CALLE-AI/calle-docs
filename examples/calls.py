@@ -79,8 +79,11 @@ def main():
     api_key = os.environ.get("CALLE_API_KEY")
     if not api_key:
         parser.error("Set CALLE_API_KEY before running.")
+    client_options = {"api_key": api_key}
+    if base_url := os.environ.get("CALLE_BASE_URL"):
+        client_options["base_url"] = base_url
     try:
-        with CalleClient(api_key=api_key) as client:
+        with CalleClient(**client_options) as client:
             return run(client, args.directory, args.phone)
     except CalleAPIError as exc:
         save(args.directory / "error.json", {

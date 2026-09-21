@@ -1,15 +1,40 @@
 """Supplemental failure/recovery checks; these do not replace a real call."""
 
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import httpx
 from calle import CalleClient
 from calle.errors import CalleAPIError, CalleTimeoutError
 
-from calls import run
+from calls import main, run
+
+
+class ConfigurationTest(unittest.TestCase):
+    def test_main_passes_configured_base_url_or_preserves_sdk_default(self):
+        for base_url in (None, "", "https://example.invalid"):
+            with self.subTest(base_url=base_url):
+                environment = {"CALLE_API_KEY": "synthetic-test-key"}
+                expected = {"api_key": "synthetic-test-key"}
+                if base_url is not None:
+                    environment["CALLE_BASE_URL"] = base_url
+                if base_url:
+                    expected["base_url"] = base_url
+                with (
+                    patch.dict(os.environ, environment, clear=True),
+                    patch("sys.argv", ["calls.py", "resume", "saved-run"]),
+                    patch("calls.CalleClient") as client,
+                    patch("calls.run", return_value=0) as execute,
+                ):
+                    self.assertEqual(main(), 0)
+                    client.assert_called_once_with(**expected)
+                    execute.assert_called_once_with(
+                        client.return_value.__enter__.return_value, Path("saved-run"), None
+                    )
 
 
 class RecoveryTest(unittest.TestCase):
