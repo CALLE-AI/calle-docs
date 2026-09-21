@@ -455,7 +455,7 @@ arrives. Keep that record across application restarts.
 | What you saved | Recovery action |
 | --- | --- |
 | Call ID | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
-| Original request and idempotency key, but no Call ID | Repeat the create request with the same key and unchanged body. The documented idempotency contract returns the original call instead of creating a duplicate. Save its ID. |
+| Original request and idempotency key, but no Call ID | Repeat the create request with the same key and unchanged body. If the original request was accepted, save the returned Call ID. A saved creation rejection is replayed as an error instead. |
 | Neither the Call ID nor the original request and key | Reconcile the original operation before submitting a replacement. A lost response does not prove that the first request was rejected. |
 
 For an idempotent replay, preserve the entire request, including `metadata`,
@@ -467,6 +467,69 @@ A retry that recovers an existing operation and an intentionally new call are
 different actions. Use a new key only for an intentionally new operation after
 resolving the prior one. Keep local workflow identifiers in `metadata` for
 correlation; they do not replace the `Idempotency-Key` header.
+
+### Correct a missing-information rejection
+
+When `POST /v1/calls` returns HTTP `422` with `call_not_ready` and asks for
+missing task information, such as the company or sender's name, review the
+message and `details.questions`. Once you have confirmed this is a creation
+rejection for missing information, correct the task and use a **new**
+idempotency key for that corrected request.
+
+The original key remains bound to the rejected request. Sending its unchanged
+body replays the rejection; changing the body while keeping that key returns
+`409 idempotency_conflict`. Not receiving a Call ID does not mean the server
+created no internal record.
+
+| Situation | Request and key to use |
+| --- | --- |
+| Confirmed missing-information creation rejection; task corrected | Save the corrected request with a new key before sending it. |
+| Retry of that corrected request after a lost response | Keep the corrected request and its new key unchanged. |
+| Timeout or lost response without a definite rejection | Preserve and recover the original request and key. Do not switch to a new key. |
+| Call ID already saved | Retrieve that call. Do not create another one to check its outcome. |
+
+`call_not_ready` alone is not enough to choose this correction path. Check
+which operation failed and what its error details say. This example does not
+handle an accepted call's failure or other reasons a plan was rejected.
+
+#### Run the correction example
+
+The [recovery helper](https://github.com/CALLE-AI/calle-docs/blob/main/examples/recover_create.py)
+uses Python 3.11+ and `calle-ai==0.7.0`, with the same environment setup as the
+[complete Python example](/quickstart#run-a-complete-example). It reads that
+example's private run-directory format: `request.json` contains the saved
+SDK create arguments, including `idempotency_key`; `error.json` contains
+`status_code`, `code`, `message`, and `details`. Keep the original files.
+
+Read `error.json` privately and put the full corrected task in a UTF-8 file,
+`corrected-task.txt`. Supply the missing facts yourself; do not invent them.
+Then prepare the correction:
+
+```bash
+python examples/recover_create.py correct ../rejected-run \
+  --task-file corrected-task.txt --confirm-missing-information
+```
+
+This sends no request. It requires the saved `422 call_not_ready` error and
+your confirmation that it was a missing-information creation rejection, and
+refuses a directory with a saved Call ID. It saves a new key and corrected
+task in `../rejected-run/corrected/request.json`, preserving the other request
+fields. Running `correct` again refuses to overwrite that directory or
+generate another saved key.
+
+Review the corrected request, keep the same API key and `CALLE_BASE_URL`, and
+submit it explicitly. This can place a real, billed call to the saved recipient:
+
+```bash
+python examples/recover_create.py submit ../rejected-run/corrected
+```
+
+The helper saves the Call ID, retrieves the result, and makes no automatic
+create retry. If interrupted, rerun the same command with the same directory:
+with a saved ID it only retrieves that call; without one it resubmits the
+unchanged saved request and key. Do not edit or delete the saved files to retry.
+An exit code of zero means a terminal result was retrieved, not that the
+business task succeeded. Stopping the script does not cancel an accepted call.
 
 ## Task completion
 

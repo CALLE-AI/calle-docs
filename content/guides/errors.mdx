@@ -81,6 +81,7 @@ the original request and the returned Call ID for that purpose.
 | Observation | What to check and do next |
 | --- | --- |
 | `invalid_request`, recipient, phone, or schema validation error | Correct the rejected input using the field-specific guidance below. Preserve the error code and details; do not retry unchanged invalid input. |
+| `422 call_not_ready` from `POST /v1/calls`, with a request for missing task information | Review the missing information, then [save a corrected request with a new key](/calls#correct-a-missing-information-rejection). Keep that corrected request and key for its subsequent retries. |
 | `unauthorized` or `forbidden` | Check the key and its access to the resource. Keep credentials out of logs and support posts. |
 | `insufficient_balance` | Resolve the account's billing condition before attempting more calls. A provider failure alone does not prove the balance is exhausted. |
 | `rate_limit_exceeded` | Back off. For a retry of the same operation, retain the original request and idempotency key. Do not replace an uncertain call with a new key. |
@@ -136,7 +137,11 @@ For a lost Calls API create response or an application restart, follow
 
 `variables_invalid` means the scalar variables do not satisfy the input schema of the RunSpec pinned by the Goal Run.
 
-`call_not_ready` means the call task has not reached a terminal state.
+Check the operation and error details for `call_not_ready`. On
+`POST /v1/calls`, planning can reject a request with this code before execution.
+For a creation rejection asking for missing task
+information, follow [the correction example](/calls#correct-a-missing-information-rejection).
+Do not treat every occurrence of this code as permission to create another call.
 
 `provider_unavailable` applies only before durable Goal Run acceptance. After acceptance, dispatch, call, or result-processing failures are reported in the existing Goal Run resource's top-level `error` field. Retry transport failures only when the workflow can preserve the same idempotency key and request.
 
