@@ -430,6 +430,18 @@ test("renders every migrated guide from its file route", async ({ page }) => {
     await expect(
       page.locator("h1").filter({ hasText: guide.heading }),
     ).toBeVisible();
+    if (["/quickstart", "/authentication", "/calls", "/sdks", "/webhooks"].includes(guide.path)) {
+      for (const language of ["Python", "TypeScript"]) {
+        await expect(page.locator(".code-block-wrapper > div:first-child")
+          .filter({ hasText: new RegExp(`${language}$`) }).first()).toBeVisible();
+      }
+      await expect(page.locator("p")
+        .filter({ hasText: /^(Python|TypeScript|Example output):$/ })).toHaveCount(0);
+    }
+    if (guide.path === "/quickstart") {
+      await expect(page.locator(".code-block-wrapper > div:first-child")
+        .filter({ hasText: /Example output$/ })).toHaveCount(2);
+    }
   }
 });
 

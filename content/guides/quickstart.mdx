@@ -38,9 +38,7 @@ See [Authentication](/authentication) for API key handling and server-only usage
 
 ## Create a client
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 import { CalleClient } from "@call-e/calle";
 
 const client = new CalleClient({
@@ -48,9 +46,7 @@ const client = new CalleClient({
 });
 ```
 
-Python:
-
-```python
+```python title="Python"
 import os
 from calle import CalleClient
 
@@ -69,9 +65,7 @@ The minimum create request is task-only. Include the phone number directly in th
 
 ## Create and wait
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const call = await client.calls.createAndWait({
   task: "Call <E164_PHONE> and ask whether they can hear clearly.",
   resultSchema: {
@@ -84,9 +78,7 @@ const call = await client.calls.createAndWait({
 });
 ```
 
-Python:
-
-```python
+```python title="Python"
 call = client.calls.create_and_wait(
     task="Call <E164_PHONE> and ask whether they can hear clearly.",
     result_schema={
@@ -107,17 +99,13 @@ See [Call status](/calls#call-status) for lifecycle and terminal states, and
 [Task completion](/calls#task-completion) for how to interpret
 `task_completed` (`taskCompleted` in TypeScript) and `completion_confidence`.
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 console.log(call.status);
 console.log(call.structuredResult);
 console.log(call.taskCompleted, call.completionConfidence, call.evidence);
 ```
 
-Example output:
-
-```json
+```json title="Example output"
 {
   "status": "completed",
   "taskCompleted": true,
@@ -129,17 +117,13 @@ Example output:
 }
 ```
 
-Python:
-
-```python
+```python title="Python"
 print(call["status"])
 print(call["structured_result"])
 print(call["task_completed"], call["completion_confidence"], call["evidence"])
 ```
 
-Example output:
-
-```json
+```json title="Example output"
 {
   "status": "completed",
   "task_completed": true,
