@@ -1,106 +1,23 @@
-name: Deploy docs to OSS
+name: Diagnose public docs access
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: docs-oss-production
-  cancel-in-progress: false
-
 jobs:
-  build:
+  probe:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 8.10.2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Validate site
-        run: pnpm run validate
-
-      - name: Upload docs artifact
+      - uses: actions/checkout@v6
+      - name: Read public docs responses
+        run: python3 scripts/probe_public_docs.py
+      - name: Save diagnostic responses
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: docs-dist
-          path: dist
-          if-no-files-found: error
-          retention-days: 7
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: production
-      url: ${{ vars.DOCS_PUBLIC_URL }}
-    env:
-      OSS_KEY_ID: ${{ secrets.OSS_KEY_ID }}
-      OSS_KEY_SECRET: ${{ secrets.OSS_KEY_SECRET }}
-      OSS_BUCKET_URI: ${{ vars.OSS_BUCKET_URI }}
-      OSS_ENDPOINT: ${{ vars.OSS_ENDPOINT }}
-      OSS_DEPLOY_PREFIX: ${{ vars.OSS_DEPLOY_PREFIX }}
-      DOCS_PUBLIC_URL: ${{ vars.DOCS_PUBLIC_URL }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Download docs artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: docs-dist
-          path: dist
-
-      - name: Deploy production docs
-        run: python3 scripts/deploy_docs_to_oss.py --deploy-prefix "$OSS_DEPLOY_PREFIX"
-
-      - name: Verify public docs
-        run: |
-          if [ -z "$DOCS_PUBLIC_URL" ]; then
-            echo "DOCS_PUBLIC_URL must be configured in the production environment."
-            exit 1
-          fi
-          base_url="${DOCS_PUBLIC_URL%/}"
-          curl --fail --silent --show-error "$base_url/index.html" --output /tmp/calle-docs-index.html
-          curl --fail --silent --show-error "$base_url/quickstart" --output /tmp/calle-docs-quickstart.html
-          curl --fail --silent --show-error "$base_url/quickstart.md" --output /tmp/calle-docs-quickstart.md
-          curl --fail --silent --show-error "$base_url/llms.txt" --output /tmp/calle-docs-llms.txt
-          curl --fail --silent --show-error "$base_url/llms-full.txt" --output /tmp/calle-docs-llms-full.txt
-          curl --fail --silent --show-error "$base_url/sitemap.xml" --output /tmp/calle-docs-sitemap.xml
-          curl --fail --silent --show-error "$base_url/openapi/calle.openapi.yaml" --output /tmp/calle-docs-openapi.yaml
-          test -s /tmp/calle-docs-index.html
-          test -s /tmp/calle-docs-quickstart.html
-          test -s /tmp/calle-docs-quickstart.md
-          test -s /tmp/calle-docs-llms.txt
-          test -s /tmp/calle-docs-llms-full.txt
-          test -s /tmp/calle-docs-sitemap.xml
-          test -s /tmp/calle-docs-openapi.yaml
-          cmp --silent dist/index.html /tmp/calle-docs-index.html
-          cmp --silent dist/quickstart.html /tmp/calle-docs-quickstart.html
-          cmp --silent dist/quickstart.md /tmp/calle-docs-quickstart.md
-          cmp --silent dist/llms.txt /tmp/calle-docs-llms.txt
-          cmp --silent dist/llms-full.txt /tmp/calle-docs-llms-full.txt
-          cmp --silent dist/sitemap.xml /tmp/calle-docs-sitemap.xml
-          cmp --silent dist/openapi/calle.openapi.yaml /tmp/calle-docs-openapi.yaml
+          name: public-docs-probe
+          path: public-docs-probe
+          retention-days: 1
