@@ -45,7 +45,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   ).toBeVisible();
   await expect(page.locator("code.shiki.not-inline").first()).toHaveCSS(
     "background-color",
-    "rgb(11, 15, 20)",
+    "rgb(11, 18, 32)",
   );
 });
 
@@ -541,6 +541,26 @@ test("switches complete examples without a separate Ruby contents entry", async 
     );
     await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
     const codeTabs = page.locator(".code-block-wrapper").filter({ has: ruby });
+    const ordinaryCode = page.locator("pre > .code-block-wrapper").first();
+    for (const block of [ordinaryCode, codeTabs]) {
+      await expect(block).toHaveCSS("border-radius", "12px");
+      await expect(block.locator(":scope > div").first()).toHaveCSS("background-color", "rgb(17, 28, 46)");
+    }
+    await expect(ruby).toHaveCSS("background-color", "rgb(30, 54, 84)");
+    const comment = page.getByText("# Preview without sending a request", { exact: true });
+    const commentContrast = await comment.evaluate((element) => {
+      const luminance = (color: string) => {
+        const rgb = color.match(/\d+/g)!.slice(0, 3).map(Number).map((v) => {
+          const c = v / 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      const foreground = luminance(getComputedStyle(element).color);
+      const background = luminance(getComputedStyle(element.closest(".code-block")!).backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+    expect(commentContrast).toBeGreaterThanOrEqual(4.5);
     await codeTabs.getByRole("button", { name: "Copy code", exact: true }).click();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
@@ -550,6 +570,7 @@ test("switches complete examples without a separate Ruby contents entry", async 
     await expect(python).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("ArrowRight");
     await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(ruby).toHaveCSS("outline-width", "2px");
     await expect(page.locator('aside a[href="#ruby-http-example"]')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await codeTabs.scrollIntoViewIfNeeded();
