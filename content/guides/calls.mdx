@@ -644,6 +644,10 @@ and `recipients[].attempts[].transcriptTurns` in the TypeScript SDK. Each turn
 keeps the `offset_seconds` field in both SDKs. A null offset means the timestamp
 is unavailable; zero means the start of the attempt.
 
+Saved transcripts are not automatically deleted. An empty `transcript_turns`
+array means no transcript is available for that attempt; it is not an
+expiration marker.
+
 The runnable [Python reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_transcript.py)
 and [TypeScript reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read-transcript.ts)
 label each recipient and attempt, keep `unknown` separate from `user`, and display
@@ -664,6 +668,12 @@ offsets, and an empty transcript. To read a real result in your application, pas
 the completed Python/HTTP call object to `transcript_lines`, or the completed
 TypeScript SDK call object to `transcriptLines`, and iterate the returned lines.
 Transcript text may contain private data; keep the output private.
+
+**Audio recordings:** Saved recordings remain available in Dashboard call
+details, where you can download them. The Calls API does not return audio
+recordings, playback or download URLs, or recording availability and expiration
+fields. Recording retrieval through MCP and the SDKs is tracked separately in
+[#753](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/753).
 
 ### Poll for results
 
