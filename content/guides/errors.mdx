@@ -25,6 +25,10 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 - `unauthorized`
 - `forbidden`
 - `rate_limit_exceeded`
+- `account_concurrency_exceeded`
+- `account_concurrency_unavailable`
+- `llm_token_budget_exceeded`
+- `llm_token_budget_unavailable`
 - `insufficient_balance`
 - `unsupported_region`
 - `unsupported_language`
@@ -94,6 +98,21 @@ arbitrary Calls API `503`. For support, retain the SDK version, UTC timestamp,
 HTTP status, error code/details, and existing Call ID if available. Redact
 credentials, phone numbers, and private transcript content before sharing.
 
+### Account controls
+
+For `POST /v1/calls`, account controls can reject creation before planning:
+
+| HTTP status and code | Recovery |
+| --- | --- |
+| `429 account_concurrency_exceeded` | Wait for an active task to finish. Inspect `details.line_type` and `details.max_active_tasks` for the effective limit. Shared-line errors can include KYC and number-purchase guidance in `details.upgrade`; purchased-line errors ask you to wait for capacity. |
+| `429 llm_token_budget_exceeded` | Wait for the account's LLM quota window to reset before attempting more calls. |
+| `503 account_concurrency_unavailable` or `503 llm_token_budget_unavailable` | The account-control check is unavailable. Back off before retrying; this is not evidence that the limit was exceeded. |
+
+Preserve the original request and idempotency key when recovering an uncertain
+creation. A persisted creation rejection replays its original error; after
+resolving a confirmed rejection, use a new key for an intentionally new attempt.
+See [Calls recovery](/calls#recover-after-a-restart-or-lost-response).
+
 ### Code-specific guidance
 
 `unauthorized` means the API key is missing or invalid. Check the `Authorization: Bearer` header.
@@ -122,7 +141,11 @@ does not resolve a coverage error.
 
 `recipient_result_schema_invalid` means the per-recipient `recipient_result_schema` is not a valid supported JSON Schema object.
 
-`idempotency_conflict` means the same idempotency key was reused with a different request body. Reuse keys only for the same external workflow operation.
+`idempotency_conflict` can mean the same key was reused with a different request
+body. Restore the original request for a retry of that operation. On Calls API
+creation, it can also mean the original creation is still in progress:
+`details.reason_code` is `creation_in_progress`. In that case, back off and retry
+with the same key and unchanged body.
 
 For a lost Calls API create response or an application restart, follow
 [Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response).
@@ -141,6 +164,9 @@ Check the operation and error details for `call_not_ready`. On
 `POST /v1/calls`, planning can reject a request with this code before execution.
 For a creation rejection asking for missing task
 information, follow [the correction example](/calls#correct-a-missing-information-rejection).
+A batch request without an eligible purchased default outbound number also
+returns `422 call_not_ready`; check the [batch calling
+requirements](/calls#batch-calls-and-account-limits).
 Do not treat every occurrence of this code as permission to create another call.
 
 `provider_unavailable` applies only before durable Goal Run acceptance. After acceptance, dispatch, call, or result-processing failures are reported in the existing Goal Run resource's top-level `error` field. Retry transport failures only when the workflow can preserve the same idempotency key and request.
