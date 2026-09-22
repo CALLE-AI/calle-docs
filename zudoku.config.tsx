@@ -1,5 +1,6 @@
 import type { ZudokuConfig } from "zudoku";
 import { CodeTabs } from "./src/components/CodeTabs.js";
+import { SdkExample, SdkExamplePanel, SdkExamples } from "./src/components/SdkExamples.js";
 import { ScrollToTop } from "./src/components/ScrollToTop.js";
 import { ThemeMenu } from "./src/components/ThemeMenu.js";
 import "./src/styles.css";
@@ -122,7 +123,7 @@ const config = {
     },
   },
   mdx: {
-    components: { CodeTabs },
+    components: { CodeTabs, SdkExamples, SdkExample, SdkExamplePanel },
   },
   navigation: [
     {

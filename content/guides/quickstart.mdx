@@ -36,9 +36,15 @@ You can view your API keys in the [CALL-E dashboard](https://dashboard.heycall-e
 
 See [Authentication](/authentication) for API key handling and server-only usage.
 
+<SdkExamples>
+
 ## Create a client
 
-```ts title="TypeScript"
+<SdkExample label="Create a client">
+
+<SdkExamplePanel language="typescript">
+
+```ts
 import { CalleClient } from "@call-e/calle";
 
 const client = new CalleClient({
@@ -46,12 +52,20 @@ const client = new CalleClient({
 });
 ```
 
-```python title="Python"
+</SdkExamplePanel>
+
+<SdkExamplePanel language="python">
+
+```python
 import os
 from calle import CalleClient
 
 client = CalleClient(api_key=os.environ["CALLE_API_KEY"])
 ```
+
+</SdkExamplePanel>
+
+</SdkExample>
 
 ## Minimum request
 
@@ -65,7 +79,11 @@ The minimum create request is task-only. Include the phone number directly in th
 
 ## Create and wait
 
-```ts title="TypeScript"
+<SdkExample label="Create and wait">
+
+<SdkExamplePanel language="typescript">
+
+```ts
 const call = await client.calls.createAndWait({
   task: "Call <E164_PHONE> and ask whether they can hear clearly.",
   resultSchema: {
@@ -78,7 +96,11 @@ const call = await client.calls.createAndWait({
 });
 ```
 
-```python title="Python"
+</SdkExamplePanel>
+
+<SdkExamplePanel language="python">
+
+```python
 call = client.calls.create_and_wait(
     task="Call <E164_PHONE> and ask whether they can hear clearly.",
     result_schema={
@@ -91,6 +113,10 @@ call = client.calls.create_and_wait(
 )
 ```
 
+</SdkExamplePanel>
+
+</SdkExample>
+
 ## Read the result
 
 The terminal call task includes a stable status, a schema-valid structured result, and task-level outcome fields from the post-call summary. When CALL-E cannot produce a schema-valid result from the evidence, `structured_result` is `null`.
@@ -99,7 +125,11 @@ See [Call status](/calls#call-status) for lifecycle and terminal states, and
 [Task completion](/calls#task-completion) for how to interpret
 `task_completed` (`taskCompleted` in TypeScript) and `completion_confidence`.
 
-```ts title="TypeScript"
+<SdkExample label="Read the result">
+
+<SdkExamplePanel language="typescript">
+
+```ts
 console.log(call.status);
 console.log(call.structuredResult);
 console.log(call.taskCompleted, call.completionConfidence, call.evidence);
@@ -117,7 +147,11 @@ console.log(call.taskCompleted, call.completionConfidence, call.evidence);
 }
 ```
 
-```python title="Python"
+</SdkExamplePanel>
+
+<SdkExamplePanel language="python">
+
+```python
 print(call["status"])
 print(call["structured_result"])
 print(call["task_completed"], call["completion_confidence"], call["evidence"])
@@ -135,9 +169,15 @@ print(call["task_completed"], call["completion_confidence"], call["evidence"])
 }
 ```
 
+</SdkExamplePanel>
+
+</SdkExample>
+
 Before adding automatic retries, follow
 [Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response)
 to persist the original request, idempotency key, and Call ID.
+
+</SdkExamples>
 
 <span id="ruby-http-example" />
 
