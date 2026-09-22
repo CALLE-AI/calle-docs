@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Read public docs responses
-        run: python3 scripts/probe_public_docs.py
+        run: python3 scripts/probe_docs_edges.py
       - name: Save diagnostic responses
         if: always()
         uses: actions/upload-artifact@v4
