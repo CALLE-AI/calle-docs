@@ -465,10 +465,11 @@ Save the idempotency key and original request with your workflow record before
 sending `POST /v1/calls`. Save the returned Call ID as soon as the response
 arrives. Keep that record across application restarts.
 
-| What you saved | Recovery action |
+| Situation | Recovery action |
 | --- | --- |
-| Call ID | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
-| Original request and idempotency key, but no Call ID | Repeat the create request with the same key and unchanged body. If the original request was accepted, save the returned Call ID. A saved creation rejection is replayed as an error instead. |
+| Call ID saved | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
+| Confirmed creation rejection; cause resolved | Save the request with a new key before submitting an intentionally new attempt. Keep that request and key unchanged for subsequent retries. |
+| Acceptance uncertain; original request and key saved, but no Call ID | Repeat the create request with the same key and unchanged body. If the original request was accepted, save the returned Call ID. |
 | Neither the Call ID nor the original request and key | Reconcile the original operation before submitting a replacement. A lost response does not prove that the first request was rejected. |
 
 For an idempotent replay, preserve the entire request, including `metadata`,
@@ -482,14 +483,10 @@ If the original creation is still in progress, an unchanged retry can return
 body**; do not submit a replacement operation.
 
 A persisted creation failure replays its original HTTP status and error body.
-After resolving a confirmed creation rejection, use a new key for an
-intentionally new attempt. An uncertain response alone is not evidence of a
-rejection.
+An uncertain response alone is not evidence of a rejection.
 
-A retry that recovers an existing operation and an intentionally new call are
-different actions. Use a new key only for an intentionally new operation after
-resolving the prior one. Keep local workflow identifiers in `metadata` for
-correlation; they do not replace the `Idempotency-Key` header.
+Keep local workflow identifiers in `metadata` for correlation; they do not
+replace the `Idempotency-Key` header.
 
 ### Correct a missing-information rejection
 
@@ -503,13 +500,6 @@ The original key remains bound to the rejected request. Sending its unchanged
 body replays the rejection; changing the body while keeping that key returns
 `409 idempotency_conflict`. Not receiving a Call ID does not mean the server
 created no internal record.
-
-| Situation | Request and key to use |
-| --- | --- |
-| Confirmed missing-information creation rejection; task corrected | Save the corrected request with a new key before sending it. |
-| Retry of that corrected request after a lost response | Keep the corrected request and its new key unchanged. |
-| Timeout or lost response without a definite rejection | Preserve and recover the original request and key. Do not switch to a new key. |
-| Call ID already saved | Retrieve that call. Do not create another one to check its outcome. |
 
 `call_not_ready` alone is not enough to choose this correction path. Check
 which operation failed and what its error details say. This example does not
@@ -630,8 +620,6 @@ Use `waitForResult` or `wait_for_result` for simple server-side polling. Use eve
 
 Before mapping a failed call to no answer or decline, read
 [Accepted call execution outcomes](/errors#accepted-call-execution-outcomes).
-Calls API `failure_code` values are not a published enum, and Goal Run error
-codes do not define the Calls API contract.
 
 When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`.
 
