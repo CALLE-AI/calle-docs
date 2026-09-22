@@ -221,7 +221,8 @@ cancel a call already accepted by CALL-E. Neither example retries a failed
 create request automatically. An HTTP error is saved in `error.json`; see
 [Choose the next action](/errors#choose-the-next-action).
 
-An exit code of zero means a terminal response was retrieved. Read `status`,
+For an executed `start` or a `resume`, an exit code of zero means a terminal
+response was retrieved. Read `status`,
 `task_completed`, and `structured_result` separately and check the transcript
 in `result.json`. A `null` structured result or `heard_greeting: "unknown"`
 does not establish that a greeting was heard. A terminal `failed` or `canceled`
