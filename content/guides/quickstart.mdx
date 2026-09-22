@@ -208,3 +208,60 @@ An exit code of zero means a terminal response was retrieved. Read `status`,
 in `result.json`. A `null` structured result or `heard_greeting: "unknown"`
 does not establish that a greeting was heard. A terminal `failed` or `canceled`
 response is still a readable outcome, not a successful business task.
+
+## Ruby HTTP example
+
+The [Ruby example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb)
+uses Ruby's standard library (`net/http` and `json`); no SDK or extra gems are
+required. Tested locally with Ruby 4.0.7 on macOS. It performs the same US English
+greeting test described
+[above](#run-a-complete-example). Choose an authorized destination, such as the
+official test hotline linked there. Calls can incur charges.
+
+From the cloned `calle-docs` directory:
+
+```bash
+export CALLE_API_KEY="<YOUR_API_KEY>"
+export CALLE_TEST_PHONE="<AUTHORIZED_US_E164_PHONE>"
+ruby examples/calls.rb start ../calle-ruby-run
+```
+
+This previews the operation without sending a request or creating files. To
+confirm the recipient is authorized and place one call:
+
+```bash
+ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient
+```
+
+The script saves `request.json`, including a stable idempotency key, before
+`POST /v1/calls`. It sends the API key as a Bearer credential and the saved key
+as `Idempotency-Key`. It then saves `call-id.json`, polls `GET /v1/calls/{call_id}`
+every five seconds, and writes the terminal response to `result.json`.
+
+Use a new directory outside the repository. The files contain private request
+and call data, but not the API key. Unix permissions are `700` for the directory
+and `600` for files; on Windows, restrict access using your account's file
+permissions. Do not commit these files or share them without redacting them.
+
+If the process stops or polling reaches its five-minute limit, retrieve the
+saved call with:
+
+```bash
+ruby examples/calls.rb resume ../calle-ruby-run
+```
+
+`resume` only sends GET requests. Stopping the script does not cancel the call.
+If `call-id.json` is missing, keep `request.json` and follow
+[Calls recovery](/calls#recover-after-a-restart-or-lost-response). Do not delete
+the directory and run `start` again to recover an uncertain request.
+
+The script does not retry requests automatically. HTTP failures save the status
+and response body in private `error.json`; use the error code and details with
+the [recovery table](/errors#choose-the-next-action). For example, check credentials
+for `unauthorized`, correct rejected input for `invalid_request`, and retain the
+original request and key when recovering an uncertain creation.
+
+Exit code `0` means a terminal result was retrieved, including `failed` or
+`canceled`. Read `task_completed`, `structured_result`, `failure_code`, and the
+available transcript in `result.json`. A `null` result or `unknown` answer is
+not proof of success. See [task completion](/calls#task-completion).
