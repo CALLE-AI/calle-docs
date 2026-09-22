@@ -601,6 +601,29 @@ the application would need evidence of a confirmed booking; this example does
 not establish that outcome. A `null` result or an `unknown` answer must remain
 unresolved rather than becoming a yes or no from `status` alone.
 
+### Read a saved result
+
+The [Python result reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_results.py)
+displays task-level and recipient-level results separately, followed by the
+transcript labeled by recipient and attempt. Run it with Python 3.11+ on the
+`result.json` saved by either [complete Calls example](/quickstart#run-a-complete-example):
+
+```bash
+python examples/read_results.py ../calle-run/result.json
+```
+
+This command makes no API requests and leaves the file unchanged. Its output
+may contain private results and transcript text; keep it private. A zero exit
+code means the file was read, not that the call or business task succeeded.
+
+`result_schema` supplies the task-level `structured_result`;
+`recipient_result_schema` supplies each `recipients[].structured_result`, even
+for a single recipient. A null task-level result does not imply that recipient
+results or transcripts are missing. The reader preserves `null`, `unknown`,
+`false`, and zero rather than treating them as success or substituting one
+recipient's result for the whole task. Attempt transcript counts show when an
+attempt has no transcript turns.
+
 ## Polling and events
 
 Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
