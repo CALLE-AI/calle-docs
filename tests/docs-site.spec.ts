@@ -644,7 +644,7 @@ test("links result examples to task completion and endpoint classification", asy
 }) => {
   for (const route of ["/quickstart", "/webhooks"]) {
     await page.goto(route);
-    await page.locator('p a[href="/calls#task-completion"]').click();
+    await page.locator('p a[href="/calls#task-completion"]').first().click();
     await expect(page).toHaveURL(/\/calls#task-completion$/);
     await expect(
       page.getByRole("heading", { name: "Task completion" }),
