@@ -1,11 +1,16 @@
 ---
 title: SDKs
-description: Install the stable TypeScript and Python server SDKs.
+description: Official and community SDKs.
 ---
+
+## Official SDKs
+
+- [Python](https://github.com/CALLE-AI/server-sdk-python)
+- [TypeScript](https://github.com/CALLE-AI/server-sdk-typescript)
 
 CALL-E provides server SDKs for trusted backend services, workers, and automation systems that create and monitor call tasks.
 
-## Packages
+### Packages
 
 TypeScript package name:
 
@@ -25,7 +30,7 @@ Python imports the package as `calle`:
 from calle import CalleClient
 ```
 
-## Package status
+### Package status
 
 The current stable server SDK packages are:
 
@@ -35,7 +40,7 @@ The current stable server SDK packages are:
 These stable packages support both the request-scoped Calls API and the Goal
 Runs SDK surface described below.
 
-## Goal Runs
+### Goal Runs
 
 The Goal-based SDK surface keeps published contracts separate from the
 one-shot Calls API:
@@ -51,7 +56,7 @@ idempotency key. They do not accept request-scoped task text, prompts,
 RunSpec. See the [Goal Runs guide](/goal-runs) for the API contract and SDK
 examples.
 
-## Source code
+### Source code
 
 Both SDKs are maintained in public repositories.
 
@@ -65,7 +70,7 @@ guidance:
 
 - [TypeScript security policy](https://github.com/CALLE-AI/server-sdk-typescript/blob/main/SECURITY.md)
 
-## Local examples
+### Local examples
 
 The TypeScript SDK repository includes runnable examples for the server-side
 one-shot call task flow.
@@ -79,7 +84,7 @@ pnpm install
 pnpm run example:create-and-wait
 ```
 
-## Calls API
+### Calls API
 
 The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
 
@@ -174,7 +179,7 @@ created_and_completed = client.calls.create_and_wait(
 events = client.calls.list_events(created_and_completed["id"], limit=50)
 ```
 
-## Availability
+### Availability
 
 Install the stable server SDK package for your runtime. The Python SDK requires
 Python 3.11 or later; Python 3.9 and 3.10 are not supported.
@@ -191,9 +196,9 @@ pnpm add @call-e/calle@0.7.0
 pip install calle-ai==0.7.0
 ```
 
-## Supported scope
+### Supported scope
 
-This release does not include:
+The official TypeScript and Python SDKs do not include:
 
 - Python async client support
 - Project-level webhook management
@@ -201,3 +206,7 @@ This release does not include:
 - Recurring or scheduled calls
 - Zod result schema helpers
 - Pydantic result schema helpers
+
+## Community SDKs
+
+- Android / Wear OS — [calle-android-sdk](https://github.com/Baklolman69/calle-android-sdk) (community-maintained).
