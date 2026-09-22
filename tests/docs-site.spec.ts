@@ -512,6 +512,11 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await expect(minimumRequest).not.toContainText('"recipients"');
   await expect(page.getByText("+14155550100")).toHaveCount(0);
   await expect(page.getByText("+8613800000000")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ruby example", exact: true })).toHaveAttribute(
+    "href", "https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb",
+  );
+  await expect(page.locator("pre").filter({ hasText: "ruby examples/calls.rb resume" })).toBeVisible();
 });
 
 test("preserves authentication, webhook, and SDK guidance", async ({

@@ -208,3 +208,28 @@ An exit code of zero means a terminal response was retrieved. Read `status`,
 in `result.json`. A `null` structured result or `heard_greeting: "unknown"`
 does not establish that a greeting was heard. A terminal `failed` or `canceled`
 response is still a readable outcome, not a successful business task.
+
+## Ruby HTTP example
+
+The [Ruby example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb)
+uses the standard library, with no SDK or extra gems. Tested with Ruby 4.0.7 on
+macOS. It runs the same [authorized greeting test](#run-a-complete-example)
+described above; calls may consume credits.
+
+From the cloned `calle-docs` directory, use a new private run directory outside
+this repository:
+
+```bash
+export CALLE_API_KEY="<YOUR_API_KEY>"
+export CALLE_TEST_PHONE="<AUTHORIZED_US_E164_PHONE>"
+# Preview without sending a request
+ruby examples/calls.rb start ../calle-ruby-run
+# Create one authorized call and save its result
+ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient
+# Retrieve the saved call after a restart or completed run; no new call
+ruby examples/calls.rb resume ../calle-ruby-run
+```
+
+The saved-file and result-reading guidance above also applies. If no Call ID was
+saved, keep the original request and follow [Calls recovery](/calls#recover-after-a-restart-or-lost-response).
+For HTTP failures saved in `error.json`, use the [error recovery table](/errors#choose-the-next-action).
