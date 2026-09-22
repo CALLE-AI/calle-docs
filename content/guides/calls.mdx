@@ -98,9 +98,7 @@ Persist the returned Call ID with your workflow record. The Calls API does not
 provide a list endpoint: `GET /v1/calls` cannot recover IDs you did not save.
 See [Recover after a restart or lost response](#recover-after-a-restart-or-lost-response).
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const call = await client.calls.create(
   {
     task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
@@ -133,9 +131,7 @@ const call = await client.calls.create(
 );
 ```
 
-Python:
-
-```python
+```python title="Python"
 call = client.calls.create(
     task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients=[
@@ -666,9 +662,7 @@ fields. Recording retrieval through MCP and the SDKs is tracked separately in
 ### Poll for results
 
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const completed = await client.calls.waitForResult(call.id, {
   timeoutMs: 120_000,
   intervalMs: 2_000,
@@ -677,9 +671,7 @@ const completed = await client.calls.waitForResult(call.id, {
 const events = await client.calls.listEvents(call.id, { limit: 50 });
 ```
 
-Python:
-
-```python
+```python title="Python"
 completed = client.calls.wait_for_result(
     call["id"],
     timeout_seconds=120,

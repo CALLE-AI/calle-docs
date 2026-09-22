@@ -75,9 +75,7 @@ guidance:
 The TypeScript SDK repository includes runnable examples for the server-side
 one-shot call task flow.
 
-TypeScript:
-
-```bash
+```bash title="TypeScript"
 git clone https://github.com/CALLE-AI/server-sdk-typescript.git
 cd server-sdk-typescript
 pnpm install
@@ -96,9 +94,7 @@ Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PH
 
 The SDKs accept structured result schemas as plain JSON objects. Use field `description` values to explain how CALL-E should interpret enum values, and use `type`, `required`, `enum`, and `additionalProperties` for hard validation. See the Calls guide for structured result design patterns and examples.
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const created = await client.calls.create(
   {
     task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
@@ -144,9 +140,7 @@ const events = await client.calls.listEvents(createdAndCompleted.id, {
 });
 ```
 
-Python:
-
-```python
+```python title="Python"
 created = client.calls.create(
     task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients=[

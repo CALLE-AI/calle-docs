@@ -430,6 +430,18 @@ test("renders every migrated guide from its file route", async ({ page }) => {
     await expect(
       page.locator("h1").filter({ hasText: guide.heading }),
     ).toBeVisible();
+    if (["/authentication", "/calls", "/sdks", "/webhooks"].includes(guide.path)) {
+      for (const language of ["Python", "TypeScript"]) {
+        await expect(page.locator(".code-block-wrapper > div:first-child")
+          .filter({ hasText: new RegExp(`${language}$`) }).first()).toBeVisible();
+      }
+      await expect(page.locator("p")
+        .filter({ hasText: /^(Python|TypeScript|Example output):$/ })).toHaveCount(0);
+    }
+    if (guide.path === "/quickstart") {
+      await expect(page.locator(".code-block-wrapper > div:first-child")
+        .filter({ hasText: /Example output$/ })).toHaveCount(1);
+    }
   }
 });
 
@@ -509,6 +521,9 @@ test("uses the CALL-E Web palette for docs chrome", async ({ page }) => {
 test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await page.goto("/quickstart");
 
+  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle" }).first()
+    .locator(".code-block-wrapper > div:first-child")).toHaveText(/Terminal$/);
+
   const minimumRequest = page
     .locator("pre")
     .filter({ hasText: /"task":\s*"[^"]*<E164_PHONE>[^"]*"/ })
@@ -523,6 +538,83 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
     "href", "https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb",
   );
 
+});
+
+test("disables code tabs until their interaction is ready", async ({ page }) => {
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
+  await page.route("**/assets/*.js", async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto("/quickstart#run-a-complete-example", { waitUntil: "commit" });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    const complete = page.locator("fieldset").filter({ has: page.getByRole("tab", { name: "Ruby", exact: true }) });
+    const python = complete.getByRole("tab", { name: "Python", exact: true });
+    await expect(ruby).toBeVisible();
+    await expect(ruby).toBeDisabled();
+    await expect(python).toBeDisabled();
+    for (const label of ["Create a client", "Create and wait", "Read the result"]) {
+      const example = page.getByRole("group", { name: label, exact: true });
+      await expect(example.getByRole("tab", { name: "Python", exact: true })).toBeDisabled();
+      await expect(example.getByRole("button", { name: "Copy code", exact: true }).first()).toBeDisabled();
+    }
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    releaseScripts();
+    const result = page.getByRole("group", { name: "Read the result", exact: true });
+    await result.getByRole("tab", { name: "Python", exact: true }).click();
+    await expect(result.getByRole("tab", { name: "Python", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(ruby).toBeEnabled();
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toBeVisible();
+    await ruby.press("ArrowLeft");
+    await expect(python).toBeFocused();
+    await expect(python).toHaveAttribute("aria-selected", "true");
+  } finally {
+    releaseScripts();
+  }
+});
+
+test("keeps SDK language, code, and output together across quickstart steps", async ({ page, context }, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  for (const width of [1280, 390]) {
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/quickstart#read-the-result");
+      const client = page.getByRole("group", { name: "Create a client", exact: true });
+      const result = page.getByRole("group", { name: "Read the result", exact: true });
+      await expect(result.getByRole("tab", { name: "TypeScript", exact: true })).toHaveAttribute("aria-selected", "true");
+      await client.getByRole("tab", { name: "Python", exact: true }).click();
+      for (const label of ["Create a client", "Create and wait", "Read the result"]) {
+        const example = page.getByRole("group", { name: label, exact: true });
+        await expect(example.getByRole("tab", { name: "Python", exact: true })).toHaveAttribute("aria-selected", "true");
+        await expect(example.getByRole("tabpanel")).toHaveCount(1);
+      }
+      for (const [language, field] of [["Python", "task_completed"], ["TypeScript", "taskCompleted"]]) {
+        const panel = result.getByRole("tabpanel", { name: language, exact: true });
+        await expect(panel.locator("code.shiki")).toHaveCount(2);
+        const snippets = await panel.locator("code.shiki").allTextContents();
+        expect(snippets[0]).toContain(language === "Python" ? 'print(call["status"])' : "console.log(call.status)");
+        expect(JSON.parse(snippets[1])[field]).toBe(true);
+        for (const index of [0, 1]) {
+          await panel.getByRole("button", { name: "Copy code", exact: true }).nth(index).click();
+          expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippets[index]);
+        }
+        if (language === "Python") {
+          await result.screenshot({ path: testInfo.outputPath(`sdk-result-${width}-${colorScheme}.png`) });
+          await result.getByRole("tab", { name: "Python", exact: true }).press("ArrowLeft");
+          await expect(result.getByRole("tab", { name: "TypeScript", exact: true })).toBeFocused();
+          await expect(client.getByRole("tab", { name: "TypeScript", exact: true })).toHaveAttribute("aria-selected", "true");
+        }
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  }
 });
 
 test("switches complete examples without a separate Ruby contents entry", async ({
@@ -540,18 +632,20 @@ test("switches complete examples without a separate Ruby contents entry", async 
     await page.emulateMedia({ colorScheme });
     const dark = colorScheme === "dark";
     await page.goto("/quickstart#run-a-complete-example");
-    const python = page.getByRole("tab", { name: "Python", exact: true });
+    const complete = page.locator("fieldset").filter({ has: page.getByRole("tab", { name: "Ruby", exact: true }) });
+    const python = complete.getByRole("tab", { name: "Python", exact: true });
     const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
     await expect(python).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
       'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
     );
+    await expect(ruby).toBeEnabled();
     await ruby.click();
     await expect(ruby).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toContainText(
       "ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient",
     );
-    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
     const codeTabs = page.locator(".code-block-wrapper").filter({ has: ruby });
     const ordinaryCode = page.locator("pre > .code-block-wrapper").first();
     for (const block of [ordinaryCode, codeTabs]) {
