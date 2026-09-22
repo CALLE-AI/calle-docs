@@ -512,11 +512,58 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await expect(minimumRequest).not.toContainText('"recipients"');
   await expect(page.getByText("+14155550100")).toHaveCount(0);
   await expect(page.getByText("+8613800000000")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Ruby example", exact: true })).toHaveAttribute(
     "href", "https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb",
   );
-  await expect(page.locator("pre").filter({ hasText: "ruby examples/calls.rb resume" })).toBeVisible();
+
+});
+
+test("switches complete examples without a separate Ruby contents entry", async ({
+  page, context, request,
+}, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  for (const width of [1280, 390]) {
+    await page.goto("about:blank");
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme: width === 390 ? "dark" : "light" });
+    await page.goto("/quickstart#run-a-complete-example");
+    const python = page.getByRole("tab", { name: "Python", exact: true });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    await expect(python).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toContainText(
+      "ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient",
+    );
+    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
+    const codeTabs = page.locator(".code-block-wrapper").filter({ has: ruby });
+    await codeTabs.getByRole("button", { name: "Copy code", exact: true }).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
+    expect(copied).not.toContain("python examples/");
+    await ruby.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(python).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowRight");
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('aside a[href="#ruby-http-example"]')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await codeTabs.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`example-tabs-${width}.png`) });
+  }
+  await page.goto("/quickstart#ruby-http-example");
+  await expect(page.locator("#ruby-http-example")).toHaveCount(1);
+  for (const route of ["/quickstart.md", "/llms-full.txt"]) {
+    const result = await request.get(route);
+    expect(result.ok()).toBe(true);
+    const text = await result.text();
+    expect(text).toContain("python examples/calls.py resume ../calle-run");
+    expect(text).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
+  }
 });
 
 test("preserves authentication, webhook, and SDK guidance", async ({
