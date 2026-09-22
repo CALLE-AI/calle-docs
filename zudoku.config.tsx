@@ -1,4 +1,5 @@
 import type { ZudokuConfig } from "zudoku";
+import { CodeTabs } from "./src/components/CodeTabs.js";
 import { ScrollToTop } from "./src/components/ScrollToTop.js";
 import { ThemeMenu } from "./src/components/ThemeMenu.js";
 import "./src/styles.css";
@@ -119,6 +120,9 @@ const config = {
       llmsTxtFull: true,
       includeProtected: false,
     },
+  },
+  mdx: {
+    components: { CodeTabs },
   },
   navigation: [
     {

@@ -525,6 +525,36 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
 
 });
 
+test("disables code tabs until their interaction is ready", async ({ page }) => {
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
+  await page.route("**/assets/*.js", async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto("/quickstart#run-a-complete-example", { waitUntil: "commit" });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    const python = page.getByRole("tab", { name: "Python", exact: true });
+    await expect(ruby).toBeVisible();
+    await expect(ruby).toBeDisabled();
+    await expect(python).toBeDisabled();
+    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    releaseScripts();
+    await expect(ruby).toBeEnabled();
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toBeVisible();
+    await ruby.press("ArrowLeft");
+    await expect(python).toBeFocused();
+    await expect(python).toHaveAttribute("aria-selected", "true");
+  } finally {
+    releaseScripts();
+  }
+});
+
 test("switches complete examples without a separate Ruby contents entry", async ({
   page, context, request,
 }, testInfo) => {
@@ -546,6 +576,7 @@ test("switches complete examples without a separate Ruby contents entry", async 
     await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
       'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
     );
+    await expect(ruby).toBeEnabled();
     await ruby.click();
     await expect(ruby).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toContainText(
