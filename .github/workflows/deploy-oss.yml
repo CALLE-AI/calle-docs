@@ -83,13 +83,20 @@ jobs:
             exit 1
           fi
           base_url="${DOCS_PUBLIC_URL%/}"
-          curl --fail --silent --show-error "$base_url/index.html" --output /tmp/calle-docs-index.html
-          curl --fail --silent --show-error "$base_url/quickstart" --output /tmp/calle-docs-quickstart.html
-          curl --fail --silent --show-error "$base_url/quickstart.md" --output /tmp/calle-docs-quickstart.md
-          curl --fail --silent --show-error "$base_url/llms.txt" --output /tmp/calle-docs-llms.txt
-          curl --fail --silent --show-error "$base_url/llms-full.txt" --output /tmp/calle-docs-llms-full.txt
-          curl --fail --silent --show-error "$base_url/sitemap.xml" --output /tmp/calle-docs-sitemap.xml
-          curl --fail --silent --show-error "$base_url/openapi/calle.openapi.yaml" --output /tmp/calle-docs-openapi.yaml
+          fetch_public() {
+            echo "Checking public docs: /$1"
+            curl --fail --silent --show-error \
+              --retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30 \
+              --write-out 'HTTP %{http_code}\n' \
+              "$base_url/$1" --output "$2"
+          }
+          fetch_public index.html /tmp/calle-docs-index.html
+          fetch_public quickstart /tmp/calle-docs-quickstart.html
+          fetch_public quickstart.md /tmp/calle-docs-quickstart.md
+          fetch_public llms.txt /tmp/calle-docs-llms.txt
+          fetch_public llms-full.txt /tmp/calle-docs-llms-full.txt
+          fetch_public sitemap.xml /tmp/calle-docs-sitemap.xml
+          fetch_public openapi/calle.openapi.yaml /tmp/calle-docs-openapi.yaml
           test -s /tmp/calle-docs-index.html
           test -s /tmp/calle-docs-quickstart.html
           test -s /tmp/calle-docs-quickstart.md
