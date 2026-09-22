@@ -195,7 +195,7 @@ const config = {
   },
   syntaxHighlighting: {
     themes: {
-      light: "github-dark-default",
+      light: "github-light",
       dark: "github-dark-default",
     },
   },

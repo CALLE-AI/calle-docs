@@ -45,7 +45,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   ).toBeVisible();
   await expect(page.locator("code.shiki.not-inline").first()).toHaveCSS(
     "background-color",
-    "rgb(11, 18, 32)",
+    "rgb(246, 248, 250)",
   );
 });
 
@@ -240,10 +240,12 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await page.goto("/quickstart");
 
   const html = page.locator("html");
+  const code = page.locator("code.shiki.not-inline").first();
   const trigger = page.getByTestId("theme-menu-trigger");
 
   await expect(trigger).toHaveAttribute("data-theme", "system");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
 
   await trigger.click();
   const lightOption = page.getByRole("menuitemradio", {
@@ -253,6 +255,7 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await lightOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "light");
   await expect(html).toHaveClass("light");
+  await expect(code).toHaveCSS("background-color", "rgb(246, 248, 250)");
   await expect(lightOption).toBeHidden();
 
   await trigger.click();
@@ -263,6 +266,7 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await darkOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "dark");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
   await expect(darkOption).toBeHidden();
 
   await trigger.click();
@@ -273,9 +277,11 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await systemOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "system");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
 
   await page.emulateMedia({ colorScheme: "light" });
   await expect(html).toHaveClass("light");
+  await expect(code).toHaveCSS("background-color", "rgb(246, 248, 250)");
 });
 
 test("shows a desktop scroll-to-top control after one viewport", async ({
@@ -523,10 +529,16 @@ test("switches complete examples without a separate Ruby contents entry", async 
   page, context, request,
 }, testInfo) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  for (const width of [1280, 390]) {
+  for (const { width, colorScheme } of [
+    { width: 1280, colorScheme: "light" },
+    { width: 1280, colorScheme: "dark" },
+    { width: 390, colorScheme: "light" },
+    { width: 390, colorScheme: "dark" },
+  ] as const) {
     await page.goto("about:blank");
     await page.setViewportSize({ width, height: 900 });
-    await page.emulateMedia({ colorScheme: width === 390 ? "dark" : "light" });
+    await page.emulateMedia({ colorScheme });
+    const dark = colorScheme === "dark";
     await page.goto("/quickstart#run-a-complete-example");
     const python = page.getByRole("tab", { name: "Python", exact: true });
     const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
@@ -544,10 +556,18 @@ test("switches complete examples without a separate Ruby contents entry", async 
     const ordinaryCode = page.locator("pre > .code-block-wrapper").first();
     for (const block of [ordinaryCode, codeTabs]) {
       await expect(block).toHaveCSS("border-radius", "12px");
-      await expect(block.locator(":scope > div").first()).toHaveCSS("background-color", "rgb(17, 28, 46)");
+      await expect(block.locator(":scope > div").first()).toHaveCSS(
+        "background-color", dark ? "rgb(17, 28, 46)" : "rgb(238, 242, 246)",
+      );
+      await expect(block.locator("code.shiki")).toHaveCSS(
+        "background-color", dark ? "rgb(11, 18, 32)" : "rgb(246, 248, 250)",
+      );
     }
-    await expect(ruby).toHaveCSS("background-color", "rgb(30, 54, 84)");
+    await expect(ruby).toHaveCSS(
+      "background-color", dark ? "rgb(30, 54, 84)" : "rgb(219, 234, 254)",
+    );
     const comment = page.getByText("# Preview without sending a request", { exact: true });
+    await expect(comment).toHaveCSS("color", dark ? "rgb(139, 148, 158)" : "rgb(106, 115, 125)");
     const commentContrast = await comment.evaluate((element) => {
       const luminance = (color: string) => {
         const rgb = color.match(/\d+/g)!.slice(0, 3).map(Number).map((v) => {
@@ -574,7 +594,7 @@ test("switches complete examples without a separate Ruby contents entry", async 
     await expect(page.locator('aside a[href="#ruby-http-example"]')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await codeTabs.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: testInfo.outputPath(`example-tabs-${width}.png`) });
+    await page.screenshot({ path: testInfo.outputPath(`example-tabs-${width}-${colorScheme}.png`) });
   }
   await page.goto("/quickstart#ruby-http-example");
   await expect(page.locator("#ruby-http-example")).toHaveCount(1);
