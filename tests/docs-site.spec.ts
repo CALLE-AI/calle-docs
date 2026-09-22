@@ -45,7 +45,7 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   ).toBeVisible();
   await expect(page.locator("code.shiki.not-inline").first()).toHaveCSS(
     "background-color",
-    "rgb(11, 15, 20)",
+    "rgb(246, 248, 250)",
   );
 });
 
@@ -240,10 +240,12 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await page.goto("/quickstart");
 
   const html = page.locator("html");
+  const code = page.locator("code.shiki.not-inline").first();
   const trigger = page.getByTestId("theme-menu-trigger");
 
   await expect(trigger).toHaveAttribute("data-theme", "system");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
 
   await trigger.click();
   const lightOption = page.getByRole("menuitemradio", {
@@ -253,6 +255,7 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await lightOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "light");
   await expect(html).toHaveClass("light");
+  await expect(code).toHaveCSS("background-color", "rgb(246, 248, 250)");
   await expect(lightOption).toBeHidden();
 
   await trigger.click();
@@ -263,6 +266,7 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await darkOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "dark");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
   await expect(darkOption).toBeHidden();
 
   await trigger.click();
@@ -273,9 +277,11 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await systemOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "system");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
 
   await page.emulateMedia({ colorScheme: "light" });
   await expect(html).toHaveClass("light");
+  await expect(code).toHaveCSS("background-color", "rgb(246, 248, 250)");
 });
 
 test("shows a desktop scroll-to-top control after one viewport", async ({
@@ -512,11 +518,93 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await expect(minimumRequest).not.toContainText('"recipients"');
   await expect(page.getByText("+14155550100")).toHaveCount(0);
   await expect(page.getByText("+8613800000000")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Ruby example", exact: true })).toHaveAttribute(
     "href", "https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb",
   );
-  await expect(page.locator("pre").filter({ hasText: "ruby examples/calls.rb resume" })).toBeVisible();
+
+});
+
+test("switches complete examples without a separate Ruby contents entry", async ({
+  page, context, request,
+}, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  for (const { width, colorScheme } of [
+    { width: 1280, colorScheme: "light" },
+    { width: 1280, colorScheme: "dark" },
+    { width: 390, colorScheme: "light" },
+    { width: 390, colorScheme: "dark" },
+  ] as const) {
+    await page.goto("about:blank");
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    const dark = colorScheme === "dark";
+    await page.goto("/quickstart#run-a-complete-example");
+    const python = page.getByRole("tab", { name: "Python", exact: true });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    await expect(python).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toContainText(
+      "ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient",
+    );
+    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
+    const codeTabs = page.locator(".code-block-wrapper").filter({ has: ruby });
+    const ordinaryCode = page.locator("pre > .code-block-wrapper").first();
+    for (const block of [ordinaryCode, codeTabs]) {
+      await expect(block).toHaveCSS("border-radius", "12px");
+      await expect(block.locator(":scope > div").first()).toHaveCSS(
+        "background-color", dark ? "rgb(17, 28, 46)" : "rgb(238, 242, 246)",
+      );
+      await expect(block.locator("code.shiki")).toHaveCSS(
+        "background-color", dark ? "rgb(11, 18, 32)" : "rgb(246, 248, 250)",
+      );
+    }
+    await expect(ruby).toHaveCSS(
+      "background-color", dark ? "rgb(30, 54, 84)" : "rgb(219, 234, 254)",
+    );
+    const comment = page.getByText("# Preview without sending a request", { exact: true });
+    await expect(comment).toHaveCSS("color", dark ? "rgb(139, 148, 158)" : "rgb(106, 115, 125)");
+    const commentContrast = await comment.evaluate((element) => {
+      const luminance = (color: string) => {
+        const rgb = color.match(/\d+/g)!.slice(0, 3).map(Number).map((v) => {
+          const c = v / 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      const foreground = luminance(getComputedStyle(element).color);
+      const background = luminance(getComputedStyle(element.closest(".code-block")!).backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+    expect(commentContrast).toBeGreaterThanOrEqual(4.5);
+    await codeTabs.getByRole("button", { name: "Copy code", exact: true }).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
+    expect(copied).not.toContain("python examples/");
+    await ruby.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(python).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowRight");
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(ruby).toHaveCSS("outline-width", "2px");
+    await expect(page.locator('aside a[href="#ruby-http-example"]')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await codeTabs.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`example-tabs-${width}-${colorScheme}.png`) });
+  }
+  await page.goto("/quickstart#ruby-http-example");
+  await expect(page.locator("#ruby-http-example")).toHaveCount(1);
+  for (const route of ["/quickstart.md", "/llms-full.txt"]) {
+    const result = await request.get(route);
+    expect(result.ok()).toBe(true);
+    const text = await result.text();
+    expect(text).toContain("python examples/calls.py resume ../calle-run");
+    expect(text).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
+  }
 });
 
 test("preserves authentication, webhook, and SDK guidance", async ({

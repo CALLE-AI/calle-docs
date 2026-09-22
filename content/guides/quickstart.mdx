@@ -155,29 +155,54 @@ Before adding automatic retries, follow
 [Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response)
 to persist the original request, idempotency key, and Call ID.
 
+<span id="ruby-http-example" />
+
 ## Run a complete example
 
 The [Python example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.py)
-creates one real US English test call, saves its request and Call ID, waits for
-the terminal result, and writes the full response to a private local directory.
-It listens to a greeting and then asks the agent to end the call. This is a
-real-service integration check, not a simulated business transaction.
+and [Ruby example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb)
+create one real US English test call, save its request and Call ID, wait for
+the terminal result, and write the full response to a private local directory.
+They listen to a greeting and then ask the agent to end the call.
 
-Use Python 3.11 or later and a number you own or are authorized to test. If you
-need a destination, follow the [official US English testing hotline announcement](https://discord.com/channels/1493880186826133504/1495622983253889054/1546414916515401788).
+Python requires version 3.11 or later and the CALL-E SDK. Ruby uses the standard
+library with no SDK or extra gems; it was tested with Ruby 4.0.7 on macOS.
+Use a number you own or are authorized to test. If you need a destination,
+follow the [official US English testing hotline announcement](https://discord.com/channels/1493880186826133504/1495622983253889054/1546414916515401788).
 Calls use your real account and may consume credits. The hotline is a test
 recipient, not a promise of free sandbox credentials or deterministic answers.
 
 ```bash
 git clone https://github.com/CALLE-AI/calle-docs.git
 cd calle-docs
+export CALLE_API_KEY="<YOUR_API_KEY>"
+export CALLE_TEST_PHONE="<AUTHORIZED_US_E164_PHONE>"
+```
+
+Choose a language and a new private run directory outside the repository:
+
+<CodeTabs hideIcon>
+
+```bash title="Python"
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install calle-ai==0.7.0
-export CALLE_API_KEY="<YOUR_API_KEY>"
-export CALLE_TEST_PHONE="<AUTHORIZED_US_E164_PHONE>"
+# Create one authorized call and save its result
 python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"
+# Retrieve the same call after a restart or completed run
+python examples/calls.py resume ../calle-run
 ```
+
+```bash title="Ruby"
+# Preview without sending a request
+ruby examples/calls.rb start ../calle-ruby-run
+# Create one authorized call and save its result
+ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient
+# Retrieve the same call after a restart or completed run
+ruby examples/calls.rb resume ../calle-ruby-run
+```
+
+</CodeTabs>
 
 `start` requires a new run directory and submits at most one create request.
 The directory holds `request.json` (including the original idempotency key),
@@ -186,50 +211,19 @@ the destination and call transcript. The API key is not written there. On Unix,
 the directory is created with owner-only access; on Windows, use a private
 directory protected by your account's file permissions.
 
-After a polling timeout, application restart, or successful run, read the same
-call again with:
-
-```bash
-python examples/calls.py resume ../calle-run
-```
-
 `resume` only retrieves the saved Call ID; it never creates a call. If a create
 response was lost and no ID was saved, the script stops. Keep `request.json`
 and follow [Calls recovery](/calls#recover-after-a-restart-or-lost-response)
 before starting a replacement. Do not delete a run directory to bypass this check.
 
 Stopping this process or reaching its five-minute polling timeout does not
-cancel a call already accepted by CALL-E. Neither command retries a failed
+cancel a call already accepted by CALL-E. Neither example retries a failed
 create request automatically. An HTTP error is saved in `error.json`; see
 [Choose the next action](/errors#choose-the-next-action).
 
-An exit code of zero means a terminal response was retrieved. Read `status`,
+For an executed `start` or a `resume`, an exit code of zero means a terminal
+response was retrieved. Read `status`,
 `task_completed`, and `structured_result` separately and check the transcript
 in `result.json`. A `null` structured result or `heard_greeting: "unknown"`
 does not establish that a greeting was heard. A terminal `failed` or `canceled`
 response is still a readable outcome, not a successful business task.
-
-## Ruby HTTP example
-
-The [Ruby example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb)
-uses the standard library, with no SDK or extra gems. Tested with Ruby 4.0.7 on
-macOS. It runs the same [authorized greeting test](#run-a-complete-example)
-described above; calls may consume credits.
-
-From the cloned `calle-docs` directory, use a new private run directory outside
-this repository:
-
-```bash
-export CALLE_API_KEY="<YOUR_API_KEY>"
-export CALLE_TEST_PHONE="<AUTHORIZED_US_E164_PHONE>"
-# Preview without sending a request
-ruby examples/calls.rb start ../calle-ruby-run
-# Create one authorized call and save its result
-ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient
-# Retrieve the saved call after a restart or completed run; no new call
-ruby examples/calls.rb resume ../calle-ruby-run
-```
-
-The saved-file and result-reading guidance above also applies. If no Call ID was
-saved, keep the original request and follow [Calls recovery](/calls#recover-after-a-restart-or-lost-response).
-For HTTP failures saved in `error.json`, use the [error recovery table](/errors#choose-the-next-action).
