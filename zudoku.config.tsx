@@ -163,6 +163,11 @@ const config = {
     },
     {
       type: "doc",
+      file: "billing",
+      label: "Billing",
+    },
+    {
+      type: "doc",
       file: "changelog",
       label: "What's New",
     },

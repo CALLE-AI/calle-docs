@@ -1,0 +1,80 @@
+---
+title: Billing
+description: Preview the upcoming CALL-E billing model. These rates are not yet in effect.
+---
+
+import { ClockIcon, TagIcon } from "zudoku/icons";
+import { BillingComparison } from "../../src/components/BillingComparison.js";
+
+<section className="billing-highlight" aria-label="Billing preview">
+  <p className="billing-highlight__title">
+    <ClockIcon aria-hidden="true" />
+    <span>Billing preview — coming soon</span>
+  </p>
+  <div className="billing-highlight__body">
+    This billing model is under development and is not yet in effect. The rates
+    below are a preview; your current billing remains unchanged.
+  </div>
+</section>
+
+<section className="billing-highlight" aria-label="Goal pricing offer">
+  <p className="billing-highlight__title">
+    <TagIcon aria-hidden="true" />
+    <span>Goal: Half-price calling</span>
+  </p>
+  <div className="billing-highlight__body">
+    With the upcoming billing model, Goal will cost half as much as One-shot-call.
+    Use Goal for batch and large-scale calling, and One-shot-call for development
+    and testing.
+  </div>
+  <BillingComparison>
+    <p>30-second domestic outbound call · US / CA · USD · Preview</p>
+    <p>One-shot-call: Model Fee $0.0296 × 3 = $0.0888; Carrier Fee $0.0400/min × 0.5 min = $0.0200; total $0.1088.</p>
+    <p>Goal: Model Fee $0.0148 × 3 = $0.0444; Carrier Fee $0.0200/min × 0.5 min = $0.0100; total $0.0544 (50% less).</p>
+  </BillingComparison>
+</section>
+
+## How billing works
+
+**Total cost = Carrier Fee + Model Fee**
+
+Under this model, you will pay Carrier Fee for telephone lines and Model Fee for combined model usage.
+All prices are in USD.
+
+<div className="billing-note">
+  Call preparation and pre-connection may use model resources.
+  Model fees may apply even if the call is not connected.
+</div>
+
+## Rates by calling mode
+
+Outbound supports One-shot-call and Goal; inbound supports Goal only.
+
+| Direction | Mode | Model Fee / 10 seconds | Carrier Fee / minute |
+| --- | --- | --- | --- |
+| Domestic outbound | One-shot-call | $0.0296 | $0.0400 |
+| Domestic outbound | Goal | $0.0148 | $0.0200 |
+| Inbound | Goal | $0.0148 | $0.0068 |
+
+**Coverage:** Domestic rates apply to the United States (US) and Canada (CA),
+with more regions planned. International Carrier Fees vary by route and mode;
+Model Fee rates are the same as above.
+
+**Billing periods:** Model Fee uses 10-second periods, regardless of the agent's
+speaking time. Carrier Fee follows separate duration and rounding rules, not
+the model's 10-second periods.
+
+## Examples
+
+Illustrative totals include Model Fee and Carrier Fee:
+
+| Call type and mode | 30 seconds | 60 seconds |
+| --- | --- | --- |
+| Domestic outbound · One-shot-call | **$0.1088** | **$0.2176** |
+| Domestic outbound · Goal | **$0.0544** | **$0.1088** |
+| Inbound · Goal | **$0.0478** | **$0.0956** |
+
+<div className="billing-note">
+  Task Success Fee is an experimental, outcome-based fee shown for reference
+  only. It is currently fully waived.
+</div>

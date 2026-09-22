@@ -16,6 +16,7 @@ const guides = [
   { slug: "errors", title: "Errors" },
   { slug: "sdks", title: "SDKs" },
   { slug: "changelog", title: "What's New" },
+  { slug: "billing", title: "Billing" },
 ];
 
 function assertFile(path, label) {
