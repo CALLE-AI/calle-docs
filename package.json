@@ -22,7 +22,7 @@
     "validate": "pnpm run typecheck && pnpm run build && pnpm run verify:dist && pnpm run test:deploy && pnpm run test:transcripts && pnpm run test",
     "preview": "zudoku preview",
     "test": "playwright test",
-    "test:transcripts": "python3 examples/read_transcript.py && node --experimental-strip-types examples/read-transcript.ts",
+    "test:transcripts": "python3 examples/read_transcript.py && python3 -m unittest discover -s examples -p test_read_results.py && node --experimental-strip-types examples/read-transcript.ts",
     "test:deploy": "python3 -m unittest scripts/test_deploy_docs_to_oss.py",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
