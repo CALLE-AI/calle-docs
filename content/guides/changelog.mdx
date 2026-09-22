@@ -3,6 +3,96 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## API versions and migration
+
+The current [OpenAPI snapshot](/openapi/calle.openapi.yaml) identifies the
+Developer API contract as `info.version: 0.7.0`. This is distinct from:
+
+- `/v1`, the URL prefix used by both Calls and Goal Runs;
+- `openapi: 3.1.0`, the format of the schema document;
+- the installed SDK package version;
+- `run_spec.version`, the published workflow version pinned by a Goal Run.
+
+These guides target contract 0.7.0 and server SDKs
+`@call-e/calle@0.7.0` / `calle-ai==0.7.0`. Updating an SDK does not select a
+historical server contract. Keep the contract snapshot and package lockfile
+used to validate your integration; compare request and response schemas when
+upgrading. The linked historical snapshots below are references, not endpoints
+for executing old versions.
+
+### Calls: correct an older recipient example
+
+An example using a singular `recipient` object should be corrected to
+`recipients[].phones[]`. This is an example correction, not a documented API
+version transition: the [published 0.2.0 contract](https://github.com/CALLE-AI/calle-docs/blob/29084a5/openapi/calle.openapi.yaml)
+already used `recipients`. Do not infer that the singular form was supported.
+
+The explicit-recipient part of a current request is:
+
+```json
+{
+  "recipients": [{ "phones": ["<E164_PHONE>"] }]
+}
+```
+
+This is a field excerpt, not a complete create request: `task` is required.
+A recipient's `region` and `locale` are optional; check supported destinations
+before supplying them. Use the [complete Python or Ruby example](/quickstart#run-a-complete-example)
+for creation, durable request storage, and result retrieval. The Python command
+pins SDK 0.7.0; Ruby uses HTTP directly without an SDK.
+
+REST and Python use `result_schema` and return `structured_result`. TypeScript
+uses `resultSchema` and returns `structuredResult`. These are SDK naming
+conventions, not different server API versions. Keep property names inside
+user-defined schemas unchanged.
+
+### Goal Runs: phone-only requests in 0.6
+
+The July 22 release replaced the preview target wrapper and per-Run voice
+settings with a top-level `phone` and `variables`. The
+[published 0.6.0 contract](https://github.com/CALLE-AI/calle-docs/blob/adb5106/openapi/calle.openapi.yaml)
+and current 0.7.0 contract use this shape:
+
+```json
+{
+  "phone": "<E164_PHONE>",
+  "variables": { "customer_name": "Taylor" }
+}
+```
+
+| Earlier preview input | Current input |
+| --- | --- |
+| Phone inside `target` | Top-level `phone` |
+| Per-Run `region` / `locale` | Configure the published Goal's voice settings |
+| Per-Run `display_name` | A variable such as `customer_name`, only if defined by the Goal's input schema |
+
+Read the published input schema before choosing variable names. Remove the
+old fields rather than sending both shapes. Preserve the request and
+idempotency key for an uncertain accepted Run; do not change its payload as
+part of a retry. Follow the [Goal Runs flow](/goal-runs#create-a-run) for the
+required headers, creation, and polling.
+
+### Goal Runs: nullable call ID in 0.7
+
+[Contract 0.7.0 added](https://github.com/CALLE-AI/calle-docs/commit/b387e01b7ab943a5712bd5f1bb4cfe3699944748)
+`call_id` to Goal Run responses. For a queued Run, the response-field change is:
+
+```diff
+ {
+   "id": "rgrp_delivery_ord_8472",
+   "run_id": "run_delivery_ord_8472",
++  "call_id": null,
+   "status": "queued"
+ }
+```
+
+This excerpt omits unchanged fields. Update strict response validators to
+accept `call_id` as a string or `null` (`callId` in TypeScript). It is available
+for correlation when persisted; it does not prove a call was answered. Keep
+using the Goal Run's top-level `id` in the Goal Run polling URL and stop polling
+when `result` or `error` is non-null. The create request remains `phone` plus
+`variables`; it does not accept `call_id`.
+
 ## September 22, 2026
 
 **Saved call results:** Added a [Python reader](/calls#read-a-saved-result) that
