@@ -19,7 +19,8 @@ export default {
           name: "preserve-code-title",
           code(node) {
             // Shiki replaces the code node, discarding its existing title attribute.
-            const title = this.options.meta?.title;
+            const title = this.options.meta?.title
+              ?? (this.options.lang === "bash" ? "Terminal" : undefined);
             if (typeof title === "string") node.properties.title = title;
           },
         }],

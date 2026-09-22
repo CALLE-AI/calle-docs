@@ -521,6 +521,9 @@ test("uses the CALL-E Web palette for docs chrome", async ({ page }) => {
 test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await page.goto("/quickstart");
 
+  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle" }).first()
+    .locator(".code-block-wrapper > div:first-child")).toHaveText(/Terminal$/);
+
   const minimumRequest = page
     .locator("pre")
     .filter({ hasText: /"task":\s*"[^"]*<E164_PHONE>[^"]*"/ })
