@@ -315,7 +315,7 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/sdks"]::after {
-    content: "TypeScript and Python packages.";
+    content: "Official and community SDKs.";
   }
 }
 
