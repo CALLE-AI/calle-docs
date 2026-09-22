@@ -14,7 +14,7 @@ completion.
 
 `task` is the natural-language instruction for the call task. Keep it specific and outcome-oriented.
 
-`recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers.
+`recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers. Check the [outbound-number requirement for batch calls](#batch-calls-and-account-limits) before using multiple targets.
 
 Check the [supported regions and languages](/regions)
 before choosing a recipient's `region` and `locale`. A valid E.164 number does
@@ -440,6 +440,19 @@ the confirmation target is reached. Choose a wave size that balances response
 speed against the number of calls that may still be in flight when the target
 is met.
 
+## Batch calls and account limits
+
+Shared platform outbound lines support **one phone number per task**, counted
+across all recipients, including targets inferred from `task`. To call multiple
+numbers, select an eligible purchased number as the account's default outbound
+number. Otherwise, creation returns `422 call_not_ready`.
+
+Account task concurrency defaults to 1 on shared platform lines and 10 on
+eligible purchased numbers. Configured account limits take precedence; selecting
+a purchased number as the default does not turn it into a shared platform line.
+Account concurrency and LLM usage checks can reject creation with `429` or `503`;
+see [account-control recovery](/errors#account-controls).
+
 ## Idempotency
 
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
@@ -462,6 +475,16 @@ For an idempotent replay, preserve the entire request, including `metadata`,
 schemas, and `webhook_url`. Rebuilding it with a new timestamp or other changed
 value can produce `idempotency_conflict`. Check the saved request if this occurs;
 do not generate a new key just to bypass the conflict.
+
+If the original creation is still in progress, an unchanged retry can return
+`409 idempotency_conflict` with `details.reason_code` set to
+`creation_in_progress`. Back off and retry with the **same key and unchanged
+body**; do not submit a replacement operation.
+
+A persisted creation failure replays its original HTTP status and error body.
+After resolving a confirmed creation rejection, use a new key for an
+intentionally new attempt. An uncertain response alone is not evidence of a
+rejection.
 
 A retry that recovers an existing operation and an intentionally new call are
 different actions. Use a new key only for an intentionally new operation after

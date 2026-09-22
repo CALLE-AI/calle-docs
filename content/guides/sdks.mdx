@@ -86,6 +86,10 @@ pnpm run example:create-and-wait
 
 ### Calls API
 
+The two-recipient examples below require an eligible purchased number selected
+as the account's default outbound number. See [batch calls and account
+limits](/calls#batch-calls-and-account-limits).
+
 The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
 
 Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
