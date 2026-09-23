@@ -1,65 +1,41 @@
 ---
 title: Legacy API retirement
-description: Planned support deadline and migration arrangements for legacy call tasks.
+description: Legacy Calls retirement deadline and migration guidance.
 ---
 
-:::note{title="Retirement notice preview"}
-This page is a review draft. The test API is available for evaluation; production
-GA and the customer notification campaign have not been announced by this preview.
-:::
+Legacy Calls are planned for retirement at the end of 2026. New integrations
+should use [Calls](/calls) and [SDK 1.0](/sdks).
 
 ## Scope
 
-<div className="comparison-table" role="region" aria-label="API support status" tabIndex={0}>
-
-| Surface | Status in this preview |
+| Surface | Support status |
 | --- | --- |
-| Single-target Calls | Test preview, including reads, events and cancellation before submission. |
-| Legacy call tasks | Creation, reads and events are planned for retirement at the deadline below. |
-| Goals and Goal Runs | Unaffected by this retirement. |
-| Published SDK packages | Continue to serve legacy call tasks during this preview. |
-| Local preview packages | Support single-target Calls; not published to npm or PyPI. |
-
-</div>
-
-See the [migration guide](/migration) for the request and response differences.
+| Single-target Calls | Available in production, including reads, events and cancellation before submission. |
+| Legacy call tasks | Supported during migration; planned for retirement at the deadline below. |
+| Goals and Goal Runs | Not being retired. Upgrade SDK wait helpers for the current result-readiness contract. |
+| SDK 1.0 | Supports single-target Calls and current Goal Run results. |
+| SDK 0.7.x | Retain only for legacy call-task integrations while migrating. |
 
 ## Planned deadline
 
 **2026-12-31 at 16:00 UTC**, equivalent to **2027-01-01 at 00:00 Asia/Shanghai**.
 
-The proposal is to retire legacy call creation, reads and events at this deadline and return
-`410 Gone` with migration guidance. That cutoff behavior is not enabled merely
-by publishing this preview. Legacy requests are not automatically converted.
+The affected legacy routes are `POST /v1/calls`, `GET /v1/calls/{call_id}`
+and `GET /v1/calls/{call_id}/events`. Goal endpoints are not included.
 
-Work already accepted must complete or be reconciled; shutting off new requests
-does not cancel provider calls. Existing callbacks must retain their original
-version's payload. Retirement does not itself delete stored call records.
+The cutoff is not active today. Publishing this notice does not stop accepted
+calls, delete stored records or convert legacy IDs to the new interface.
+Historical-data access and export arrangements after retirement will be
+announced separately; no new archive endpoint or read-only grace period is
+currently promised.
 
-## Before the deadline is announced
+## Migrate before retirement
 
-- Publish the production-ready Calls contract, migration guide and supported SDK packages.
-- Resolve impacted workflows that need batch targets, nested schemas or transcript access.
-- Specify how users can read or export historical call-task data after retirement. The new interface cannot read those IDs.
-- Notify affected project owners directly and identify integrations still using the legacy interface.
+1. Follow the [migration guide](/migration) to update request and result handling.
+2. Install SDK 1.0 for new Calls and Goal Run wait helpers.
+3. Keep each call ID with the interface that created it. Use a legacy client for old call-task IDs.
+4. Continue handling callbacks for already accepted calls; do not create replacements because a client timed out.
 
-The exact historical-data access policy and any read-only grace period remain
-open for review. No export API, data-retention duration or grace period is promised
-by this draft.
-
-## Deprecation signals
-
-The release plan uses `Deprecation`, `Sunset` and a `Link` with
-`rel="deprecation"` to point clients to migration guidance. These response
-headers are planned; they are not claimed as implemented in this preview.
-Deprecation leaves the supported legacy behavior intact until its published retirement date.
-
-## Migration communications
-
-The proposed cadence is a GA announcement followed by reminders 60, 30, 14, 7 and
-1 day before retirement, targeted to projects still using legacy call tasks. The notice
-includes the affected routes, the UTC deadline, SDK versions, migration steps,
-historical-data arrangements and the established support channel.
-
-Start with the [migration guide](/migration). No user notification is
-sent as part of viewing this documentation.
+The migration guide and [changelog](/changelog) will carry further retirement
+updates. Contact CALL-E support for workflows that depend on legacy batch
+behavior or historical access.

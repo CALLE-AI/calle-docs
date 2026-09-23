@@ -4,13 +4,12 @@ info:
   version: 1.0.0
   description: >-
     Developer API contract used by the CALL-E TypeScript and Python SDKs.
-    This development contract includes call_outcome, result_status and the fixed
-    transcript array. Confirm the target environment's deployed contract before
-    using those fields or local SDK wait helpers. This is not a production
-    availability announcement. See the Calls guide's preview availability section.
+    Calls and Goal Runs expose call_outcome, result_status and a fixed transcript
+    array. SDK 1.0 supports the single-target Calls API. Legacy call tasks remain
+    available during the migration period; see the public migration guide.
 servers:
   - url: https://api.heycall-e.com
-    description: Placeholder developer API base URL.
+    description: Production developer API.
 security:
   - bearerAuth: []
 tags:
@@ -20,9 +19,7 @@ tags:
   - name: legacy-calls
     x-displayName: Legacy Calls (Deprecated)
     description: >-
-      Deprecated. v1 Calls will retire on December 31, 2026
-      (2026-12-31 16:00 UTC / 2027-01-01 00:00 Asia/Shanghai).
-      See the [migration guide](/migration). Goal APIs are unaffected.
+      Deprecated. v1 Calls will retire on December 31, 2026 (2026-12-31 16:00 UTC / 2027-01-01 00:00 Asia/Shanghai). See the [migration guide](/migration). Goal APIs are unaffected.
 paths:
   /v2/calls:
     post:

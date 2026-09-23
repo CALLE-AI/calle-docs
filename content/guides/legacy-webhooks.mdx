@@ -3,17 +3,22 @@ title: Legacy Webhooks
 description: Receive terminal webhook events and process them safely.
 ---
 
-Use webhooks when your application needs to react to terminal call task results without polling.
+:::note{title="Legacy API"}
+These examples use the legacy call-task API and SDK 0.7.x. Legacy Calls are
+planned for retirement at the end of 2026. Use [Calls](/calls) and
+[SDK 1.0](/sdks) for new integrations; see the [migration guide](/migration).
+:::
 
-This page covers legacy call-task payloads. New integrations should use
-[Webhooks](/webhooks); keep this receiver for existing call tasks.
+
+Use webhooks when your application needs to react to terminal call task results without polling.
 
 Phone values in examples are placeholders. Real webhook payloads echo the phone numbers from your call task.
 
 CALL-E publishes a terminal event only after the post-call summary, task
 completion judgment, confidence, evidence, and any requested structured results
-are finalized. The event `data` is the same complete terminal snapshot returned
-by `GET /v1/calls/{call_id}`.
+are finalized. The event `data` includes the call results and available
+transcripts. Timestamp values may differ from those in later
+`GET /v1/calls/{call_id}` responses.
 
 ## Terminal events
 
@@ -139,9 +144,7 @@ untrusted-input boundary: validate the JSON shape, require
 `CALL-E-Event-Id`, and reject the request when that header does not match the
 body event `id`.
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const event = JSON.parse(rawBody.toString("utf8"));
 const eventId = request.headers.get("CALL-E-Event-Id");
 
@@ -154,9 +157,7 @@ if (event.type === "call.completed") {
 }
 ```
 
-Python:
-
-```python
+```python title="Python"
 event = json.loads(raw_body)
 event_id = request.headers.get("CALL-E-Event-Id")
 
@@ -179,9 +180,7 @@ with the event.
 
 Webhook delivery is at least once. Store the webhook event `id` before processing side effects so duplicate deliveries are ignored safely.
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 if (await eventStore.has(event.id)) {
   return new Response("duplicate", { status: 200 });
 }
@@ -190,9 +189,7 @@ await eventStore.insert(event.id);
 await handleCallEvent(event);
 ```
 
-Python:
-
-```python
+```python title="Python"
 if event_store.has(event["id"]):
     return {"ok": True, "duplicate": True}
 

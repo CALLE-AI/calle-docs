@@ -47,11 +47,11 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
     "/regions",
   );
   await expect(
-    page.locator("pre").filter({ hasText: 'CALLE_BASE_URL="https://test-api.heycall-e.com"' }).first(),
+    page.locator("pre").filter({ hasText: 'CALLE_BASE_URL="https://api.heycall-e.com"' }).first(),
   ).toBeVisible();
   await expect(page.locator("code.shiki.not-inline").first()).toHaveCSS(
     "background-color",
-    "rgb(11, 15, 20)",
+    "rgb(246, 248, 250)",
   );
 });
 
@@ -246,10 +246,12 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await page.goto("/quickstart");
 
   const html = page.locator("html");
+  const code = page.locator("code.shiki.not-inline").first();
   const trigger = page.getByTestId("theme-menu-trigger");
 
   await expect(trigger).toHaveAttribute("data-theme", "system");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
 
   await trigger.click();
   const lightOption = page.getByRole("menuitemradio", {
@@ -259,6 +261,7 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await lightOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "light");
   await expect(html).toHaveClass("light");
+  await expect(code).toHaveCSS("background-color", "rgb(246, 248, 250)");
   await expect(lightOption).toBeHidden();
 
   await trigger.click();
@@ -269,6 +272,7 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await darkOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "dark");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
   await expect(darkOption).toBeHidden();
 
   await trigger.click();
@@ -279,9 +283,11 @@ test("offers system, light, and dark appearance modes", async ({ page }) => {
   await systemOption.click();
   await expect(trigger).toHaveAttribute("data-theme", "system");
   await expect(html).toHaveClass("dark");
+  await expect(code).toHaveCSS("background-color", "rgb(11, 18, 32)");
 
   await page.emulateMedia({ colorScheme: "light" });
   await expect(html).toHaveClass("light");
+  await expect(code).toHaveCSS("background-color", "rgb(246, 248, 250)");
 });
 
 test("shows a desktop scroll-to-top control after one viewport", async ({
@@ -430,6 +436,18 @@ test("renders every migrated guide from its file route", async ({ page }) => {
     await expect(
       page.locator("h1").filter({ hasText: guide.heading }),
     ).toBeVisible();
+    if (["/authentication", "/legacy-calls", "/sdks", "/legacy-webhooks"].includes(guide.path)) {
+      for (const language of ["Python", "TypeScript"]) {
+        await expect(page.locator(".code-block-wrapper > div:first-child")
+          .filter({ hasText: new RegExp(`${language}$`) }).first()).toBeVisible();
+      }
+      await expect(page.locator("p")
+        .filter({ hasText: /^(Python|TypeScript|Example output):$/ })).toHaveCount(0);
+    }
+    if (guide.path === "/legacy-quickstart") {
+      await expect(page.locator(".code-block-wrapper > div:first-child")
+        .filter({ hasText: /Example output$/ })).toHaveCount(1);
+    }
   }
 });
 
@@ -443,7 +461,7 @@ test("preserves CALL-E brand and favicon metadata", async ({ page }) => {
     .toBeVisible();
   await expect(
     page.getByRole("link", { name: "Dashboard", exact: true }),
-  ).toHaveAttribute("href", "https://test-dashboard.heycall-e.com/");
+  ).toHaveAttribute("href", "https://dashboard.heycall-e.com/");
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
     "href",
     "/favicon.svg",
@@ -509,6 +527,7 @@ test("uses the CALL-E Web palette for docs chrome", async ({ page }) => {
 test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await page.goto("/quickstart");
 
+
   const minimumRequest = page
     .locator("pre")
     .filter({ hasText: '"phone": "<AUTHORIZED_E164_PHONE>"' })
@@ -520,6 +539,171 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await expect(minimumRequest).toContainText("Idempotency-Key:");
   await expect(page.getByText("+14155550100")).toHaveCount(0);
   await expect(page.getByText("+8613800000000")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toHaveCount(0);
+  await expect(page.locator("main")).toContainText('result_status == "unavailable"');
+  await expect(page.locator("main")).toContainText("call_id");
+
+});
+
+test("disables code tabs until their interaction is ready", async ({ page }) => {
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
+  await page.route("**/assets/*.js", async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto("/legacy-quickstart#run-a-complete-example", { waitUntil: "commit" });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    const complete = page.locator("fieldset").filter({ has: page.getByRole("tab", { name: "Ruby", exact: true }) });
+    const python = complete.getByRole("tab", { name: "Python", exact: true });
+    await expect(ruby).toBeVisible();
+    await expect(ruby).toBeDisabled();
+    await expect(python).toBeDisabled();
+    for (const label of ["Create a client", "Create and wait", "Read the result"]) {
+      const example = page.getByRole("group", { name: label, exact: true });
+      await expect(example.getByRole("tab", { name: "Python", exact: true })).toBeDisabled();
+      await expect(example.getByRole("button", { name: "Copy code", exact: true }).first()).toBeDisabled();
+    }
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    releaseScripts();
+    const result = page.getByRole("group", { name: "Read the result", exact: true });
+    await result.getByRole("tab", { name: "Python", exact: true }).click();
+    await expect(result.getByRole("tab", { name: "Python", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(ruby).toBeEnabled();
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toBeVisible();
+    await ruby.press("ArrowLeft");
+    await expect(python).toBeFocused();
+    await expect(python).toHaveAttribute("aria-selected", "true");
+  } finally {
+    releaseScripts();
+  }
+});
+
+test("keeps SDK language, code, and output together across quickstart steps", async ({ page, context }, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  for (const width of [1280, 390]) {
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/legacy-quickstart#read-the-result");
+      const client = page.getByRole("group", { name: "Create a client", exact: true });
+      const result = page.getByRole("group", { name: "Read the result", exact: true });
+      await expect(result.getByRole("tab", { name: "TypeScript", exact: true })).toHaveAttribute("aria-selected", "true");
+      await client.getByRole("tab", { name: "Python", exact: true }).click();
+      for (const label of ["Create a client", "Create and wait", "Read the result"]) {
+        const example = page.getByRole("group", { name: label, exact: true });
+        await expect(example.getByRole("tab", { name: "Python", exact: true })).toHaveAttribute("aria-selected", "true");
+        await expect(example.getByRole("tabpanel")).toHaveCount(1);
+      }
+      for (const [language, field] of [["Python", "task_completed"], ["TypeScript", "taskCompleted"]]) {
+        const panel = result.getByRole("tabpanel", { name: language, exact: true });
+        await expect(panel.locator("code.shiki")).toHaveCount(2);
+        const snippets = await panel.locator("code.shiki").allTextContents();
+        expect(snippets[0]).toContain(language === "Python" ? 'print(call["status"])' : "console.log(call.status)");
+        expect(JSON.parse(snippets[1])[field]).toBe(true);
+        for (const index of [0, 1]) {
+          await panel.getByRole("button", { name: "Copy code", exact: true }).nth(index).click();
+          expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippets[index]);
+        }
+        if (language === "Python") {
+          await result.screenshot({ path: testInfo.outputPath(`sdk-result-${width}-${colorScheme}.png`) });
+          await result.getByRole("tab", { name: "Python", exact: true }).press("ArrowLeft");
+          await expect(result.getByRole("tab", { name: "TypeScript", exact: true })).toBeFocused();
+          await expect(client.getByRole("tab", { name: "TypeScript", exact: true })).toHaveAttribute("aria-selected", "true");
+        }
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  }
+});
+
+test("switches complete examples without a separate Ruby contents entry", async ({
+  page, context, request,
+}, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  for (const { width, colorScheme } of [
+    { width: 1280, colorScheme: "light" },
+    { width: 1280, colorScheme: "dark" },
+    { width: 390, colorScheme: "light" },
+    { width: 390, colorScheme: "dark" },
+  ] as const) {
+    await page.goto("about:blank");
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    const dark = colorScheme === "dark";
+    await page.goto("/legacy-quickstart#run-a-complete-example");
+    const complete = page.locator("fieldset").filter({ has: page.getByRole("tab", { name: "Ruby", exact: true }) });
+    const python = complete.getByRole("tab", { name: "Python", exact: true });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    await expect(python).toHaveAttribute("aria-selected", "true");
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    await expect(ruby).toBeEnabled();
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toContainText(
+      "ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient",
+    );
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
+    const codeTabs = page.locator(".code-block-wrapper").filter({ has: ruby });
+    const ordinaryCode = page.locator("pre > .code-block-wrapper").first();
+    for (const block of [ordinaryCode, codeTabs]) {
+      await expect(block).toHaveCSS("border-radius", "12px");
+      await expect(block.locator(":scope > div").first()).toHaveCSS(
+        "background-color", dark ? "rgb(17, 28, 46)" : "rgb(238, 242, 246)",
+      );
+      await expect(block.locator("code.shiki")).toHaveCSS(
+        "background-color", dark ? "rgb(11, 18, 32)" : "rgb(246, 248, 250)",
+      );
+    }
+    await expect(ruby).toHaveCSS(
+      "background-color", dark ? "rgb(30, 54, 84)" : "rgb(219, 234, 254)",
+    );
+    const comment = page.getByText("# Preview without sending a request", { exact: true });
+    await expect(comment).toHaveCSS("color", dark ? "rgb(139, 148, 158)" : "rgb(106, 115, 125)");
+    const commentContrast = await comment.evaluate((element) => {
+      const luminance = (color: string) => {
+        const rgb = color.match(/\d+/g)!.slice(0, 3).map(Number).map((v) => {
+          const c = v / 255;
+          return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      const foreground = luminance(getComputedStyle(element).color);
+      const background = luminance(getComputedStyle(element.closest(".code-block")!).backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+    expect(commentContrast).toBeGreaterThanOrEqual(4.5);
+    await codeTabs.getByRole("button", { name: "Copy code", exact: true }).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
+    expect(copied).not.toContain("python examples/");
+    await ruby.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(python).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowRight");
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(ruby).toHaveCSS("outline-width", "2px");
+    await expect(page.locator('aside a[href="#ruby-http-example"]')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await codeTabs.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`example-tabs-${width}-${colorScheme}.png`) });
+  }
+  await page.goto("/legacy-quickstart#ruby-http-example");
+  await expect(page.locator("#ruby-http-example")).toHaveCount(1);
+  for (const route of ["/legacy-quickstart.md", "/llms-full.txt"]) {
+    const result = await request.get(route);
+    expect(result.ok()).toBe(true);
+    const text = await result.text();
+    expect(text).toContain("python examples/calls.py resume ../calle-run");
+    expect(text).toContain("ruby examples/calls.rb resume ../calle-ruby-run");
+  }
 });
 
 test("preserves authentication, webhook, and SDK guidance", async ({
@@ -652,7 +836,8 @@ test("links result examples to task completion and endpoint classification", asy
 }) => {
   for (const route of ["/legacy-quickstart", "/legacy-webhooks"]) {
     await page.goto(route);
-    await page.locator('p a[href="/legacy-calls#task-completion"]').click();
+    await expect(page.getByTestId("theme-menu-trigger")).toHaveAttribute("aria-haspopup", "menu");
+    await page.locator('p a[href="/legacy-calls#task-completion"]').first().click();
     await expect(page).toHaveURL(/\/legacy-calls#task-completion$/);
     await expect(
       page.getByRole("heading", { name: "Task completion" }),
@@ -801,4 +986,18 @@ test("keeps retry tables and API operations within the mobile viewport", async (
   await page.goto("/api-reference/calls");
   await expect(page.locator("h2#create-call")).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+
+test("publishes production SDK installation and readiness guidance", async ({ page }) => {
+  await page.goto("/sdks");
+  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle@1.0.0" })).toBeVisible();
+  await expect(page.locator("pre").filter({ hasText: "pip install calle-ai==1.0.0" })).toBeVisible();
+  await expect(page.locator("main")).toContainText("resultStatus");
+  await expect(page.locator("main")).not.toContainText("These packages have not been published");
+  await page.goto("/migration");
+  await expect(page.locator("main")).toContainText("Goal Run users also need the new wait helper");
+  await page.goto("/calls");
+  await expect(page.locator("main")).toContainText("call_id");
+  await expect(page.locator("main")).not.toContainText("unreleased response additions");
 });

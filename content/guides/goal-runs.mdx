@@ -5,7 +5,12 @@ description: Start outbound calls from a published Goal with one phone number an
 
 Start outbound calls from a published Goal when your application repeats the same validated phone workflow for different targets.
 
-**API 0.6** · **Server-side** · **Asynchronous**
+**Server-side** · **Asynchronous**
+
+Examples target the [current Developer API contract](/openapi/calle.openapi.yaml)
+and server SDKs `@call-e/calle@1.0.0` and `calle-ai==1.0.0`.
+See [API versions and migration](/changelog#api-versions-and-migration) for
+request and response changes.
 
 A Goal owns its call behavior, voice region and locale, input schema, result schema, and provider contract. A Goal Run supplies only one E.164 phone number, per-Run variables, and a business-stable idempotency key.
 
@@ -223,7 +228,7 @@ The first accepted request and an exact idempotent replay both return `201 Creat
   "goal_id": "goal_delivery_confirmation",
   "run_id": "run_delivery_ord_8472",
   "call_id": null,
-  "status": "in_progress",
+  "status": "queued",
   "call_outcome": null,
   "result_status": "pending",
   "transcript": [],
@@ -259,11 +264,7 @@ curl "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}/runs/${GOAL_RUN_ID}" \
 
 `GET /v1/goals/{goal_id}/runs/{goal_run_id}` only reads persisted facts. It does not dispatch work, move the Goal's published pointer, or start result materialization.
 
-The response examples in this section include the [unreleased response additions](/calls#preview-availability).
-Confirm that contract is deployed before using `result_status`, `call_outcome`
-or `transcript`. Without those additions, wait for a non-null `result` or `error`.
-
-With the additions deployed, stop polling when `result_status` is no longer `pending`. `call_outcome` describes the telephone outcome separately. No-answer, busy and declined outcomes use `status: completed` and do not populate `error`. A completed execution can still have a pending business result.
+Stop polling when `result_status` is no longer `pending`. `call_outcome` describes the telephone outcome separately. No-answer, busy and declined outcomes use `status: completed` and do not populate `error`. A completed execution can still have a pending business result.
 
 ```json
 {
@@ -355,8 +356,9 @@ See [Errors](/errors) for the HTTP error catalog. HTTP errors mean the API reque
 
 ## SDK examples
 
-The following methods are available in the stable TypeScript and Python `0.7.0`
-packages.
+Use TypeScript and Python SDK `1.0.0` for these examples. SDK 0.7.x wait helpers
+wait for a non-null result or error and can time out on a final unavailable result.
+Upgrade or poll the REST response using `result_status`; do not redial on timeout.
 
 REST responses and Python Goal dictionaries use snake_case. The TypeScript SDK
 maps these fields to camelCase:

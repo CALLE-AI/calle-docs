@@ -4,14 +4,18 @@ description: Update call inputs, result handling, webhooks, and SDKs without dup
 ---
 
 Move an existing call-task integration to the single-target Calls API.
-Test the new integration before moving production traffic. Goal Runs keep
-their current contract. See the [retirement notice](/retirement) for the
+Test the new integration before moving production traffic. Goal Run endpoints
+and request shapes are unchanged; their result readiness rule has changed. See the [retirement notice](/retirement) for the
 legacy interface's planned support deadline.
 
-Check [preview availability](/calls#preview-availability) before migrating.
-The `call_outcome`, `result_status` and `transcript` changes below are planned
-response additions; they were not part of the verified September 22 test deployment.
-Do not move a production workflow based on this preview alone.
+Calls and SDK 1.0 are available in production. Install the new SDK only after
+updating Calls inputs and response handling. Legacy `calls` methods in SDK 0.7.x
+use the old interface and cannot read new Call IDs.
+
+**Goal Run users also need the new wait helper.** SDK 0.7.x waits for result or
+error to become non-null, which can time out on a final unavailable result.
+Upgrade to 1.0, or poll the REST resource until `result_status` is not `pending`.
+An unavailable result is not a technical error and must not trigger an automatic redial.
 
 ## What changes
 
@@ -25,9 +29,9 @@ Do not move a production workflow based on this preview alone.
 | Optional nested/array result schema | Required closed scalar-object schema | Flatten fields; do not silently discard needed information. |
 | `structured_result` | `result` | Update response parsing. |
 | `failure_code`, `failure_message` | `error.code`, `error.message`, `error.detail_code` | Update error handling and retry decisions. |
-| Wait for terminal `status` | Verified preview: wait for non-null `result` or `error`. Planned: wait until `result_status` is not `pending`. | Use the readiness rule for the deployed contract, not just telephone completion. |
+| Wait for terminal `status` | Wait until `result_status` is not `pending`. | Use the readiness rule for the deployed contract, not just telephone completion. |
 | Top-level summary and completion fields | Business fields in `result_schema` | Ask for the summary or business flag explicitly. |
-| `recipients[].attempts[].transcript_turns` | Planned top-level `transcript` | Require the response addition to be deployed before migrating a transcript-dependent workflow. |
+| `recipients[].attempts[].transcript_turns` | Fixed top-level `transcript` | Read the recorded turns independently of business result availability. |
 | Provider attempt details | Not in the Calls response | Resolve this dependency before migrating that workflow. |
 
 </div>
@@ -73,7 +77,7 @@ alone is insufficient. The [SDK guide](/sdks) contains equivalent examples.
 ## Migrate one workflow
 
 1. Inventory dependencies on batch targets, nested schemas, transcripts and old response fields.
-2. Implement the new request builder and the readiness rule for the verified deployment. Adopt `result_status` and `call_outcome` only after those response additions are deployed.
+2. Install SDK 1.0 and update the request builder and readiness rule to use `result_status` and `call_outcome`.
 3. Update the receiver using [Webhooks](/webhooks). Keep the legacy receiver for call tasks still finishing.
 4. Run authorized test calls against the test base URL; check results, HTTP retries and duplicate webhook handling.
 5. Keep each Call ID with the interface used to create it. Retrieve historical records through that interface.
@@ -94,13 +98,13 @@ per logical call. This is not a server-side batch replacement.
 **Nested results:** flatten the business fields or adapt the application's data
 model. Arrays and nested objects are not supported by the current schema profile.
 
-**Transcripts:** wait for the planned fixed `transcript` field to be deployed;
-raw ASR updates are not a substitute for a final transcript. **Provider attempts:** the Calls
+**Transcripts:** use the fixed `transcript` field. Raw ASR updates are not a
+substitute for a final transcript. **Provider attempts:** the Calls
 response does not expose these details; resolve that dependency before migrating.
 
 **Execution timing:** Calls accept immediate execution only. Scheduled and recurring
 execution are outside this interface.
 
 **Historical calls:** the new interface does not adopt legacy records. Keep the old ID and its original interface.
-The post-retirement access/export policy remains a decision in this preview;
-there is no new archive endpoint to integrate against yet.
+Post-retirement access and export arrangements will be announced separately;
+no new archive endpoint is currently available.

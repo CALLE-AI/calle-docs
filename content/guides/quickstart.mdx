@@ -5,17 +5,17 @@ description: Make a phone call and read its structured result.
 
 Create one phone call, keep its ID, and wait for a structured result.
 
-These examples target the [September 22 test preview contract](/calls#preview-availability),
-not production availability. The shared test deployment may differ.
+These examples use the production Calls API. For SDK examples, install
+[TypeScript or Python SDK 1.0](/sdks).
 
-## Connect to the test API
+## Connect to the API
 
 ```bash
-export CALLE_BASE_URL="https://test-api.heycall-e.com"
-export CALLE_API_KEY="<YOUR_TEST_API_KEY>"
+export CALLE_BASE_URL="https://api.heycall-e.com"
+export CALLE_API_KEY="<YOUR_CALLE_API_KEY>"
 ```
 
-Get a key for the test account from the [test dashboard](https://test-dashboard.heycall-e.com/account/api-keys).
+Get a key from the [dashboard](https://dashboard.heycall-e.com/account/api-keys).
 Keep it on your server. See [Authentication](/authentication) for key handling.
 Check [Regions & languages](/regions) before choosing a destination; availability
 also depends on the account and line configuration.
@@ -76,22 +76,23 @@ Poll at a reasonable interval, such as every two seconds:
 
 | Response | What to do |
 | --- | --- |
-| `result == null` and `error == null` | Keep waiting, including when `status` is `completed`. |
-| `result != null` | Consume the validated business result. An empty object is also ready. |
-| `error != null` | Handle the final execution or result-processing error. |
+| `result_status == "pending"` | Keep waiting, including when `status` is `completed`. |
+| `result_status == "available"` | Consume the validated business result. An empty object is also ready. |
+| `result_status == "unavailable"` | Stop waiting. No schema-valid business result is available; both result and error may be null. |
+| `result_status == "not_applicable"` | Stop waiting. Inspect cancellation or the technical error. |
 
 An illustrative ready result is `{"greeting_delivered": true, "summary": "The recipient replied hello."}`.
 Use [Webhooks](/webhooks) to receive the result without polling.
 
-Do not wait for `result_status` or assume `transcript` is present on this verified
-test contract. Those are [unreleased response additions](/calls#preview-availability)
-with a different readiness rule. `status: completed` alone is not proof of
-business success or result readiness.
+Every response includes `transcript`, which may be empty, and a nullable `call_id`
+for Billing lookup. `status: completed` alone is not proof of business success
+or result readiness. Keep the API resource `id` for reads, events and cancellation.
 
-## Try the local SDKs
+## Use the SDKs
 
-The [SDK guide](/sdks) includes local installation and complete TypeScript
-and Python examples for the test environment.
+The [SDK guide](/sdks) includes installation and complete TypeScript and Python examples.
+For tests, explicitly set `CALLE_BASE_URL=https://test-api.heycall-e.com` and use
+a test-compatible key.
 
 ## Retry without calling twice
 

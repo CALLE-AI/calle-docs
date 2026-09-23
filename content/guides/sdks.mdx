@@ -1,54 +1,40 @@
 ---
 title: SDKs
-description: Use the TypeScript and Python SDKs with the test API.
+description: Install SDK 1.0 for single-target Calls and published Goal Runs.
 ---
 
-For this preview, install the TypeScript or Python SDK from its local checkout.
-These packages have not been published. The [registry packages](/legacy-sdks)
-continue to serve existing call-task integrations.
+The official server SDKs support single-target Calls and published Goal Runs.
+Use SDK **1.0.0** with the production API. Legacy call-task integrations must
+[migrate their inputs and result handling](/migration) before upgrading.
 
-These local checkouts also include the [unreleased response additions](/calls#preview-availability).
-The wait helpers below require a deployment that returns `result_status`;
-do not use them against the September 22 test contract, which lacks that field.
-Use the [REST Quickstart](/quickstart#wait-for-the-result) for that contract.
-
-## Install from a local checkout
-
-Run these from a separate test project, adjusting the paths to your local checkouts.
-The TypeScript checkout must be built before linking it:
+## Install
 
 ```bash
-pnpm --dir /path/to/server-sdk-typescript install --frozen-lockfile
-pnpm --dir /path/to/server-sdk-typescript run build
-pnpm add /path/to/server-sdk-typescript
+pnpm add @call-e/calle@1.0.0
+pip install calle-ai==1.0.0
 ```
 
-For Python 3.11 or later, use an isolated environment:
+Python requires 3.11 or later. Keep API keys in trusted server environments.
+Source: [TypeScript](https://github.com/CALLE-AI/server-sdk-typescript) and
+[Python](https://github.com/CALLE-AI/server-sdk-python).
+
+## Configuration
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install /path/to/server-sdk-python
-```
-
-You can also install the local `.tgz` or `.whl` produced by those checkouts.
-
-## Test environment
-
-```bash
-export CALLE_BASE_URL="https://test-api.heycall-e.com"
-export CALLE_API_KEY="<YOUR_TEST_API_KEY>"
+export CALLE_BASE_URL="https://api.heycall-e.com"
+export CALLE_API_KEY="<YOUR_CALLE_API_KEY>"
 export CALLE_TEST_PHONE="<AUTHORIZED_E164_PHONE>"
-export CALLE_IDEMPOTENCY_KEY="hello-test-001"
+export CALLE_IDEMPOTENCY_KEY="hello-001"
 ```
 
-The examples omit `region` and `locale` and ask for English in the task.
-You may supply either hint explicitly; a phone/region conflict returns
-`422 input_incomplete`. Keep the original input unchanged on retries.
-The examples below create a real call when run with valid credentials and a number.
+For the test environment, set `CALLE_BASE_URL=https://test-api.heycall-e.com`
+and use a test-compatible key. These examples make a real call. Omitted region
+and locale are inferred from the phone and task; conflicting or ambiguous input
+returns `422 input_incomplete` for correction.
 
 ## TypeScript
 
-```ts
+```ts title="TypeScript"
 import { CalleClient } from "@call-e/calle";
 
 const client = new CalleClient({
@@ -81,7 +67,7 @@ console.log(ready.transcript);
 
 ## Python
 
-```python
+```python title="Python"
 import os
 from calle import CalleClient
 
@@ -108,9 +94,11 @@ print(ready["result"], ready["error"])
 print(ready["transcript"])
 ```
 
-The client defaults to the production base URL if you omit the override, so pass
-the test URL explicitly. Wait helpers stop when `result_status` is not `pending`;
-a timeout does not cancel or replace the Call.
+The client defaults to production. Wait helpers stop when `result_status` is
+not `pending` (`resultStatus` in TypeScript), including unavailable results with
+both result and error null. A timeout does not cancel or replace the Call.
+Python exposes the Billing identifier as `call_id`; TypeScript uses `callId`.
+Use the separate resource `id` for API requests.
 
 ## Retry safely
 
@@ -125,6 +113,13 @@ from changed-input conflicts.
 ## Existing integrations
 
 Keep a legacy client for historical call-task IDs. The current SDK's Calls
-methods use the single-target interface; Goal methods retain their existing contract.
+methods use the single-target interface; Goal endpoints and request shapes remain unchanged, but the result readiness
+rule has changed. SDK 0.7.x Goal wait helpers can time out on unavailable results;
+upgrade to 1.0 or poll REST using `result_status`.
 HTTP/Python use `result_schema` and `error.detail_code`; TypeScript uses
 `resultSchema` and `error.detailCode`. See the [migration guide](/migration).
+
+## Community SDKs
+
+[Android / Wear OS](https://github.com/Baklolman69/calle-android-sdk) is community-maintained.
+Check its documented API compatibility independently of the server SDK releases.

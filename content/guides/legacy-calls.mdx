@@ -3,13 +3,19 @@ title: Legacy Calls
 description: Understand the call creation contract and event flow.
 ---
 
-Use call tasks to turn a structured workflow step into one or more real phone interactions.
-
 :::note{title="Legacy API"}
-For new integrations, start with [Calls](/calls).
-See the [migration guide](/migration) and [retirement notice](/retirement)
-when updating an existing integration.
+These examples use the legacy call-task API and SDK 0.7.x. Legacy Calls are
+planned for retirement at the end of 2026. Use [Calls](/calls) and
+[SDK 1.0](/sdks) for new integrations; see the [migration guide](/migration).
 :::
+
+
+Examples on this page target the [Developer API 0.7.0 contract](/openapi/calle.openapi.yaml)
+and server SDKs `@call-e/calle@0.7.0` and `calle-ai==0.7.0` where used.
+See [API versions and migration](/changelog#api-versions-and-migration) before
+adapting an older example.
+
+Use call tasks to turn a structured workflow step into one or more real phone interactions.
 
 Use the [Calls API Reference](/api-reference/legacy-calls) for the exact HTTP request
 and response schemas. See the [error handling guide](/errors) for retry
@@ -20,7 +26,7 @@ completion.
 
 `task` is the natural-language instruction for the call task. Keep it specific and outcome-oriented.
 
-`recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers.
+`recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers. Check the [outbound-number requirement for batch calls](#batch-calls-and-account-limits) before using multiple targets.
 
 Check the [supported regions and languages](/regions)
 before choosing a recipient's `region` and `locale`. A valid E.164 number does
@@ -104,9 +110,7 @@ Persist the returned Call ID with your workflow record. The Calls API does not
 provide a list endpoint: `GET /v1/calls` cannot recover IDs you did not save.
 See [Recover after a restart or lost response](#recover-after-a-restart-or-lost-response).
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const call = await client.calls.create(
   {
     task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
@@ -139,9 +143,7 @@ const call = await client.calls.create(
 );
 ```
 
-Python:
-
-```python
+```python title="Python"
 call = client.calls.create(
     task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
     recipients=[
@@ -171,6 +173,11 @@ call = client.calls.create(
 Structured results let you turn the terminal call evidence into a stable JSON object for your workflow. The schema is an extraction contract: the SDK sends the schema to CALL-E, CALL-E extracts a result from the completed call evidence, and the service validates the result before returning it.
 
 The extraction model uses the call transcript, ASR, and Calling facts as primary evidence. It uses the post-call summary and outcome as supporting context. If CALL-E cannot produce a schema-valid result from the evidence, the public `structured_result` is `null`.
+
+A non-null result confirms that an object was returned, not that the recipient
+answered or supplied useful evidence. A required string can be empty, and an
+`unknown` enum value can satisfy the schema. Check the business answer and its
+evidence against the transcript before treating the result as success.
 
 Use `result_schema` for one result object that describes the whole call task. Use `recipient_result_schema` when each recipient needs an independent result, especially for batch calls. TypeScript uses `resultSchema` and `recipientResultSchema`; Python uses `result_schema` and `recipient_result_schema`. The JSON Schema object itself is the same shape.
 
@@ -446,6 +453,19 @@ the confirmation target is reached. Choose a wave size that balances response
 speed against the number of calls that may still be in flight when the target
 is met.
 
+## Batch calls and account limits
+
+Shared platform outbound lines support **one phone number per task**, counted
+across all recipients, including targets inferred from `task`. To call multiple
+numbers, select an eligible purchased number as the account's default outbound
+number. Otherwise, creation returns `422 call_not_ready`.
+
+Account task concurrency defaults to 1 on shared platform lines and 10 on
+eligible purchased numbers. Configured account limits take precedence; selecting
+a purchased number as the default does not turn it into a shared platform line.
+Account concurrency and LLM usage checks can reject creation with `429` or `503`;
+see [account-control recovery](/errors#account-controls).
+
 ## Idempotency
 
 Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
@@ -458,10 +478,11 @@ Save the idempotency key and original request with your workflow record before
 sending `POST /v1/calls`. Save the returned Call ID as soon as the response
 arrives. Keep that record across application restarts.
 
-| What you saved | Recovery action |
+| Situation | Recovery action |
 | --- | --- |
-| Call ID | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
-| Original request and idempotency key, but no Call ID | Repeat the create request with the same key and unchanged body. The documented idempotency contract returns the original call instead of creating a duplicate. Save its ID. |
+| Call ID saved | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
+| Confirmed creation rejection; cause resolved | Save the request with a new key before submitting an intentionally new attempt. Keep that request and key unchanged for subsequent retries. |
+| Acceptance uncertain; original request and key saved, but no Call ID | Repeat the create request with the same key and unchanged body. If the original request was accepted, save the returned Call ID. |
 | Neither the Call ID nor the original request and key | Reconcile the original operation before submitting a replacement. A lost response does not prove that the first request was rejected. |
 
 For an idempotent replay, preserve the entire request, including `metadata`,
@@ -469,10 +490,72 @@ schemas, and `webhook_url`. Rebuilding it with a new timestamp or other changed
 value can produce `idempotency_conflict`. Check the saved request if this occurs;
 do not generate a new key just to bypass the conflict.
 
-A retry that recovers an existing operation and an intentionally new call are
-different actions. Use a new key only for an intentionally new operation after
-resolving the prior one. Keep local workflow identifiers in `metadata` for
-correlation; they do not replace the `Idempotency-Key` header.
+If the original creation is still in progress, an unchanged retry can return
+`409 idempotency_conflict` with `details.reason_code` set to
+`creation_in_progress`. Back off and retry with the **same key and unchanged
+body**; do not submit a replacement operation.
+
+A persisted creation failure replays its original HTTP status and error body.
+An uncertain response alone is not evidence of a rejection.
+
+Keep local workflow identifiers in `metadata` for correlation; they do not
+replace the `Idempotency-Key` header.
+
+### Correct a missing-information rejection
+
+When `POST /v1/calls` returns HTTP `422` with `call_not_ready` and asks for
+missing task information, such as the company or sender's name, review the
+message and `details.questions`. Once you have confirmed this is a creation
+rejection for missing information, correct the task and use a **new**
+idempotency key for that corrected request.
+
+The original key remains bound to the rejected request. Sending its unchanged
+body replays the rejection; changing the body while keeping that key returns
+`409 idempotency_conflict`. Not receiving a Call ID does not mean the server
+created no internal record.
+
+`call_not_ready` alone is not enough to choose this correction path. Check
+which operation failed and what its error details say. This example does not
+handle an accepted call's failure or other reasons a plan was rejected.
+
+#### Run the correction example
+
+The [recovery helper](https://github.com/CALLE-AI/calle-docs/blob/main/examples/recover_create.py)
+uses Python 3.11+ and `calle-ai==0.7.0`, with the same environment setup as the
+[complete Python example](/legacy-quickstart#run-a-complete-example). It reads that
+example's private run-directory format: `request.json` contains the saved
+SDK create arguments, including `idempotency_key`; `error.json` contains
+`status_code`, `code`, `message`, and `details`. Keep the original files.
+
+Read `error.json` privately and put the full corrected task in a UTF-8 file,
+`corrected-task.txt`. Supply the missing facts yourself; do not invent them.
+Then prepare the correction:
+
+```bash
+python examples/recover_create.py correct ../rejected-run \
+  --task-file corrected-task.txt --confirm-missing-information
+```
+
+This sends no request. It requires the saved `422 call_not_ready` error and
+your confirmation that it was a missing-information creation rejection, and
+refuses a directory with a saved Call ID. It saves a new key and corrected
+task in `../rejected-run/corrected/request.json`, preserving the other request
+fields. Running `correct` again refuses to overwrite that directory or
+generate another saved key.
+
+Review the corrected request, keep the same API key and `CALLE_BASE_URL`, and
+submit it explicitly. This can place a real, billed call to the saved recipient:
+
+```bash
+python examples/recover_create.py submit ../rejected-run/corrected
+```
+
+The helper saves the Call ID, retrieves the result, and makes no automatic
+create retry. If interrupted, rerun the same command with the same directory:
+with a saved ID it only retrieves that call; without one it resubmits the
+unchanged saved request and key. Do not edit or delete the saved files to retry.
+An exit code of zero means a terminal result was retrieved, not that the
+business task succeeded. Stopping the script does not cancel an accepted call.
 
 ## Task completion
 
@@ -521,14 +604,35 @@ the application would need evidence of a confirmed booking; this example does
 not establish that outcome. A `null` result or an `unknown` answer must remain
 unresolved rather than becoming a yes or no from `status` alone.
 
+### Read a saved result
+
+The [Python result reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_results.py)
+displays task-level and recipient-level results separately, followed by the
+transcript labeled by recipient and attempt. Run it with Python 3.11+ on the
+`result.json` saved by either [complete Calls example](/legacy-quickstart#run-a-complete-example):
+
+```bash
+python examples/read_results.py ../calle-run/result.json
+```
+
+This command makes no API requests and leaves the file unchanged. Its output
+may contain private results and transcript text; keep it private. A zero exit
+code means the file was read, not that the call or business task succeeded.
+
+`result_schema` supplies the task-level `structured_result`;
+`recipient_result_schema` supplies each `recipients[].structured_result`, even
+for a single recipient. A null task-level result does not imply that recipient
+results or transcripts are missing. The reader preserves `null`, `unknown`,
+`false`, and zero rather than treating them as success or substituting one
+recipient's result for the whole task. Attempt transcript counts show when an
+attempt has no transcript turns.
+
 ## Polling and events
 
 Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
 
 Before mapping a failed call to no answer or decline, read
 [Accepted call execution outcomes](/errors#accepted-call-execution-outcomes).
-Calls API `failure_code` values are not a published enum, and Goal Run error
-codes do not define the Calls API contract.
 
 When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`.
 
@@ -540,6 +644,10 @@ Read `recipients[].attempts[].transcript_turns` in Python or HTTP responses,
 and `recipients[].attempts[].transcriptTurns` in the TypeScript SDK. Each turn
 keeps the `offset_seconds` field in both SDKs. A null offset means the timestamp
 is unavailable; zero means the start of the attempt.
+
+Saved transcripts are not automatically deleted. An empty `transcript_turns`
+array means no transcript is available for that attempt; it is not an
+expiration marker.
 
 The runnable [Python reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_transcript.py)
 and [TypeScript reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read-transcript.ts)
@@ -562,12 +670,16 @@ the completed Python/HTTP call object to `transcript_lines`, or the completed
 TypeScript SDK call object to `transcriptLines`, and iterate the returned lines.
 Transcript text may contain private data; keep the output private.
 
+**Audio recordings:** Saved recordings remain available in Dashboard call
+details, where you can download them. The Calls API does not return audio
+recordings, playback or download URLs, or recording availability and expiration
+fields. Recording retrieval through MCP and the SDKs is tracked separately in
+[#753](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/753).
+
 ### Poll for results
 
 
-TypeScript:
-
-```ts
+```ts title="TypeScript"
 const completed = await client.calls.waitForResult(call.id, {
   timeoutMs: 120_000,
   intervalMs: 2_000,
@@ -576,9 +688,7 @@ const completed = await client.calls.waitForResult(call.id, {
 const events = await client.calls.listEvents(call.id, { limit: 50 });
 ```
 
-Python:
-
-```python
+```python title="Python"
 completed = client.calls.wait_for_result(
     call["id"],
     timeout_seconds=120,

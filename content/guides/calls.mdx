@@ -4,28 +4,21 @@ description: Single-target calls, immutable requests, result readiness, and exec
 ---
 
 Create one phone task and receive a structured result. Start with the
-[Quickstart](/quickstart) to try it in the test environment.
+[Quickstart](/quickstart) for a production example.
 
 Check [Regions & languages](/regions) for supported destinations and languages.
 
-## Preview availability
+## Availability
 
-This is a preview contract, not a production availability announcement.
-Optional target hints, input validation, idempotent creation and detailed events
-were verified in the test preview on September 22, 2026. Shared test deployments
-can change; confirm the deployed contract before integrating.
-
-The `call_outcome`, `result_status` and fixed `transcript` fields below are
-**unreleased response additions**, not part of that verified deployment.
-Until they are deployed, follow the [Quickstart polling rule](/quickstart#wait-for-the-result):
-wait for a non-null `result` or `error`. The result-outcome and transcript sections
-describe the intended contract, not a guarantee about the current test response.
+Calls are available on the production API and in SDK 1.0. See the
+[migration guide](/migration) when upgrading an existing call-task integration.
+Calls and Goal Runs include `call_outcome`, `result_status` and `transcript`.
+Wait while `result_status` is `pending`, not until result or error becomes non-null.
 
 ## Call ID and Billing
 
 The response adds a fixed `call_id` field for matching a telephone call to the
-**Call ID** shown in Billing. This field is a local preview addition and has not
-yet been deployed.
+**Call ID** shown in Billing.
 
 ```json
 {
@@ -138,10 +131,7 @@ For example, `"type": ["string", "null"]` is not supported. It returns
 `400 result_schema_invalid` before a Call is created. Use `"type": "string"`
 and explicitly describe an allowed `"unknown"` fallback in the task instead.
 
-### Planned result outcomes
-
-The following outcome/readiness behavior belongs to the
-[unreleased response additions](#preview-availability).
+### Result outcomes
 
 The response uses the same result model as Goal Runs. `call_outcome` describes
 the telephone outcome: `completed`, `no_answer`, `busy`, or `declined`. A no-answer,
@@ -174,8 +164,6 @@ execution completion time. Evaluate your own schema fields to decide business
 success. Put a summary or completion flag in the schema if your application needs it.
 
 ## Transcript
-
-This field belongs to the [unreleased response additions](#preview-availability).
 
 Every Call includes a top-level `transcript` array, separate from `result` and
 `result_schema`. After execution ends, it contains the recorded conversation in
@@ -298,11 +286,11 @@ Cancellation after provider submission returns `409 call_cannot_cancel`.
 It does not hang up an active call. Repeating cancellation on a terminal Call
 returns its stored state. See the [API Reference](/api-reference/calls) for schemas.
 
-## Limits of this preview
+## Limits
 
 - One target per Call. Recipient lists, batch requests and `recipient_result_schema` are not accepted.
 - Calls accept immediate execution only. Scheduling and recurrence are not supported.
-- Attempt details and provider identifiers are not exposed by the Calls response.
+- Billing correlation is available through `call_id`; detailed provider attempt records are not exposed.
 - Account concurrency, balance, regional access and other account policies still apply. Acceptance may be followed by queued work.
 - Existing legacy call-task IDs must be read through their original interface; changing the URL does not convert historical records.
 

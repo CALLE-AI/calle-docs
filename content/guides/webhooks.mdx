@@ -3,13 +3,11 @@ title: Webhooks
 description: Receive and process final call results.
 ---
 
-Set `webhook_url` when creating a Call. The verified test preview sends a final
-snapshot once `result` or `error` is non-null, not when the phone first ends.
+Set `webhook_url` when creating a Call. Delivery includes the final result
+snapshot, not just the moment the phone first ends.
 A rejected creation request does not produce a terminal webhook.
 
-The `result_status`, `call_outcome` and `transcript` fields in the example below
-belong to the [unreleased response additions](/calls#preview-availability).
-With those additions, delivery occurs once `result_status` is no longer `pending`;
+Terminal delivery occurs once `result_status` is no longer `pending`;
 an unavailable result can have both `result` and `error` null, and ordinary
 no-answer, busy or declined outcomes use `call.completed`.
 
@@ -18,13 +16,13 @@ no-answer, busy or declined outcomes use `call.completed`.
 The envelope contains `id`, `type`, `created_at` and `data`. `data` matches the
 ready Call returned by GET and has `object: "call"`.
 
-In that planned contract, `data.transcript` is always an array with the same recorded turns as GET.
+`data.transcript` is always an array with the same recorded turns as GET.
 Business result errors do not remove it; no available transcript is represented
 by `[]`.
 
 | Event | Interpretation |
 | --- | --- |
-| `call.completed` | Telephone execution completed; inspect `data.result` or `data.error` for the outcome. |
+| `call.completed` | Telephone execution completed; inspect `data.call_outcome`, `data.result_status`, `data.result` and `data.error`. |
 | `call.failed` | Execution failed. |
 | `call.canceled` | The Call was canceled before provider submission. |
 
@@ -32,7 +30,7 @@ A completed call with a result-processing error still uses `call.completed`.
 The current call contract does not use `call.result_validation_failed`; inspect
 `error.code`, such as `result_invalid`.
 
-Planned response envelope, with an abbreviated `data` object:
+Response envelope, with an abbreviated `data` object:
 
 ```json
 {

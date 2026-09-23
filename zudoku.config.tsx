@@ -1,4 +1,6 @@
 import type { ZudokuConfig } from "zudoku";
+import { CodeTabs } from "./src/components/CodeTabs.js";
+import { SdkExample, SdkExamplePanel, SdkExamples } from "./src/components/SdkExamples.js";
 import { ScrollToTop } from "./src/components/ScrollToTop.js";
 import { ThemeMenu } from "./src/components/ThemeMenu.js";
 import "./src/styles.css";
@@ -99,7 +101,7 @@ const config = {
       },
       {
         label: "Dashboard",
-        to: "https://test-dashboard.heycall-e.com/",
+        to: "https://dashboard.heycall-e.com/",
         target: "_blank",
       },
     ],
@@ -136,6 +138,9 @@ const config = {
       llmsTxtFull: true,
       includeProtected: false,
     },
+  },
+  mdx: {
+    components: { CodeTabs, SdkExamples, SdkExample, SdkExamplePanel },
   },
   navigation: [
     {
@@ -233,8 +238,8 @@ const config = {
   },
   syntaxHighlighting: {
     themes: {
-      light: "github-dark",
-      dark: "github-dark",
+      light: "github-light",
+      dark: "github-dark-default",
     },
   },
   sitemap: {
