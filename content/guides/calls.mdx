@@ -167,6 +167,11 @@ Structured results let you turn the terminal call evidence into a stable JSON ob
 
 The extraction model uses the call transcript, ASR, and Calling facts as primary evidence. It uses the post-call summary and outcome as supporting context. If CALL-E cannot produce a schema-valid result from the evidence, the public `structured_result` is `null`.
 
+A non-null result confirms that an object was returned, not that the recipient
+answered or supplied useful evidence. A required string can be empty, and an
+`unknown` enum value can satisfy the schema. Check the business answer and its
+evidence against the transcript before treating the result as success.
+
 Use `result_schema` for one result object that describes the whole call task. Use `recipient_result_schema` when each recipient needs an independent result, especially for batch calls. TypeScript uses `resultSchema` and `recipientResultSchema`; Python uses `result_schema` and `recipient_result_schema`. The JSON Schema object itself is the same shape.
 
 For `recipient_result_schema`, avoid reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, and timing fields. Use custom names such as `customer_summary`, `notes`, or `reason` instead.
