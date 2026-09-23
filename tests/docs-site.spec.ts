@@ -247,6 +247,9 @@ test("documents aggregate billing and preserves pre-connection policy", async ({
   const billingMarkdown = await markdown.text();
   expect(billingMarkdown).toContain("$0.0296");
   expect(billingMarkdown).toContain("$0.0148");
+  await expect(article.getByRole("columnheader", { name: "30 seconds", exact: true })).toBeVisible();
+  await expect(article.getByRole("columnheader", { name: "60 seconds", exact: true })).toHaveCount(0);
+  expect(billingMarkdown).not.toContain("60 seconds");
   expect(billingMarkdown).toContain("Pay half.");
   expect(billingMarkdown).toContain("Choose Goal.");
   expect(billingMarkdown).not.toContain("Explore Goal Runs");
