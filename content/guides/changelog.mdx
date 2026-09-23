@@ -3,6 +3,58 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## September 23, 2026 - Billing call ID (unreleased)
+
+The local Calls response draft adds nullable `call_id`, matching the telephone
+Call ID in Billing. The API resource `id` stays unchanged. Reads, exact retries
+and terminal webhook data include the same recorded ID; calls without a recorded
+telephone ID return `null`. See [Call ID and Billing](/calls#call-id-and-billing).
+This addition is not yet deployed; no SDK package is published by this change.
+
+## September 22, 2026 - Calls preview update
+
+Calls accept omitted region and locale hints, infer the target from the phone
+and task, and return the resolved values. Phone/region conflicts and unresolved
+language choices request corrected input. The events endpoint now includes
+observed ringing, connection, ASR recognition updates, bot speech, interruptions, call end
+and result readiness, with stable IDs and cursor-based incremental reads.
+ASR may contain partial or revised text; there is no final-sentence flag.
+
+These input and event changes were verified in the test preview, not released
+as production GA. See [preview availability](/calls#preview-availability) and
+[Call retry decisions](/calls#idempotency) before integrating.
+
+Unsupported Call regions and locales return HTTP 422 with `unsupported_region`
+or `unsupported_language`, including the rejected field and target in `details`.
+Correct the input before retrying; these requests create no Call. Configuration
+service failures remain HTTP 503.
+
+Call creation now prepares the task before acceptance. Missing or conflicting
+essential facts return `422 input_incomplete` with `error.details.missing_inputs`,
+without creating a Call. Accepted requests reuse the saved preparation during
+background execution. Preparation failures return a service error. See
+[Calls](/calls#request-contract) for recovery and idempotency behavior.
+
+### Unreleased response additions
+
+The local response draft adds `transcript`, `call_outcome` and `result_status`
+to Calls and Goal Runs. These additions were not included in the verified test
+deployment. They preserve recorded transcript turns separately from the business
+result and distinguish ordinary telephone outcomes from technical errors.
+Local preview SDK wait helpers target this newer response draft; they require a
+matching deployment. Do not infer availability from their presence in this documentation.
+
+## September 21, 2026 - Calls preview
+
+Try single-target calls and structured results with the [Quickstart](/quickstart),
+[Calls guide](/calls), [Webhooks](/webhooks) and [SDKs](/sdks).
+Preview SDK packages are available locally.
+
+For existing integrations, see the [migration guide](/migration) and the
+[legacy API retirement plan](/retirement) for 2026-12-31 16:00 UTC.
+Goal Runs are unaffected. This preview does not announce production GA or
+enable the retirement cutoff or send customer notifications.
+
 ## September 19, 2026
 
 **Editable prompt modules:** Customize Facts, Opening, Callee Identity Check,

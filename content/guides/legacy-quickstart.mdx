@@ -1,0 +1,214 @@
+---
+title: Legacy Quickstart
+description: Create one call and read the structured result.
+---
+
+This quickstart is for existing call-task integrations. For new integrations,
+use the [Quickstart](/quickstart). The [retirement plan](/retirement) covers
+the legacy Calls API only; Goal Runs are unaffected.
+
+Create a CALL-E call task, wait for the terminal result, and read the structured output.
+
+This quickstart uses the one-shot Calls API. If your application repeats a workflow that has already been authored and published in CALL-E, start with [Goal Runs](/goal-runs) instead.
+
+Outbound calling is not available in every country or region. Check the current
+[supported regions and languages](/regions)
+before building an integration. A phone number can be valid E.164 and still be
+rejected with `unsupported_region`; see [Errors](/errors) for recovery guidance.
+
+**API key** · **TypeScript** · **Python**
+
+## Install
+
+Install the server SDK package for your runtime. The Python SDK requires
+Python 3.11 or later; Python 3.9 and 3.10 are not supported.
+
+```bash
+pnpm add @call-e/calle
+pip install calle-ai
+```
+
+Set your API key before running the examples. Replace `<YOUR_CALLE_API_KEY>`
+with the complete key from the dashboard; the placeholder is not a working
+credential:
+
+```bash
+export CALLE_API_KEY="<YOUR_CALLE_API_KEY>"
+```
+
+You can view your API keys in the [CALL-E dashboard](https://dashboard.heycall-e.com/account/api-keys).
+
+See [Authentication](/authentication) for API key handling and server-only usage.
+
+## Create a client
+
+TypeScript:
+
+```ts
+import { CalleClient } from "@call-e/calle";
+
+const client = new CalleClient({
+  apiKey: process.env.CALLE_API_KEY!,
+});
+```
+
+Python:
+
+```python
+import os
+from calle import CalleClient
+
+client = CalleClient(api_key=os.environ["CALLE_API_KEY"])
+```
+
+## Minimum request
+
+The minimum create request is task-only. Include the phone number directly in the task when CALL-E should infer the recipient from the instruction. Replace `<E164_PHONE>` with a phone number you own or are authorized to call.
+
+```json
+{
+  "task": "Call <E164_PHONE> and ask whether they can hear clearly."
+}
+```
+
+## Create and wait
+
+TypeScript:
+
+```ts
+const call = await client.calls.createAndWait({
+  task: "Call <E164_PHONE> and ask whether they can hear clearly.",
+  resultSchema: {
+    type: "object",
+    required: ["can_hear_clearly"],
+    properties: {
+      can_hear_clearly: { type: "string", enum: ["yes", "no", "unknown"] },
+    },
+  },
+});
+```
+
+Python:
+
+```python
+call = client.calls.create_and_wait(
+    task="Call <E164_PHONE> and ask whether they can hear clearly.",
+    result_schema={
+        "type": "object",
+        "required": ["can_hear_clearly"],
+        "properties": {
+            "can_hear_clearly": {"type": "string", "enum": ["yes", "no", "unknown"]},
+        },
+    },
+)
+```
+
+## Read the result
+
+The terminal call task includes a stable status, a schema-valid structured result, and task-level outcome fields from the post-call summary. When CALL-E cannot produce a schema-valid result from the evidence, `structured_result` is `null`.
+
+See [Call status](/legacy-calls#call-status) for lifecycle and terminal states, and
+[Task completion](/legacy-calls#task-completion) for how to interpret
+`task_completed` (`taskCompleted` in TypeScript) and `completion_confidence`.
+
+TypeScript:
+
+```ts
+console.log(call.status);
+console.log(call.structuredResult);
+console.log(call.taskCompleted, call.completionConfidence, call.evidence);
+```
+
+Example output:
+
+```json
+{
+  "status": "completed",
+  "taskCompleted": true,
+  "completionConfidence": {"score": 0.92, "label": "high"},
+  "evidence": ["The recipient clearly answered yes."],
+  "structuredResult": {
+    "can_hear_clearly": "yes"
+  }
+}
+```
+
+Python:
+
+```python
+print(call["status"])
+print(call["structured_result"])
+print(call["task_completed"], call["completion_confidence"], call["evidence"])
+```
+
+Example output:
+
+```json
+{
+  "status": "completed",
+  "task_completed": true,
+  "completion_confidence": {"score": 0.92, "label": "high"},
+  "evidence": ["The recipient clearly answered yes."],
+  "structured_result": {
+    "can_hear_clearly": "yes"
+  }
+}
+```
+
+Before adding automatic retries, follow
+[Recover after a restart or lost response](/legacy-calls#recover-after-a-restart-or-lost-response)
+to persist the original request, idempotency key, and Call ID.
+
+## Run a complete example
+
+The [Python example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.py)
+creates one real US English test call, saves its request and Call ID, waits for
+the terminal result, and writes the full response to a private local directory.
+It listens to a greeting and then asks the agent to end the call. This is a
+real-service integration check, not a simulated business transaction.
+
+Use Python 3.11 or later and a number you own or are authorized to test. If you
+need a destination, follow the [official US English testing hotline announcement](https://discord.com/channels/1493880186826133504/1495622983253889054/1546414916515401788).
+Calls use your real account and may consume credits. The hotline is a test
+recipient, not a promise of free sandbox credentials or deterministic answers.
+
+```bash
+git clone https://github.com/CALLE-AI/calle-docs.git
+cd calle-docs
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install calle-ai==0.7.0
+export CALLE_API_KEY="<YOUR_API_KEY>"
+export CALLE_TEST_PHONE="<AUTHORIZED_US_E164_PHONE>"
+python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"
+```
+
+`start` requires a new run directory and submits at most one create request.
+The directory holds `request.json` (including the original idempotency key),
+`call-id.json`, and, once available, `result.json`. Keep it private: it contains
+the destination and call transcript. The API key is not written there. On Unix,
+the directory is created with owner-only access; on Windows, use a private
+directory protected by your account's file permissions.
+
+After a polling timeout, application restart, or successful run, read the same
+call again with:
+
+```bash
+python examples/calls.py resume ../calle-run
+```
+
+`resume` only retrieves the saved Call ID; it never creates a call. If a create
+response was lost and no ID was saved, the script stops. Keep `request.json`
+and follow [Calls recovery](/legacy-calls#recover-after-a-restart-or-lost-response)
+before starting a replacement. Do not delete a run directory to bypass this check.
+
+Stopping this process or reaching its five-minute polling timeout does not
+cancel a call already accepted by CALL-E. Neither command retries a failed
+create request automatically. An HTTP error is saved in `error.json`; see
+[Choose the next action](/errors#choose-the-next-action).
+
+An exit code of zero means a terminal response was retrieved. Read `status`,
+`task_completed`, and `structured_result` separately and check the transcript
+in `result.json`. A `null` structured result or `heard_greeting: "unknown"`
+does not establish that a greeting was heard. A terminal `failed` or `canceled`
+response is still a readable outcome, not a successful business task.

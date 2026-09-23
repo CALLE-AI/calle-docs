@@ -1,198 +1,88 @@
 ---
 title: Webhooks
-description: Receive terminal webhook events and process them safely.
+description: Receive and process final call results.
 ---
 
-Use webhooks when your application needs to react to terminal call task results without polling.
+Set `webhook_url` when creating a Call. The verified test preview sends a final
+snapshot once `result` or `error` is non-null, not when the phone first ends.
+A rejected creation request does not produce a terminal webhook.
 
-Phone values in examples are placeholders. Real webhook payloads echo the phone numbers from your call task.
+The `result_status`, `call_outcome` and `transcript` fields in the example below
+belong to the [unreleased response additions](/calls#preview-availability).
+With those additions, delivery occurs once `result_status` is no longer `pending`;
+an unavailable result can have both `result` and `error` null, and ordinary
+no-answer, busy or declined outcomes use `call.completed`.
 
-CALL-E publishes a terminal event only after the post-call summary, task
-completion judgment, confidence, evidence, and any requested structured results
-are finalized. The event `data` is the same complete terminal snapshot returned
-by `GET /v1/calls/{call_id}`.
+## Payload and events
 
-## Terminal events
+The envelope contains `id`, `type`, `created_at` and `data`. `data` matches the
+ready Call returned by GET and has `object: "call"`.
 
-CALL-E sends terminal webhook events:
+In that planned contract, `data.transcript` is always an array with the same recorded turns as GET.
+Business result errors do not remove it; no available transcript is represented
+by `[]`.
 
-- `call.completed`
-- `call.failed`
-- `call.result_validation_failed`
+| Event | Interpretation |
+| --- | --- |
+| `call.completed` | Telephone execution completed; inspect `data.result` or `data.error` for the outcome. |
+| `call.failed` | Execution failed. |
+| `call.canceled` | The Call was canceled before provider submission. |
 
-`call.result_validation_failed` is sent when a completed call task had an internal structured-result validation failure for the task or a recipient. The payload does not expose validation details; invalid or unsupported structured results are returned as `null`. Failed or canceled terminal call tasks use `call.failed`.
+A completed call with a result-processing error still uses `call.completed`.
+The current call contract does not use `call.result_validation_failed`; inspect
+`error.code`, such as `result_invalid`.
 
-Each event has an `id`, `type`, `created_at`, and a `data` object containing the complete terminal call task fields.
-
-Recipient-level structured results appear inside the `recipients` array. They do not create separate recipient webhook events.
-
-Attempt transcripts appear as `recipients[].attempts[].transcript_turns`. Each turn includes `offset_seconds`, `speaker`, and `text`; the array is empty when no transcript is available.
-
-See [Task completion](/calls#task-completion) for how to interpret
-`task_completed` and `completion_confidence` in the payload.
-
-Example payload:
+Planned response envelope, with an abbreviated `data` object:
 
 ```json
 {
-  "id": "evt_123",
+  "id": "evt_example",
   "type": "call.completed",
-  "created_at": "2026-06-08T18:30:00Z",
+  "created_at": "2026-09-21T02:00:00Z",
   "data": {
-    "id": "call_123",
-    "object": "call_task",
+    "id": "call_example",
+    "call_id": "0123456789abcdef0123456789abcdef",
+    "object": "call",
     "status": "completed",
-    "task": "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
-    "recipients": [
-      {
-        "id": "rcp_001",
-        "phones": ["<RECIPIENT_1_E164_PHONE>"],
-        "region": "US",
-        "locale": "en-US",
-        "status": "completed",
-        "structured_result": {
-          "can_attend": "yes"
-        },
-        "summary": "The recipient can attend Friday lunch.",
-        "attempts": [
-          {
-            "id": "att_001",
-            "phone": "<RECIPIENT_1_E164_PHONE>",
-            "status": "completed",
-            "started_at": "2026-06-08T18:21:00Z",
-            "completed_at": "2026-06-08T18:29:00Z",
-            "summary": null,
-            "transcript_turns": [
-              {
-                "offset_seconds": 0,
-                "speaker": "bot",
-                "text": "Can you attend Friday lunch in San Francisco?"
-              },
-              {
-                "offset_seconds": 8,
-                "speaker": "user",
-                "text": "Yes, I can attend."
-              }
-            ],
-            "provider_call_id": "provider_001",
-            "failure_code": null,
-            "failure_message": null
-          }
-        ]
-      },
-      {
-        "id": "rcp_002",
-        "phones": ["<RECIPIENT_2_E164_PHONE>"],
-        "region": "US",
-        "locale": "en-US",
-        "status": "completed",
-        "structured_result": null,
-        "summary": "The recipient did not provide a usable answer.",
-        "attempts": [
-          {
-            "id": "att_002",
-            "phone": "<RECIPIENT_2_E164_PHONE>",
-            "status": "completed",
-            "started_at": "2026-06-08T18:22:00Z",
-            "completed_at": "2026-06-08T18:30:00Z",
-            "summary": null,
-            "transcript_turns": [],
-            "provider_call_id": "provider_002",
-            "failure_code": null,
-            "failure_message": null
-          }
-        ]
-      }
-    ],
-    "structured_result": {
-      "attending_count": 1
-    },
-    "summary": "One recipient can attend Friday lunch.",
-    "task_completed": true,
-    "completion_confidence": {
-      "score": 0.86,
-      "label": "high"
-    },
-    "evidence": [
-      "One recipient confirmed they can attend.",
-      "The second recipient did not provide a usable answer."
-    ],
-    "metadata": {
-      "workflow_run_id": "wf_123"
-    },
-    "failure_code": null,
-    "failure_message": null,
-    "created_at": "2026-06-08T18:20:00Z",
-    "completed_at": "2026-06-08T18:30:00Z"
+    "call_outcome": "completed",
+    "result_status": "available",
+    "transcript": [{"speaker": "bot", "offset_seconds": 0, "text": "Hello."}],
+    "result": {"greeting_delivered": true},
+    "error": null
   }
 }
 ```
 
-## Receive events
+## Receiver behavior
 
-Current CALL-E webhook delivery does not use a webhook secret,
-`CALL-E-Timestamp`, or `CALL-E-Signature`. Treat the receiver as a public,
-untrusted-input boundary: validate the JSON shape, require
-`CALL-E-Event-Id`, and reject the request when that header does not match the
-body event `id`.
+Return a `2xx` response after durably accepting the event. Delivery can repeat;
+the sender makes up to six attempts with the same event ID. Use the event ID
+for deduplication, not the timestamp or phone number.
 
-TypeScript:
+The webhook event ID is separate from your create request's `Idempotency-Key`.
+Process repeated deliveries once; do not create another Call in response to a
+delivery retry. ASR and speech updates are read from
+[Call events](/calls#read-events-and-cancellation), not pushed to this terminal webhook.
 
-```ts
-const event = JSON.parse(rawBody.toString("utf8"));
-const eventId = request.headers.get("CALL-E-Event-Id");
+`CALL-E-Event-Id` must match the envelope `id`. This is a consistency check,
+not a cryptographic signature. The current delivery path does not supply
+`CALL-E-Signature` or a webhook signing secret. Before a sensitive side effect,
+fetch the original Call with your API key and compare its ready snapshot.
 
-if (!eventId || eventId !== event.id) {
-  return new Response("invalid event id", { status: 400 });
-}
+## Existing receivers
 
-if (event.type === "call.completed") {
-  console.log(event.data.id, event.data.recipients);
-}
-```
-
-Python:
-
-```python
-event = json.loads(raw_body)
-event_id = request.headers.get("CALL-E-Event-Id")
-
-if not event_id or event_id != event["id"]:
-    return {"error": "invalid_event_id"}, 400
-
-if event["type"] == "call.completed":
-    print(event["data"]["id"], event["data"]["recipients"])
-```
-
-Return a `2xx` response after accepting the event. CALL-E retries delivery when
-the receiver returns a non-`2xx` response or the request fails.
-
-HTTPS and event-id matching do not provide cryptographic proof of the sender.
-Before a sensitive side effect that requires origin assurance, fetch
-`GET /v1/calls/{call_id}` with your API key and compare its terminal snapshot
-with the event.
-
-## Idempotent handling
-
-Webhook delivery is at least once. Store the webhook event `id` before processing side effects so duplicate deliveries are ignored safely.
-
-TypeScript:
+When migrating, use separate receiver paths or dispatch on `data.object`:
 
 ```ts
-if (await eventStore.has(event.id)) {
-  return new Response("duplicate", { status: 200 });
+if (event.data.object === "call") {
+  handleCallResult(event.data.call_outcome, event.data.result_status, event.data.result, event.data.error);
+} else if (event.data.object === "call_task") {
+  handleLegacyResult(event.data.structured_result);
 }
-
-await eventStore.insert(event.id);
-await handleCallEvent(event);
 ```
 
-Python:
-
-```python
-if event_store.has(event["id"]):
-    return {"ok": True, "duplicate": True}
-
-event_store.insert(event["id"])
-handle_call_event(event)
-```
+`handleCallResult` and `handleLegacyResult` are application handlers, not SDK
+exports. Both interfaces can send `call.completed`, so event type alone cannot
+identify the payload format. Keep the [legacy receiver](/legacy-webhooks) available for
+call tasks accepted before the cutover. Switching new requests does not rewrite
+old webhook payloads or call records.

@@ -3,6 +3,12 @@ import { extractRegions, REGIONS_README_URL } from "../src/regions.mjs";
 
 const docsPages = [
   { path: "/quickstart", heading: "Quickstart" },
+  { path: "/migration", heading: "Migration guide" },
+  { path: "/retirement", heading: "Legacy API retirement" },
+  { path: "/legacy-quickstart", heading: "Legacy Quickstart" },
+  { path: "/legacy-calls", heading: "Legacy Calls" },
+  { path: "/legacy-webhooks", heading: "Legacy Webhooks" },
+  { path: "/legacy-sdks", heading: "Legacy SDKs" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
   { path: "/regions", heading: "Regions & languages" },
@@ -14,7 +20,7 @@ const docsPages = [
 ];
 
 const guideNavigationItems = docsPages.filter(
-  ({ path }) => path !== "/changelog",
+  ({ path }) => ["/quickstart", "/authentication", "/calls", "/regions", "/goal-runs", "/webhooks", "/errors", "/sdks"].includes(path),
 );
 
 test("serves prerendered guides on clean URLs", async ({ page, request }) => {
@@ -34,14 +40,14 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   await expect(
     page.getByRole("link", { name: "API Reference", exact: true }).first(),
   ).toHaveAttribute("href", "/api-reference");
-  const coverageLink = page.getByRole("link", { name: /^Regions & languages/ });
+  const coverageLink = page.locator("main").getByRole("link", { name: "Regions & languages", exact: true });
   await expect(coverageLink).toBeVisible();
   await expect(coverageLink).toHaveAttribute(
     "href",
     "/regions",
   );
   await expect(
-    page.locator("pre").filter({ hasText: "pnpm add @call-e/calle" }).first(),
+    page.locator("pre").filter({ hasText: 'CALLE_BASE_URL="https://test-api.heycall-e.com"' }).first(),
   ).toBeVisible();
   await expect(page.locator("code.shiki.not-inline").first()).toHaveCSS(
     "background-color",
@@ -305,7 +311,7 @@ test("publishes non-empty Markdown and LLM discovery files", async ({
   expect(markdown.status()).toBe(200);
   expect(markdown.headers()["content-type"]).toContain("text/markdown");
   expect(await markdown.text()).toMatch(
-    /^# Quickstart[\s\S]+pnpm add @call-e\/calle/,
+    /^# Quickstart[\s\S]+https:\/\/test-api\.heycall-e\.com/,
   );
 
   const llms = await request.get("/llms.txt");
@@ -437,7 +443,7 @@ test("preserves CALL-E brand and favicon metadata", async ({ page }) => {
     .toBeVisible();
   await expect(
     page.getByRole("link", { name: "Dashboard", exact: true }),
-  ).toHaveAttribute("href", "https://dashboard.heycall-e.com/");
+  ).toHaveAttribute("href", "https://test-dashboard.heycall-e.com/");
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
     "href",
     "/favicon.svg",
@@ -505,11 +511,13 @@ test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
 
   const minimumRequest = page
     .locator("pre")
-    .filter({ hasText: /"task":\s*"[^"]*<E164_PHONE>[^"]*"/ })
+    .filter({ hasText: '"phone": "<AUTHORIZED_E164_PHONE>"' })
     .first();
   await expect(minimumRequest).toBeVisible();
   await expect(minimumRequest).not.toContainText('"recipient"');
   await expect(minimumRequest).not.toContainText('"recipients"');
+  await expect(minimumRequest).toContainText('"result_schema"');
+  await expect(minimumRequest).toContainText("Idempotency-Key:");
   await expect(page.getByText("+14155550100")).toHaveCount(0);
   await expect(page.getByText("+8613800000000")).toHaveCount(0);
 });
@@ -527,7 +535,7 @@ test("preserves authentication, webhook, and SDK guidance", async ({
     page.getByRole("link", { name: "Webhooks", exact: true }).first(),
   ).toHaveAttribute("href", "/webhooks");
 
-  await page.goto("/webhooks");
+  await page.goto("/legacy-webhooks");
   await expect(
     page.locator("pre").filter({
       hasText: /"recipients"[\s\S]*"attempts"[\s\S]*"provider_call_id"/,
@@ -539,7 +547,7 @@ test("preserves authentication, webhook, and SDK guidance", async ({
   ).toBeVisible();
   await expect(page.getByText(/cryptographic proof of the sender/)).toBeVisible();
 
-  await page.goto("/sdks");
+  await page.goto("/legacy-sdks");
   await expect(
     page.getByRole("link", { name: "CALLE-AI/server-sdk-typescript" }),
   ).toHaveAttribute(
@@ -553,20 +561,20 @@ test("preserves authentication, webhook, and SDK guidance", async ({
   ).toHaveAttribute("href", "https://github.com/CALLE-AI/server-sdk-python");
 });
 
-test("connects the Calls guide to HTTP and related references", async ({
+test("connects the legacy Calls guide to HTTP and related references", async ({
   page,
 }) => {
-  await page.goto("/calls");
+  await page.goto("/legacy-calls");
 
   const callsBody = page.locator('[data-pagefind-body="true"]');
   await expect(
-    callsBody.locator('p a[href="/api-reference/calls"]'),
+    callsBody.locator('p a[href="/api-reference/legacy-calls"]'),
   ).toBeVisible();
   await expect(
     callsBody.locator('p a[href="/errors"]'),
   ).toBeVisible();
   await expect(
-    callsBody.locator('p a[href="/webhooks"]'),
+    callsBody.locator('p a[href="/legacy-webhooks"]'),
   ).toBeVisible();
 
   await expect(
@@ -629,7 +637,7 @@ test("connects the Calls guide to HTTP and related references", async ({
     page.getByRole("heading", { name: "Accepted call execution outcomes" }),
   ).toBeVisible();
   const callsOutcomeWarning = page.locator("main p").filter({
-    hasText: "do not define Calls API",
+    hasText: "do not define legacy call-task",
   });
   await expect(callsOutcomeWarning).toContainText(
     "keep the business outcome unresolved",
@@ -642,17 +650,17 @@ test("connects the Calls guide to HTTP and related references", async ({
 test("links result examples to task completion and endpoint classification", async ({
   page,
 }) => {
-  for (const route of ["/quickstart", "/webhooks"]) {
+  for (const route of ["/legacy-quickstart", "/legacy-webhooks"]) {
     await page.goto(route);
-    await page.locator('p a[href="/calls#task-completion"]').click();
-    await expect(page).toHaveURL(/\/calls#task-completion$/);
+    await page.locator('p a[href="/legacy-calls#task-completion"]').click();
+    await expect(page).toHaveURL(/\/legacy-calls#task-completion$/);
     await expect(
       page.getByRole("heading", { name: "Task completion" }),
     ).toBeVisible();
   }
 
   await page.getByRole("link", { name: "custom answered_by example" }).click();
-  await expect(page).toHaveURL(/\/calls#classify-the-final-endpoint$/);
+  await expect(page).toHaveURL(/\/legacy-calls#classify-the-final-endpoint$/);
   await expect(
     page.getByRole("heading", { name: "Classify the final endpoint" }),
   ).toBeVisible();
@@ -705,11 +713,22 @@ test("renders a read-only OpenAPI reference", async ({ page }) => {
     page.locator("h2#create-call"),
   ).toBeVisible();
   await expect(
-    page.locator("h2#list-call-events"),
+    page.locator("h2#list-events"),
   ).toBeVisible();
   await expect(page.getByText("POST").first()).toBeVisible();
   await expect(page.getByText("Try it", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Send Request", { exact: true })).toHaveCount(0);
+
+  await expect(page.locator("h2#get-call")).toBeVisible();
+  await expect(page.locator("h2#cancel-call")).toBeVisible();
+  await expect(page.locator("main").getByText("deprecated", { exact: true })).toHaveCount(0);
+
+  await page.goto("/api-reference/legacy-calls");
+  await expect(page.locator("main").getByText("deprecated", { exact: true })).toHaveCount(3);
+  await expect(page.locator('nav[class*="overflow-y-auto"]').getByText("Legacy Calls (Deprecated)", { exact: true })).toBeVisible();
+  const retirementLink = page.locator("header").getByRole("link", { name: "View retirement details" });
+  await retirementLink.click();
+  await expect(page).toHaveURL(/\/retirement$/);
 
   await page.goto("/api-reference/webhooks");
   await expect(
@@ -756,4 +775,30 @@ test("keeps the guide usable on a narrow screen", async ({ page }) => {
     window.scrollTo(0, document.documentElement.scrollHeight);
   });
   await expect(page.getByTestId("scroll-to-top")).toHaveCSS("display", "none");
+});
+
+test("keeps retry tables and API operations within the mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const [path, name] of [
+    ["/calls#idempotency", "Call retry decisions"],
+    ["/errors#choose-the-next-action", "Error recovery decisions"],
+  ]) {
+    await page.goto(path);
+    const region = page.getByRole("region", { name });
+    await region.scrollIntoViewIfNeeded();
+    await expect(region).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+    const hasOverflow = await region.evaluate((element) => element.scrollWidth > element.clientWidth);
+    if (hasOverflow) {
+      await region.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect.poll(() => region.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    }
+  }
+
+  await page.goto("/api-reference/calls");
+  await expect(page.locator("h2#create-call")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

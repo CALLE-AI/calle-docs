@@ -1,0 +1,201 @@
+---
+title: Legacy Webhooks
+description: Receive terminal webhook events and process them safely.
+---
+
+Use webhooks when your application needs to react to terminal call task results without polling.
+
+This page covers legacy call-task payloads. New integrations should use
+[Webhooks](/webhooks); keep this receiver for existing call tasks.
+
+Phone values in examples are placeholders. Real webhook payloads echo the phone numbers from your call task.
+
+CALL-E publishes a terminal event only after the post-call summary, task
+completion judgment, confidence, evidence, and any requested structured results
+are finalized. The event `data` is the same complete terminal snapshot returned
+by `GET /v1/calls/{call_id}`.
+
+## Terminal events
+
+CALL-E sends terminal webhook events:
+
+- `call.completed`
+- `call.failed`
+- `call.result_validation_failed`
+
+`call.result_validation_failed` is sent when a completed call task had an internal structured-result validation failure for the task or a recipient. The payload does not expose validation details; invalid or unsupported structured results are returned as `null`. Failed or canceled terminal call tasks use `call.failed`.
+
+Each event has an `id`, `type`, `created_at`, and a `data` object containing the complete terminal call task fields.
+
+Recipient-level structured results appear inside the `recipients` array. They do not create separate recipient webhook events.
+
+Attempt transcripts appear as `recipients[].attempts[].transcript_turns`. Each turn includes `offset_seconds`, `speaker`, and `text`; the array is empty when no transcript is available.
+
+See [Task completion](/legacy-calls#task-completion) for how to interpret
+`task_completed` and `completion_confidence` in the payload.
+
+Example payload:
+
+```json
+{
+  "id": "evt_123",
+  "type": "call.completed",
+  "created_at": "2026-06-08T18:30:00Z",
+  "data": {
+    "id": "call_123",
+    "object": "call_task",
+    "status": "completed",
+    "task": "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    "recipients": [
+      {
+        "id": "rcp_001",
+        "phones": ["<RECIPIENT_1_E164_PHONE>"],
+        "region": "US",
+        "locale": "en-US",
+        "status": "completed",
+        "structured_result": {
+          "can_attend": "yes"
+        },
+        "summary": "The recipient can attend Friday lunch.",
+        "attempts": [
+          {
+            "id": "att_001",
+            "phone": "<RECIPIENT_1_E164_PHONE>",
+            "status": "completed",
+            "started_at": "2026-06-08T18:21:00Z",
+            "completed_at": "2026-06-08T18:29:00Z",
+            "summary": null,
+            "transcript_turns": [
+              {
+                "offset_seconds": 0,
+                "speaker": "bot",
+                "text": "Can you attend Friday lunch in San Francisco?"
+              },
+              {
+                "offset_seconds": 8,
+                "speaker": "user",
+                "text": "Yes, I can attend."
+              }
+            ],
+            "provider_call_id": "provider_001",
+            "failure_code": null,
+            "failure_message": null
+          }
+        ]
+      },
+      {
+        "id": "rcp_002",
+        "phones": ["<RECIPIENT_2_E164_PHONE>"],
+        "region": "US",
+        "locale": "en-US",
+        "status": "completed",
+        "structured_result": null,
+        "summary": "The recipient did not provide a usable answer.",
+        "attempts": [
+          {
+            "id": "att_002",
+            "phone": "<RECIPIENT_2_E164_PHONE>",
+            "status": "completed",
+            "started_at": "2026-06-08T18:22:00Z",
+            "completed_at": "2026-06-08T18:30:00Z",
+            "summary": null,
+            "transcript_turns": [],
+            "provider_call_id": "provider_002",
+            "failure_code": null,
+            "failure_message": null
+          }
+        ]
+      }
+    ],
+    "structured_result": {
+      "attending_count": 1
+    },
+    "summary": "One recipient can attend Friday lunch.",
+    "task_completed": true,
+    "completion_confidence": {
+      "score": 0.86,
+      "label": "high"
+    },
+    "evidence": [
+      "One recipient confirmed they can attend.",
+      "The second recipient did not provide a usable answer."
+    ],
+    "metadata": {
+      "workflow_run_id": "wf_123"
+    },
+    "failure_code": null,
+    "failure_message": null,
+    "created_at": "2026-06-08T18:20:00Z",
+    "completed_at": "2026-06-08T18:30:00Z"
+  }
+}
+```
+
+## Receive events
+
+Current CALL-E webhook delivery does not use a webhook secret,
+`CALL-E-Timestamp`, or `CALL-E-Signature`. Treat the receiver as a public,
+untrusted-input boundary: validate the JSON shape, require
+`CALL-E-Event-Id`, and reject the request when that header does not match the
+body event `id`.
+
+TypeScript:
+
+```ts
+const event = JSON.parse(rawBody.toString("utf8"));
+const eventId = request.headers.get("CALL-E-Event-Id");
+
+if (!eventId || eventId !== event.id) {
+  return new Response("invalid event id", { status: 400 });
+}
+
+if (event.type === "call.completed") {
+  console.log(event.data.id, event.data.recipients);
+}
+```
+
+Python:
+
+```python
+event = json.loads(raw_body)
+event_id = request.headers.get("CALL-E-Event-Id")
+
+if not event_id or event_id != event["id"]:
+    return {"error": "invalid_event_id"}, 400
+
+if event["type"] == "call.completed":
+    print(event["data"]["id"], event["data"]["recipients"])
+```
+
+Return a `2xx` response after accepting the event. CALL-E retries delivery when
+the receiver returns a non-`2xx` response or the request fails.
+
+HTTPS and event-id matching do not provide cryptographic proof of the sender.
+Before a sensitive side effect that requires origin assurance, fetch
+`GET /v1/calls/{call_id}` with your API key and compare its terminal snapshot
+with the event.
+
+## Idempotent handling
+
+Webhook delivery is at least once. Store the webhook event `id` before processing side effects so duplicate deliveries are ignored safely.
+
+TypeScript:
+
+```ts
+if (await eventStore.has(event.id)) {
+  return new Response("duplicate", { status: 200 });
+}
+
+await eventStore.insert(event.id);
+await handleCallEvent(event);
+```
+
+Python:
+
+```python
+if event_store.has(event["id"]):
+    return {"ok": True, "duplicate": True}
+
+event_store.insert(event["id"])
+handle_call_event(event)
+```

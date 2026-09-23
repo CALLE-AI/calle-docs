@@ -1,0 +1,65 @@
+---
+title: Legacy API retirement
+description: Planned support deadline and migration arrangements for legacy call tasks.
+---
+
+:::note{title="Retirement notice preview"}
+This page is a review draft. The test API is available for evaluation; production
+GA and the customer notification campaign have not been announced by this preview.
+:::
+
+## Scope
+
+<div className="comparison-table" role="region" aria-label="API support status" tabIndex={0}>
+
+| Surface | Status in this preview |
+| --- | --- |
+| Single-target Calls | Test preview, including reads, events and cancellation before submission. |
+| Legacy call tasks | Creation, reads and events are planned for retirement at the deadline below. |
+| Goals and Goal Runs | Unaffected by this retirement. |
+| Published SDK packages | Continue to serve legacy call tasks during this preview. |
+| Local preview packages | Support single-target Calls; not published to npm or PyPI. |
+
+</div>
+
+See the [migration guide](/migration) for the request and response differences.
+
+## Planned deadline
+
+**2026-12-31 at 16:00 UTC**, equivalent to **2027-01-01 at 00:00 Asia/Shanghai**.
+
+The proposal is to retire legacy call creation, reads and events at this deadline and return
+`410 Gone` with migration guidance. That cutoff behavior is not enabled merely
+by publishing this preview. Legacy requests are not automatically converted.
+
+Work already accepted must complete or be reconciled; shutting off new requests
+does not cancel provider calls. Existing callbacks must retain their original
+version's payload. Retirement does not itself delete stored call records.
+
+## Before the deadline is announced
+
+- Publish the production-ready Calls contract, migration guide and supported SDK packages.
+- Resolve impacted workflows that need batch targets, nested schemas or transcript access.
+- Specify how users can read or export historical call-task data after retirement. The new interface cannot read those IDs.
+- Notify affected project owners directly and identify integrations still using the legacy interface.
+
+The exact historical-data access policy and any read-only grace period remain
+open for review. No export API, data-retention duration or grace period is promised
+by this draft.
+
+## Deprecation signals
+
+The release plan uses `Deprecation`, `Sunset` and a `Link` with
+`rel="deprecation"` to point clients to migration guidance. These response
+headers are planned; they are not claimed as implemented in this preview.
+Deprecation leaves the supported legacy behavior intact until its published retirement date.
+
+## Migration communications
+
+The proposed cadence is a GA announcement followed by reminders 60, 30, 14, 7 and
+1 day before retirement, targeted to projects still using legacy call tasks. The notice
+includes the affected routes, the UTC deadline, SDK versions, migration steps,
+historical-data arrangements and the established support channel.
+
+Start with the [migration guide](/migration). No user notification is
+sent as part of viewing this documentation.
