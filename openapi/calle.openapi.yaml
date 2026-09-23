@@ -1,19 +1,250 @@
 openapi: 3.1.0
 info:
   title: CALL-E Developer API
-  version: 0.7.0
-  description: Developer API contract used by the CALL-E TypeScript and Python SDKs.
+  version: 1.0.0
+  description: >-
+    Developer API contract used by the CALL-E TypeScript and Python SDKs.
+    Calls and Goal Runs expose call_outcome, result_status and a fixed transcript
+    array. SDK 1.0 supports the single-target Calls API. Legacy call tasks remain
+    available during the migration period; see the public migration guide.
 servers:
   - url: https://api.heycall-e.com
-    description: Placeholder developer API base URL.
+    description: Production developer API.
 security:
   - bearerAuth: []
+tags:
+  - name: calls
+    x-displayName: Calls
+    description: Create, track, and read single-target calls.
+  - name: legacy-calls
+    x-displayName: Legacy Calls (Deprecated)
+    description: >-
+      Deprecated. v1 Calls will retire on December 31, 2026 (2026-12-31 16:00 UTC / 2027-01-01 00:00 Asia/Shanghai). See the [migration guide](/migration). Goal APIs are unaffected.
 paths:
+  /v2/calls:
+    post:
+      operationId: createAgenticCall
+      tags:
+        - calls
+      summary: Create Call
+      description: >-
+        Prepare one phone task, then return 202 after durable acceptance. Dialing runs
+        in the background; acceptance does not prove connection or business success.
+        Region and locale are optional or null. Infer region from the phone and spoken
+        locale from task intent and supported regional languages; responses contain
+        the resolved values. Explicit locale is preserved. Conflicting phone/region
+        or ambiguous language returns 422 input_incomplete with details.missing_inputs;
+        phone/region conflicts also include details.fields, region and inferred_region.
+        Unsupported targets return 422 unsupported_region or unsupported_language with
+        details.field, region and locale. Explicit targets are checked before preparation;
+        inferred locale is checked after inference. These rejections create no Call.
+        Unsupported result_schema types, including nullable unions, return 400
+        result_schema_invalid. Preparation is bounded to 25 seconds; configuration access
+        failures, conflicting profiles, model failures or timeouts return 503 provider_unavailable.
+        Accepted instructions and input are immutable and reused on replay. Calls accept
+        one phone and immediate execution only: no batch recipients, scheduling, recurrence
+        or recipient_result_schema.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: >-
+            Persist one key and the original request per logical call. Same project,
+            authenticated owner, key and input return 202 with the original Call ID
+            and its current saved state, including after completion, failure or cancellation.
+            Replay does not prepare or dial again. An intentionally new call requires
+            a new key. Changes to task, phone, region, locale, result_schema, metadata
+            or webhook_url return 409 idempotency_conflict; JSON object-key order is
+            not significant. Keep omitted region/locale omitted on retries; adding
+            inferred response values changes the input. Concurrent creation returns
+            409 idempotency_conflict with details.reason_code=creation_in_progress:
+            back off and retry unchanged. A definitive validation rejection before
+            acceptance creates no Call and permits corrected input with the same key.
+            After a timeout or uncertain response, reuse the original key and body,
+            not a new key. Keys must be 1-255 characters after trimming.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      responses:
+        '202':
+          description: Task prepared and Call durably accepted, or an exact replay returning the same Call ID and current saved state. No duplicate dialing on replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgenticCall'
+        '400': &id001
+          $ref: '#/components/responses/ErrorResponse'
+        '401': *id001
+        '402': *id001
+        '403': *id001
+        '409':
+          description: Creation is still in progress, or the key belongs to another request or owner. Do not automatically retry with a new key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                creation_in_progress:
+                  value:
+                    error:
+                      code: idempotency_conflict
+                      message: Call creation is still in progress. Retry with the same idempotency key and request.
+                      details:
+                        reason_code: creation_in_progress
+                changed_request:
+                  value:
+                    error:
+                      code: idempotency_conflict
+                      message: Idempotency key belongs to another request.
+                      details: {}
+        '422':
+          description: The requested region/locale is unsupported, essential task information is missing, or the request violates calling policy. No Call is created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                unsupported_region:
+                  value:
+                    error:
+                      code: unsupported_region
+                      message: Region 'ZZ' is not supported for calls. Choose a supported region and locale.
+                      details:
+                        field: region
+                        region: ZZ
+                        locale: en-US
+                unsupported_language:
+                  value:
+                    error:
+                      code: unsupported_language
+                      message: Locale 'xx-XX' is not supported for region 'CN'. Choose a supported locale for this region.
+                      details:
+                        field: locale
+                        region: CN
+                        locale: xx-XX
+                input_incomplete:
+                  value:
+                    error:
+                      code: input_incomplete
+                      message: The task lacks information required to make this call.
+                      details:
+                        missing_inputs:
+                          - Provide the appointment date.
+                          - Provide the appointment time.
+        '429': *id001
+        '503': *id001
+        '500': *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgenticCallRequest'
+  /v2/calls/{call_id}:
+    get:
+      operationId: getAgenticCall
+      tags:
+        - calls
+      summary: Get Call
+      description: Polling reads persisted state and never performs extraction or initiates a call.
+      parameters:
+        - &id002
+          name: call_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Developer Call id returned by v2.
+      responses:
+        '200':
+          description: Committed response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgenticCall'
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '500': *id001
+  /v2/calls/{call_id}/cancel:
+    post:
+      operationId: cancelAgenticCall
+      tags:
+        - calls
+      summary: Cancel Call
+      description: Cancellation is idempotent for terminal calls. Once provider submission starts, returns 409 call_cannot_cancel; it does not hang up an active call.
+      parameters:
+        - *id002
+      responses:
+        '200':
+          description: Committed response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgenticCall'
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '500': *id001
+  /v2/calls/{call_id}/events:
+    get:
+      operationId: listAgenticCallEvents
+      tags:
+        - calls
+      summary: List Events
+      description: >-
+        Poll durable JSON event pages, not SSE. Events include call.accepted,
+        call.in_progress, call.ringing, call.connected, call.asr, call.speech,
+        call.interrupted, call.dtmf, call.ended, call.result_ready, and
+        call.completed/failed/canceled. Not every call emits every event type.
+        Speech details preserve observed text, speaker, turn and optional occurred_at.
+        ASR may contain partial fragments or revised hypotheses; no is_final flag
+        or final-sentence guarantee is provided. Do not concatenate every update into
+        a transcript. Deduplicate by event ID, not turn or text. Persistence order
+        includes late arrivals; IDs remain stable. Follow next_cursor for additional
+        available pages. Retain the last event ID for later polls even when next_cursor
+        is null, and keep it on empty pages. Empty pages do not mean completion.
+        Existing lifecycle cursors remain valid. Invalid or foreign cursors return
+        400 invalid_request. Reads do not dial, infer or persist anything.
+      parameters:
+        - *id002
+        - name: cursor
+          in: query
+          description: Opaque next_cursor or last returned event ID; scoped to this call. Retain the saved cursor on an empty page.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Page size, 1-100. Invalid or out-of-range values return 400 invalid_request.
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Committed response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventList'
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '500': *id001
   /v1/calls:
     post:
       operationId: createCall
       tags:
-        - calls
+        - legacy-calls
+      deprecated: true
       summary: Create Call
       description: Create an asynchronous call. Use `result_schema` and `recipient_result_schema` to ask CALL-E to extract structured JSON results from terminal call evidence. Shared platform outbound lines support one phone number per task. Batch calls require an eligible purchased number selected as the account default outbound number; otherwise creation returns `422 call_not_ready`. Account concurrency and LLM token usage are controlled by the effective account configuration. Task concurrency defaults to 1 on shared platform lines and 10 on eligible dedicated purchased numbers; selecting a purchased number as the account default does not make it a shared platform line.
       parameters:
@@ -200,7 +431,8 @@ paths:
     get:
       operationId: getCall
       tags:
-        - calls
+        - legacy-calls
+      deprecated: true
       summary: Get Call
       description: Get a call by id.
       parameters:
@@ -276,8 +508,9 @@ paths:
     get:
       operationId: listCallEvents
       tags:
-        - calls
-      summary: List Call Events
+        - legacy-calls
+      deprecated: true
+      summary: List Events
       description: List developer-facing call events.
       parameters:
         - $ref: "#/components/parameters/CallId"
@@ -546,6 +779,9 @@ paths:
                     error: null
                     created_at: "2026-07-22T10:00:00Z"
                     completed_at: null
+                    call_outcome: null
+                    result_status: pending
+                    transcript: []
         "400":
           $ref: "#/components/responses/ErrorResponse"
         "401":
@@ -581,10 +817,9 @@ paths:
         Goal pointer, dispatch work, or start result materialization. Use the `GoalRun.id` returned
         by create as `goal_run_id`; the nested telephone `run_id` is not valid in this path.
 
-        Poll until either `result` or `error` is non-null. A non-null `result` is the parsed object
-        validated against the published result schema. A non-null `error` means this Run will not
-        produce a result. `status: completed` with both fields null means result processing is still
-        in progress.
+        Poll while `result_status` is `pending`. A non-null `result` is the parsed object validated
+        against the published result schema. `unavailable` means evidence did not support a business
+        result; no-answer, busy and declined calls are ordinary `call_outcome` values, not errors.
       parameters:
         - $ref: "#/components/parameters/GoalId"
         - $ref: "#/components/parameters/GoalRunId"
@@ -617,6 +852,8 @@ paths:
                     run_id: run_delivery_ord_8472
                     call_id: calling_call_delivery_ord_8472
                     status: completed
+                    call_outcome: completed
+                    result_status: available
                     run_spec:
                       id: rspec_delivery_v4
                       version: 4
@@ -626,6 +863,7 @@ paths:
                     error: null
                     created_at: "2026-07-22T10:00:00Z"
                     completed_at: "2026-07-22T10:01:12Z"
+                    transcript: []
                 deliveryConfirmationNoAnswer:
                   summary: No human answered, so no business result is available.
                   value:
@@ -634,17 +872,17 @@ paths:
                     goal_id: goal_delivery_confirmation
                     run_id: run_delivery_ord_8472
                     call_id: null
-                    status: failed
+                    status: completed
+                    call_outcome: no_answer
+                    result_status: unavailable
                     run_spec:
                       id: rspec_delivery_v4
                       version: 4
                     result: null
-                    error:
-                      code: no_answer
-                      message: No human answered the call.
-                      detail_code: no_human_answered
+                    error: null
                     created_at: "2026-07-22T10:00:00Z"
                     completed_at: "2026-07-22T10:01:12Z"
+                    transcript: []
         "401":
           $ref: "#/components/responses/ErrorResponse"
         "403":
@@ -665,7 +903,7 @@ paths:
       tags:
         - webhooks
       summary: Server Message
-      description: CALL-E sends this request after a call reaches a terminal state and its post-call outcome and requested structured results are finalized. Configure your receiver URL with `webhook_url` when creating a call.
+      description: CALL-E sends this request after a call reaches a terminal state and its post-call outcome and requested structured results are finalized. Configure this URL with `webhook_url` on create call or through project-level webhook settings.
       security: []
       servers:
         - url: https://{yourserver}
@@ -681,7 +919,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WebhookEvent"
+              $ref: "#/components/schemas/TerminalWebhookEvent"
             examples:
               callCompleted:
                 summary: Completed US Friday lunch webhook.
@@ -834,7 +1072,7 @@ components:
     CallId:
       name: call_id
       in: path
-      description: Top-level CallTask `id` returned by Create Call. It starts with `call_`.
+      description: Public CALL-E call identifier returned by create call. It starts with `call_` and is safe to store in your workflow records.
       required: true
       schema:
         type: string
@@ -863,6 +1101,155 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
+    CreateAgenticCallRequest:
+      additionalProperties: false
+      properties:
+        task:
+          minLength: 1
+          type: string
+        phone:
+          pattern: ^\+[1-9][0-9]{7,14}$
+          type: string
+        region:
+          anyOf:
+          - type: string
+            pattern: ^[A-Z]{2}$
+          - type: 'null'
+          description: Optional destination region. Inferred from the phone when omitted.
+            An explicit region conflicting with the phone requires corrected input.
+        locale:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 64
+          - type: 'null'
+          description: Optional spoken BCP-47 locale. Inferred from task intent and available
+            regional languages when omitted.
+        result_schema:
+          type: object
+          additionalProperties: true
+          description: Required closed flat JSON Schema using the same calle.result.scalar-object.v1
+            profile as Goal. At most 32 string, boolean, integer or number properties; additionalProperties
+            must be false. Nested objects, arrays, null values and schema combinators are
+            unsupported.
+        metadata:
+          additionalProperties: true
+          type: object
+        webhook_url:
+          anyOf:
+          - format: uri
+            minLength: 1
+            type: string
+          - type: 'null'
+      required:
+      - task
+      - phone
+      - result_schema
+      type: object
+      description: One phone, optional region and spoken locale, and a required Goal-compatible
+        result schema.
+    AgenticCall:
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          description: API Call resource ID. Use this ID for API paths and event correlation, not the telephone ID in Billing.
+        call_id:
+          type: [string, 'null']
+          description: Telephone call ID shown in Billing, using the same identity as Goal Run call_id. Always present; null until recorded, including cancellation before dialing. Independent of business result availability. Does not indicate whether charges have settled. Use id, not this field, for API paths.
+        object:
+          const: call
+          type: string
+        status:
+          $ref: '#/components/schemas/GoalRunStatus'
+        call_outcome:
+          $ref: '#/components/schemas/CallOutcome'
+        result_status:
+          $ref: '#/components/schemas/BusinessResultStatus'
+        transcript:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallTranscriptTurn'
+          description: Recorded conversation turns in order, independent of the business result. Always present; empty before terminal execution or when no transcript is available. Never generated from result_schema.
+        task:
+          type: string
+        phone:
+          type: string
+        region:
+          type: string
+        locale:
+          type: string
+        result:
+          type:
+            - object
+            - 'null'
+          description: Result validated against result_schema and durably persisted. Null while pending, unavailable, not applicable, or on a technical error. Explicit schema-valid task fallbacks are preserved.
+          additionalProperties:
+            $ref: '#/components/schemas/GoalScalar'
+        error:
+          description: Technical execution or result-processing error, or null. No-answer, busy, declined, cancellation and insufficient business evidence do not populate error.
+          oneOf:
+            - $ref: '#/components/schemas/GoalRunError'
+            - type: 'null'
+        metadata:
+          additionalProperties: true
+          type: object
+        created_at:
+          format: date-time
+          type: string
+        completed_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: UTC telephone-execution completion time, or `null` while execution is non-terminal.
+      required:
+        - id
+        - call_id
+        - object
+        - status
+        - call_outcome
+        - result_status
+        - transcript
+        - task
+        - phone
+        - region
+        - locale
+        - result
+        - error
+        - metadata
+        - created_at
+        - completed_at
+      type: object
+      description: Persisted one-shot snapshot sharing execution, call_outcome and result_status with Goal Run. Poll only while result_status is pending. Completed execution does not imply business success. Terminal webhooks are sent when result_status is no longer pending, including unavailable results.
+    TerminalWebhookEvent:
+      description: Terminal event for either a legacy v1 call task or an Agentic v2 call. Inspect data.object to distinguish the payload.
+      anyOf:
+        - $ref: '#/components/schemas/WebhookEvent'
+        - $ref: '#/components/schemas/AgenticWebhookEvent'
+    AgenticWebhookEvent:
+      type: object
+      required:
+        - id
+        - type
+        - created_at
+        - data
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - call.completed
+            - call.failed
+            - call.canceled
+        created_at:
+          type: string
+          format: date-time
+        data:
+          $ref: '#/components/schemas/AgenticCall'
+      description: v2 terminal webhook. data is identical to the terminal GET response. A valid call completion can carry a failed custom result. Retries reuse the same event id.
     GoalList:
       type: object
       description: |-
@@ -1009,9 +1396,8 @@ components:
     GoalRun:
       type: object
       description: |-
-        Public projection of one phone-specific execution of a published Goal. A non-null `result`
-        is a successfully parsed and persisted object. A non-null `error` means the Run will not
-        produce a result. When both are null, continue polling.
+        Public projection of one phone-specific execution of a published Goal. Execution, telephone
+        outcome and business result readiness are independent. Poll only while result_status is pending.
       additionalProperties: false
       required:
         - object
@@ -1021,6 +1407,9 @@ components:
         - call_id
         - run_spec
         - status
+        - call_outcome
+        - result_status
+        - transcript
         - result
         - error
         - created_at
@@ -1058,19 +1447,28 @@ components:
           $ref: "#/components/schemas/GoalRunSpecSnapshot"
         status:
           $ref: "#/components/schemas/GoalRunStatus"
+        call_outcome:
+          $ref: '#/components/schemas/CallOutcome'
+        result_status:
+          $ref: '#/components/schemas/BusinessResultStatus'
+        transcript:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallTranscriptTurn'
+          description: Recorded conversation turns in order, independent of business result readiness or errors. Always present; empty before terminal execution or when no transcript is available.
         result:
           type:
             - object
             - "null"
           description: |-
             Parsed result validated against the published result schema and durably persisted, or
-            `null` while processing or when the Run has an error. Its keys vary by Goal.
+            `null` while pending, unavailable, not applicable, or on a technical error. Its keys vary by Goal.
           additionalProperties:
             $ref: "#/components/schemas/GoalScalar"
         error:
           description: |-
-            Unified execution or result-processing error, or `null`. Branch on `code`; keep `message`
-            for logs and operators. A non-null error is final and is mutually exclusive with `result`.
+            Technical execution or result-processing error, or null. Ordinary telephone outcomes,
+            cancellation and insufficient business evidence are represented by call_outcome/result_status.
           oneOf:
             - $ref: "#/components/schemas/GoalRunError"
             - type: "null"
@@ -1103,18 +1501,26 @@ components:
     GoalRunStatus:
       type: string
       description: |-
-        Stable telephone execution state. `queued` and `in_progress` are non-terminal; `completed`,
-        `failed`, and `canceled` are terminal. A completed call can still have `result: null` and
-        `error: null` briefly while CALL-E parses and saves the result.
+        Stable execution state. No-answer, busy and declined calls complete execution normally.
+        Technical execution failures are failed; explicit cancellation is canceled. Completed execution
+        may still have result_status=pending while its business result is being processed.
       enum:
         - queued
         - in_progress
         - completed
         - failed
         - canceled
+    CallOutcome:
+      type: [ string, 'null' ]
+      enum: [ completed, no_answer, busy, declined, null ]
+      description: Reported telephone outcome, separate from business success and billing connection evidence. Null before a telephone outcome is known or when execution is canceled or fails technically.
+    BusinessResultStatus:
+      type: string
+      enum: [ pending, available, unavailable, not_applicable ]
+      description: Pending means keep polling. Available includes an empty result object. Unavailable means no schema-valid business result could be produced; inspect error for technical failures. Not applicable is used for cancellation and technical execution failure.
     GoalRunError:
       type: object
-      description: Unified safe error returned when a Goal Run cannot produce a usable result.
+      description: Technical execution or result-processing error. Ordinary call outcomes are not errors.
       additionalProperties: false
       required:
         - code
@@ -1125,12 +1531,8 @@ components:
           type: string
           enum:
             - call_failed
-            - no_answer
-            - declined
             - timed_out
-            - canceled
             - result_invalid
-            - result_unavailable
             - result_failed
         message:
           type: string
@@ -1184,8 +1586,6 @@ components:
 
             This is useful for batch calls where each recipient needs their own outcome, such as `can_attend`, `confirmed`, `requested_callback`, or `interest_level`.
 
-            Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
-
             Do not use reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, or timing fields as custom result fields. Use names such as `customer_summary`, `notes`, or `reason` instead.
 
             Field `description` values are passed to the extraction model and should explain how enum values should be selected. Descriptions guide extraction but are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
@@ -1198,7 +1598,7 @@ components:
           additionalProperties: true
         webhook_url:
           type: string
-          description: Optional per-request HTTPS webhook URL. When provided, CALL-E sends terminal call events to this URL after result finalization.
+          description: Optional per-request HTTPS webhook URL. When provided, CALL-E sends terminal call events to this URL in addition to project-level webhook delivery.
           format: uri
     CallTaskRecipientRequest:
       type: object
@@ -1343,15 +1743,12 @@ components:
           type:
             - string
             - "null"
-          description: Provider identifier for this call attempt. Use it to match Dashboard Call Records. Do not use it as call_id.
+          description: Provider call identifier for support correlation when available.
         failure_code:
           type:
             - string
             - "null"
-          description: |-
-            Diagnostic failure reason when this attempt failed. No published enum.
-
-            Preserve raw values for support; do not branch retry, reporting, or analytics logic on specific values. See [Accepted call execution outcomes](https://docs.heycall-e.com/errors#accepted-call-execution-outcomes).
+          description: Machine-readable failure reason when this attempt failed.
         failure_message:
           type:
             - string
@@ -1432,7 +1829,7 @@ components:
       properties:
         id:
           type: string
-          description: CALL-E call task identifier. Use it as call_id to fetch the call and list its events. Terminal webhooks return it as data.id; the webhook's top-level id identifies the event.
+          description: Public CALL-E call task identifier. Store this id to fetch state, list events, and correlate webhooks.
         object:
           type: string
           description: Always `call_task` for call task responses.
@@ -1486,10 +1883,7 @@ components:
           type:
             - string
             - "null"
-          description: |-
-            Diagnostic failure reason when `status` is `failed`; otherwise `null`. No published enum.
-
-            Preserve raw values for support; do not branch retry, reporting, or analytics logic on specific values. See [Accepted call execution outcomes](https://docs.heycall-e.com/errors#accepted-call-execution-outcomes).
+          description: Machine-readable failure reason when `status` is `failed`; otherwise `null`.
         failure_message:
           type:
             - string
@@ -1603,8 +1997,7 @@ components:
           $ref: "#/components/schemas/WebhookCallData"
     WebhookCallData:
       description: Complete terminal call task state included in webhook events. This shape is the same stable `call_task` object returned by the calls API after post-call outcome and requested structured-result finalization.
-      allOf:
-        - $ref: "#/components/schemas/CallTask"
+      $ref: "#/components/schemas/CallTask"
     WebhookAcknowledgement:
       type: object
       description: Example acknowledgement response from your webhook receiver. CALL-E treats any 2xx response as delivered and ignores the response body.
@@ -1632,7 +2025,9 @@ components:
         code:
           type: string
           enum:
+            - call_cannot_cancel
             - invalid_request
+            - input_incomplete
             - unauthorized
             - forbidden
             - rate_limit_exceeded

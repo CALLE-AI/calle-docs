@@ -22,6 +22,7 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 ## Stable error codes
 
 - `invalid_request`
+- `input_incomplete`
 - `unauthorized`
 - `forbidden`
 - `rate_limit_exceeded`
@@ -59,33 +60,49 @@ later reached a terminal state.
 | Surface | Stable contract |
 | --- | --- |
 | Developer API request | `APIError.code` uses the stable values listed above. |
-| Calls API call task | Lifecycle `status` is stable. `failure_code` is a nullable string without a published enum; `failure_message` is nullable human-readable context. |
-| Goal Runs API | `GoalRunError.code` is a separate enum that includes `no_answer` and `declined`. |
+| Calls and Goal Runs | Poll while `result_status` is `pending`. `call_outcome` separates ordinary telephone outcomes from technical errors; an unavailable result may have both result and error null. |
+| Legacy call tasks | Lifecycle `status` is stable. `failure_code` is a nullable string without a published enum; `failure_message` is nullable human-readable context. |
 
-Goal Run error codes do not define Calls API `failure_code` values. Preserve
-the raw failure code and message for support, but do not use undocumented
-strings to decide retries, reporting, or analytics. A generic `failed`
-status does not establish no answer or decline; keep the business outcome
-unresolved when the documented fields do not distinguish it.
+For legacy call-task resources, treat `failure_code` and `failure_message` as
+diagnostic context. Preserve the raw values for support, but do not branch
+retry, reporting, or analytics logic on a particular string.
+
+The call outcomes `no_answer`, `busy` and `declined` do not define legacy call-task
+`failure_code` values. The legacy API does not guarantee a distinct
+no-answer or callee-decline value at the call-task, recipient, or attempt
+level. If the documented Calls fields do not establish that distinction, keep
+the business outcome unresolved. Do not infer that a recipient declined from
+a generic `failed` state or an undocumented failure message, and do not
+automatically retry based only on an undocumented failure string.
 
 ## Recovery guidance
 
 ### Choose the next action
 
 First distinguish an HTTP request failure from an accepted call's result.
-The [complete Python example](/quickstart#run-a-complete-example) saves both
-the original request and the returned Call ID for that purpose.
+The [Quickstart](/quickstart#retry-without-calling-twice) explains how to retain
+the original request, key and Call ID for that purpose.
+
+<div className="comparison-table" role="region" aria-label="Error recovery decisions" tabIndex={0}>
 
 | Observation | What to check and do next |
 | --- | --- |
 | `invalid_request`, recipient, phone, or schema validation error | Correct the rejected input using the field-specific guidance below. Preserve the error code and details; do not retry unchanged invalid input. |
-| `422 call_not_ready` from `POST /v1/calls`, with a request for missing task information | Review the missing information, then [save a corrected request with a new key](/calls#correct-a-missing-information-rejection). Keep that corrected request and key for its subsequent retries. |
+| `422 input_incomplete` on Call creation | No Call was created. Read `error.details.missing_inputs`; correct a conflicting phone/region, specify an ambiguous spoken language, or supply missing task facts. Resubmit the corrected input with the same key. |
+| `422 unsupported_region` on Call creation | The requested region has no supported calling configuration. Correct `region` using the supported regions and languages, then resubmit with the same key. |
+| `422 unsupported_language` on Call creation | The region has a calling configuration, but the requested locale does not match. Correct `locale` for that region, then resubmit with the same key. |
+| `409 idempotency_conflict` with `details.reason_code: "creation_in_progress"` | Creation with this key is still running. Back off and retry with the same key and unchanged body. |
+| `409 idempotency_conflict` without that reason code | The key belongs to another request or owner. Recover using the original input and identity. Do not automatically switch keys: that can create another phone call. |
+| `503 provider_unavailable` during Call preparation | Preparation could not finish. Retry the same request with the same key; do not treat this as missing user information. |
+| `422 call_not_ready` from `POST /v1/calls`, with a request for missing task information | Review the missing information, then [save a corrected request with a new key](/legacy-calls#correct-a-missing-information-rejection). Keep that corrected request and key for its subsequent retries. |
 | `unauthorized` or `forbidden` | Check the key and its access to the resource. Keep credentials out of logs and support posts. |
 | `insufficient_balance` | Resolve the account's billing condition before attempting more calls. A provider failure alone does not prove the balance is exhausted. |
 | `rate_limit_exceeded` | Back off. For a retry of the same operation, retain the original request and idempotency key. Do not replace an uncertain call with a new key. |
 | `provider_unavailable` on a Goal Run create request | This code applies before durable Goal Run acceptance. Preserve the request and error details; a later accepted Goal Run failure belongs to that run's `error` field. |
-| Timeout, malformed response, or server error without a saved Call ID | The response alone may not establish acceptance. Follow [Calls recovery](/calls#recover-after-a-restart-or-lost-response); retain the original request and key. |
+| Timeout, malformed response, or server error without a saved Call ID | The response alone may not establish acceptance. Follow [Calls recovery](/quickstart#retry-without-calling-twice); retain the original request and key. |
 | A saved Call ID, including a polling error or terminal failure | Retrieve that call and inspect its status, failure context, and available transcript. Keep the ID for support. Do not issue another create request to discover its outcome. |
+
+</div>
 
 The `provider_unavailable` Goal Run contract does not establish the cause of an
 arbitrary Calls API `503`. For support, retain the SDK version, UTC timestamp,
@@ -105,7 +122,7 @@ For `POST /v1/calls`, account controls can reject creation before planning:
 Preserve the original request and idempotency key when recovering an uncertain
 creation. A persisted creation rejection replays its original error; after
 resolving a confirmed rejection, use a new key for an intentionally new attempt.
-See [Calls recovery](/calls#recover-after-a-restart-or-lost-response).
+See [Legacy Calls recovery](/legacy-calls#recover-after-a-restart-or-lost-response).
 
 ### Code-specific guidance
 
@@ -121,6 +138,13 @@ See [Authentication](/authentication) for API key setup, server-only usage, and 
 
 `unsupported_region` or `unsupported_language` means CALL-E could not resolve a supported calling configuration for the request.
 
+On Call creation these errors return HTTP 422 before durable acceptance.
+Explicit unsupported targets are rejected before preparation; an inferred locale
+is checked after inference. `details.field` identifies `region` or `locale`, while
+`details.region` and `details.locale` identify the rejected target. No Call is
+created, and the rejected request does not reserve the idempotency key.
+Configuration access failures and conflicting profiles retain HTTP 503.
+
 Check the [supported regions and languages](/regions)
 for the destination and locale you requested. Correct phone formatting alone
 does not resolve a coverage error.
@@ -131,18 +155,23 @@ does not resolve a coverage error.
 
 `invalid_phone` means a phone number is not valid E.164 format. Replace placeholders such as `<E164_PHONE>` with a phone number you own or are authorized to call.
 
-`result_schema_invalid` means the whole call task `result_schema` is not a valid supported JSON Schema object.
+`result_schema_invalid` returns HTTP 400 when the Calls `result_schema` is outside
+the supported [scalar-object profile](/calls#result-schema). For example,
+`"type": ["string", "null"]` is unsupported even though it is valid general
+JSON Schema. Correct the schema before retrying; do not treat this as a provider outage.
 
 `recipient_result_schema_invalid` means the per-recipient `recipient_result_schema` is not a valid supported JSON Schema object.
 
-`idempotency_conflict` can mean the same key was reused with a different request
-body. Restore the original request for a retry of that operation. On Calls API
-creation, it can also mean the original creation is still in progress:
-`details.reason_code` is `creation_in_progress`. In that case, back off and retry
-with the same key and unchanged body.
+`idempotency_conflict` has two recovery paths. When
+`details.reason_code == "creation_in_progress"`, retry unchanged after backoff.
+Otherwise, the key belongs to another request or owner; check the original
+payload and identity. Only an intentional new call should get a new key.
+See [Call retry decisions](/calls#idempotency), including completed calls and
+omitted target hints. Use `error.code` and structured details for branching;
+do not parse the English message.
 
 For a lost Calls API create response or an application restart, follow
-[Recover after a restart or lost response](/calls#recover-after-a-restart-or-lost-response).
+[Recover after a restart or lost response](/quickstart#retry-without-calling-twice).
 
 `not_found` means a call, Goal, or Goal Run does not exist or is not visible to the current API key. Owner mismatch and hidden Goals use the same code.
 
@@ -157,12 +186,17 @@ For a lost Calls API create response or an application restart, follow
 Check the operation and error details for `call_not_ready`. On
 `POST /v1/calls`, planning can reject a request with this code before execution.
 For a creation rejection asking for missing task
-information, follow [the correction example](/calls#correct-a-missing-information-rejection).
+information, follow [the correction example](/legacy-calls#correct-a-missing-information-rejection).
 A batch request without an eligible purchased default outbound number also
 returns `422 call_not_ready`; check the [batch calling
-requirements](/calls#batch-calls-and-account-limits).
+requirements](/legacy-calls#batch-calls-and-account-limits).
 Do not treat every occurrence of this code as permission to create another call.
 
-`provider_unavailable` applies only before durable Goal Run acceptance. After acceptance, dispatch, call, or result-processing failures are reported in the existing Goal Run resource's top-level `error` field. Retry transport failures only when the workflow can preserve the same idempotency key and request.
+`provider_unavailable` identifies an unavailable dependency, not necessarily the
+telephone provider. Call creation can return it for preparation, authorization,
+balance-check or configuration access failures. It does not mean no-answer or busy.
+For Goal Run creation it applies before durable acceptance; later execution or
+result-processing failures belong to the accepted Run's `error` field. Preserve
+the original key and request when retrying an uncertain create.
 
 `internal_error` is retryable only when the workflow can safely tolerate retry.

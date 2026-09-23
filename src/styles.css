@@ -226,14 +226,14 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
     :is(
-      a[href="/quickstart"],
-      a[href="/authentication"],
-      a[href="/calls"],
-      a[href="/regions"],
-      a[href="/goal-runs"],
-      a[href="/webhooks"],
-      a[href="/errors"],
-      a[href="/sdks"]
+      a[href$="/quickstart"],
+      a[href$="/authentication"],
+      a[href$="/calls"],
+      a[href$="/regions"],
+      a[href$="/goal-runs"],
+      a[href$="/webhooks"],
+      a[href$="/errors"],
+      a[href$="/sdks"]
     ) {
     display: grid;
     min-height: 3.5rem;
@@ -250,14 +250,14 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
     :is(
-      a[href="/quickstart"],
-      a[href="/authentication"],
-      a[href="/calls"],
-      a[href="/regions"],
-      a[href="/goal-runs"],
-      a[href="/webhooks"],
-      a[href="/errors"],
-      a[href="/sdks"]
+      a[href$="/quickstart"],
+      a[href$="/authentication"],
+      a[href$="/calls"],
+      a[href$="/regions"],
+      a[href$="/goal-runs"],
+      a[href$="/webhooks"],
+      a[href$="/errors"],
+      a[href$="/sdks"]
     )
     > span {
     width: 100%;
@@ -267,14 +267,14 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
     :is(
-      a[href="/quickstart"],
-      a[href="/authentication"],
-      a[href="/calls"],
-      a[href="/regions"],
-      a[href="/goal-runs"],
-      a[href="/webhooks"],
-      a[href="/errors"],
-      a[href="/sdks"]
+      a[href$="/quickstart"],
+      a[href$="/authentication"],
+      a[href$="/calls"],
+      a[href$="/regions"],
+      a[href$="/goal-runs"],
+      a[href$="/webhooks"],
+      a[href$="/errors"],
+      a[href$="/sdks"]
     )::after {
     color: var(--muted-foreground);
     font-size: 0.75rem;
@@ -284,14 +284,14 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
     :is(
-      a[href="/quickstart"],
-      a[href="/authentication"],
-      a[href="/calls"],
-      a[href="/regions"],
-      a[href="/goal-runs"],
-      a[href="/webhooks"],
-      a[href="/errors"],
-      a[href="/sdks"]
+      a[href$="/quickstart"],
+      a[href$="/authentication"],
+      a[href$="/calls"],
+      a[href$="/regions"],
+      a[href$="/goal-runs"],
+      a[href$="/webhooks"],
+      a[href$="/errors"],
+      a[href$="/sdks"]
     )[aria-current="page"] {
     border-color: color-mix(
       in srgb,
@@ -301,37 +301,37 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
-    a[href="/quickstart"]::after {
+    a[href$="/quickstart"]::after {
     content: "Create your first call.";
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
-    a[href="/authentication"]::after {
+    a[href$="/authentication"]::after {
     content: "Secure API key setup.";
   }
 
-  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/calls"]::after {
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href$="/calls"]::after {
     content: "Create, track, and read calls.";
   }
 
-  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/regions"]::after {
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href$="/regions"]::after {
     content: "Supported destinations and languages.";
   }
 
   nav[class*="overflow-y-auto"][class*="shrink-0"]
-    a[href="/goal-runs"]::after {
+    a[href$="/goal-runs"]::after {
     content: "Run published phone workflows.";
   }
 
-  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/webhooks"]::after {
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href$="/webhooks"]::after {
     content: "Receive terminal call events.";
   }
 
-  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/errors"]::after {
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href$="/errors"]::after {
     content: "Recover from stable API errors.";
   }
 
-  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/sdks"]::after {
+  nav[class*="overflow-y-auto"][class*="shrink-0"] a[href$="/sdks"]::after {
     content: "Official and community SDKs.";
   }
 }
@@ -399,10 +399,17 @@ nav[class*="overflow-y-auto"][class*="shrink-0"] a[aria-current="page"] {
 }
 
 .typography code.inline {
+  overflow-wrap: anywhere;
+  white-space: normal;
   border-color: transparent;
   border-radius: 0.25rem;
   background: var(--muted);
   color: var(--foreground);
+}
+
+.comparison-table {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .typography .code-block-wrapper,
@@ -648,6 +655,12 @@ aside[class*="overflow-y-auto"] a:hover {
   .typography .code-block-wrapper .code-block {
     padding: 0.75rem;
     font-size: 0.8125rem;
+  }
+
+  /* Match OpenAPI operation margins to the mobile content gutter. */
+  main > div > .px-6.-mx-6 {
+    margin-inline: -1rem;
+    padding-inline: 1rem;
   }
 }
 

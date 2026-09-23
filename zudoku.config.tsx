@@ -5,9 +5,13 @@ import { ScrollToTop } from "./src/components/ScrollToTop.js";
 import { ThemeMenu } from "./src/components/ThemeMenu.js";
 import "./src/styles.css";
 
+const basePath = process.env.ZUDOKU_PUBLIC_BASE_PATH ?? "";
+const docsOrigin = process.env.ZUDOKU_PUBLIC_DOCS_ORIGIN ?? "https://docs.heycall-e.com";
+const docsUrl = (path: string) => `${basePath}${path}`;
+
 const legacyHashRedirect = `
 (() => {
-  if (window.location.pathname !== "/") return;
+  if (window.location.pathname !== ${JSON.stringify(`${basePath}/`)}) return;
 
   const [rawRoute, query = ""] = window.location.hash.slice(1).split("?", 2);
   const route = rawRoute.startsWith("/") || rawRoute === "" ? rawRoute : \`/\${rawRoute}\`;
@@ -26,7 +30,7 @@ const legacyHashRedirect = `
   if (guideRoutes.has(route)) {
     const section = new URLSearchParams(query).get("section");
     window.location.replace(
-      section ? \`\${route}#\${encodeURIComponent(section)}\` : route,
+      ${JSON.stringify(basePath)} + (section ? \`\${route}#\${encodeURIComponent(section)}\` : route),
     );
     return;
   }
@@ -38,19 +42,20 @@ const legacyHashRedirect = `
     route.startsWith("/description/") ||
     route === "/models"
   ) {
-    window.location.replace("/api-reference");
+    window.location.replace(${JSON.stringify(docsUrl("/api-reference"))});
     return;
   }
 
   if (rawRoute === "") {
-    window.location.replace("/quickstart");
+    window.location.replace(${JSON.stringify(docsUrl("/quickstart"))});
   }
 })();
 `;
 
 const config = {
   port: 5174,
-  canonicalUrlOrigin: "https://docs.heycall-e.com",
+  basePath,
+  canonicalUrlOrigin: docsOrigin,
   metadata: {
     title: "%s | CALL-E Developer Docs",
     defaultTitle: "CALL-E Developer Docs",
@@ -60,6 +65,18 @@ const config = {
     applicationName: "CALL-E Developer Docs",
   },
   site: {
+    banner: {
+      message: (
+        <>
+          v1 Calls will retire on December 31, 2026.{" "}
+          <a href={docsUrl("/retirement")} className="underline underline-offset-2">
+            View retirement details
+          </a>
+        </>
+      ),
+      color: "info",
+      dismissible: false,
+    },
     logo: {
       src: {
         light: "/call-e-logo.svg",
@@ -140,8 +157,8 @@ const config = {
             contract.
           </p>
           <nav aria-label="Documentation entry points">
-            <a href="/quickstart">Open Quickstart</a>
-            <a href="/openapi/calle.openapi.yaml">Download OpenAPI</a>
+            <a href={docsUrl("/quickstart")}>Open Quickstart</a>
+            <a href={docsUrl("/openapi/calle.openapi.yaml")}>Download OpenAPI</a>
           </nav>
         </main>
       ),
@@ -159,6 +176,27 @@ const config = {
         { type: "doc", file: "errors", label: "Errors" },
         { type: "doc", file: "sdks", label: "SDKs" },
         { type: "doc", file: "regions", label: "Regions & languages" },
+        {
+          type: "category",
+          label: "Existing integrations",
+          collapsible: false,
+          items: [
+            { type: "doc", file: "migration", label: "Migration guide" },
+            { type: "doc", file: "retirement", label: "Retirement notice" },
+          ],
+        },
+        {
+          type: "category",
+          label: "Legacy API",
+          collapsible: true,
+          collapsed: true,
+          items: [
+            { type: "doc", file: "legacy-quickstart", label: "Legacy Quickstart" },
+            { type: "doc", file: "legacy-calls", label: "Legacy Calls" },
+            { type: "doc", file: "legacy-webhooks", label: "Legacy Webhooks" },
+            { type: "doc", file: "legacy-sdks", label: "Legacy SDKs" },
+          ],
+        },
       ],
     },
     {
@@ -205,7 +243,7 @@ const config = {
     },
   },
   sitemap: {
-    siteUrl: "https://docs.heycall-e.com",
+    siteUrl: docsOrigin,
   },
   enableStatusPages: true,
   plugins: [

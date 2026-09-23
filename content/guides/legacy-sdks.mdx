@@ -1,0 +1,224 @@
+---
+title: Legacy SDKs
+description: Official and community SDKs.
+---
+
+:::note{title="Legacy API"}
+These examples use the legacy call-task API and SDK 0.7.x. Legacy Calls are
+planned for retirement at the end of 2026. Use [Calls](/calls) and
+[SDK 1.0](/sdks) for new integrations; see the [migration guide](/migration).
+:::
+
+
+Examples on this page target the [historical Developer API 0.7.0 contract](https://github.com/CALLE-AI/calle-docs/blob/b387e01b7ab943a5712bd5f1bb4cfe3699944748/openapi/calle.openapi.yaml)
+and server SDKs `@call-e/calle@0.7.0` and `calle-ai==0.7.0` where used.
+See [API versions and migration](/changelog#api-versions-and-migration) before
+adapting an older example.
+
+## Official SDKs
+
+- [Python](https://github.com/CALLE-AI/server-sdk-python)
+- [TypeScript](https://github.com/CALLE-AI/server-sdk-typescript)
+
+CALL-E provides server SDKs for trusted backend services, workers, and automation systems that create and monitor call tasks.
+
+### Packages
+
+TypeScript package name:
+
+```text
+@call-e/calle
+```
+
+Python distribution name:
+
+```text
+calle-ai
+```
+
+Python imports the package as `calle`:
+
+```python
+from calle import CalleClient
+```
+
+### Package status
+
+The legacy examples below use:
+
+- TypeScript: `@call-e/calle@0.7.0`
+- Python: `calle-ai==0.7.0`
+
+These packages support the legacy call-task API. For current Calls and Goal
+Runs, use [SDK 1.0](/sdks). Legacy Goal Run wait helpers can time out when a
+final unavailable result has both `result` and `error` null.
+
+### Goal Runs
+
+The Goal-based SDK surface keeps published contracts separate from the
+one-shot Calls API:
+
+- TypeScript: `client.goals.list(...)`, `get(...)`, `run(...)`, `getRun(...)`,
+  `waitForResult(...)`, and `runAndWait(...)`
+- Python: `client.goals.list(...)`, `get(...)`, `run(...)`, `get_run(...)`,
+  `wait_for_result(...)`, and `run_and_wait(...)`
+
+Run requests contain Goal identity, one phone number, per-Run variables, and an
+idempotency key. They do not accept request-scoped task text, prompts,
+`input_schema`, or `result_schema`; those fields are owned by the published
+RunSpec. See the [Goal Runs guide](/goal-runs) for the API contract and SDK
+examples.
+
+### Source code
+
+Both SDKs are maintained in public repositories.
+
+| Runtime | Package | Repository |
+| --- | --- | --- |
+| TypeScript | `@call-e/calle` | [CALLE-AI/server-sdk-typescript](https://github.com/CALLE-AI/server-sdk-typescript) |
+| Python | `calle-ai` | [CALLE-AI/server-sdk-python](https://github.com/CALLE-AI/server-sdk-python) |
+
+The TypeScript repository includes public source code, examples, and security
+guidance:
+
+- [TypeScript security policy](https://github.com/CALLE-AI/server-sdk-typescript/blob/main/SECURITY.md)
+
+### Local examples
+
+The TypeScript SDK repository includes runnable examples for the server-side
+one-shot call task flow.
+
+```bash title="TypeScript"
+git clone https://github.com/CALLE-AI/server-sdk-typescript.git
+cd server-sdk-typescript
+git checkout v0.7.0
+pnpm install
+pnpm run example:create-and-wait
+```
+
+### Calls API
+
+The two-recipient examples below require an eligible purchased number selected
+as the account's default outbound number. See [batch calls and account
+limits](/legacy-calls#batch-calls-and-account-limits).
+
+The SDKs expose `context` as a reserved input for future SDK-side workflow data. The current SDKs do not send `context` to the API.
+
+Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
+
+The SDKs accept structured result schemas as plain JSON objects. Use field `description` values to explain how CALL-E should interpret enum values, and use `type`, `required`, `enum`, and `additionalProperties` for hard validation. See the Calls guide for structured result design patterns and examples.
+
+```ts title="TypeScript"
+const created = await client.calls.create(
+  {
+    task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    recipients: [
+      { phones: ["<RECIPIENT_1_E164_PHONE>"] },
+      { phones: ["<RECIPIENT_2_E164_PHONE>"] },
+    ],
+    resultSchema: {
+      type: "object",
+      required: ["attending_count"],
+      properties: {
+        attending_count: { type: "integer" },
+      },
+    },
+    recipientResultSchema: {
+      type: "object",
+      required: ["can_attend"],
+      properties: {
+        can_attend: { type: "string", enum: ["yes", "no", "unknown"] },
+      },
+    },
+  },
+  { idempotencyKey: "wf_123_friday_lunch" },
+);
+
+const fetched = await client.calls.get(created.id);
+const completed = await client.calls.waitForResult(fetched.id);
+const createdAndCompleted = await client.calls.createAndWait(
+  {
+    task: "Call <E164_PHONE> and confirm their preferred appointment time.",
+    resultSchema: {
+      type: "object",
+      required: ["preferred_time"],
+      properties: {
+        preferred_time: { type: "string" },
+      },
+    },
+  },
+  { timeoutMs: 120_000, intervalMs: 2_000 },
+);
+const events = await client.calls.listEvents(createdAndCompleted.id, {
+  limit: 50,
+});
+```
+
+```python title="Python"
+created = client.calls.create(
+    task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
+    recipients=[
+        {"phones": ["<RECIPIENT_1_E164_PHONE>"]},
+        {"phones": ["<RECIPIENT_2_E164_PHONE>"]},
+    ],
+    result_schema={
+        "type": "object",
+        "required": ["attending_count"],
+        "properties": {"attending_count": {"type": "integer"}},
+    },
+    recipient_result_schema={
+        "type": "object",
+        "required": ["can_attend"],
+        "properties": {
+            "can_attend": {"type": "string", "enum": ["yes", "no", "unknown"]},
+        },
+    },
+    idempotency_key="wf_123_friday_lunch",
+)
+
+fetched = client.calls.get(created["id"])
+completed = client.calls.wait_for_result(fetched["id"])
+created_and_completed = client.calls.create_and_wait(
+    task="Call <E164_PHONE> and confirm their preferred appointment time.",
+    result_schema={
+        "type": "object",
+        "required": ["preferred_time"],
+        "properties": {"preferred_time": {"type": "string"}},
+    },
+    timeout_seconds=120,
+    interval_seconds=2,
+)
+events = client.calls.list_events(created_and_completed["id"], limit=50)
+```
+
+### Availability
+
+Install the pinned legacy package for your runtime. The Python SDK requires
+Python 3.11 or later; Python 3.9 and 3.10 are not supported.
+
+```bash
+pnpm add @call-e/calle@0.7.0
+pip install calle-ai==0.7.0
+```
+
+Use pinned versions when your deployment process requires exact package reproducibility:
+
+```bash
+pnpm add @call-e/calle@0.7.0
+pip install calle-ai==0.7.0
+```
+
+### Supported scope
+
+The official TypeScript and Python SDKs do not include:
+
+- Python async client support
+- Project-level webhook management
+- Client-initiated cancellation of in-flight calls
+- Recurring or scheduled calls
+- Zod result schema helpers
+- Pydantic result schema helpers
+
+## Community SDKs
+
+- Android / Wear OS — [calle-android-sdk](https://github.com/Baklolman69/calle-android-sdk) (community-maintained).

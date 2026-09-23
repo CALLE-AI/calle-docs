@@ -1,0 +1,41 @@
+---
+title: Legacy API retirement
+description: Legacy Calls retirement deadline and migration guidance.
+---
+
+Legacy Calls are planned for retirement at the end of 2026. New integrations
+should use [Calls](/calls) and [SDK 1.0](/sdks).
+
+## Scope
+
+| Surface | Support status |
+| --- | --- |
+| Single-target Calls | Available in production, including reads, events and cancellation before submission. |
+| Legacy call tasks | Supported during migration; planned for retirement at the deadline below. |
+| Goals and Goal Runs | Not being retired. Upgrade SDK wait helpers for the current result-readiness contract. |
+| SDK 1.0 | Supports single-target Calls and current Goal Run results. |
+| SDK 0.7.x | Retain only for legacy call-task integrations while migrating. |
+
+## Planned deadline
+
+**2026-12-31 at 16:00 UTC**, equivalent to **2027-01-01 at 00:00 Asia/Shanghai**.
+
+The affected legacy routes are `POST /v1/calls`, `GET /v1/calls/{call_id}`
+and `GET /v1/calls/{call_id}/events`. Goal endpoints are not included.
+
+The cutoff is not active today. Publishing this notice does not stop accepted
+calls, delete stored records or convert legacy IDs to the new interface.
+Historical-data access and export arrangements after retirement will be
+announced separately; no new archive endpoint or read-only grace period is
+currently promised.
+
+## Migrate before retirement
+
+1. Follow the [migration guide](/migration) to update request and result handling.
+2. Install SDK 1.0 for new Calls and Goal Run wait helpers.
+3. Keep each call ID with the interface that created it. Use a legacy client for old call-task IDs.
+4. Continue handling callbacks for already accepted calls; do not create replacements because a client timed out.
+
+The migration guide and [changelog](/changelog) will carry further retirement
+updates. Contact CALL-E support for workflows that depend on legacy batch
+behavior or historical access.

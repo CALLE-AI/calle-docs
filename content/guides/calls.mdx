@@ -1,692 +1,313 @@
 ---
 title: Calls
-description: Understand the call creation contract and event flow.
+description: Single-target calls, immutable requests, result readiness, and execution boundaries.
 ---
 
-Examples on this page target the [Developer API 0.7.0 contract](/openapi/calle.openapi.yaml)
-and server SDKs `@call-e/calle@0.7.0` and `calle-ai==0.7.0` where used.
-See [API versions and migration](/changelog#api-versions-and-migration) before
-adapting an older example.
+Create one phone task and receive a structured result. Start with the
+[Quickstart](/quickstart) for a production example.
 
-Use call tasks to turn a structured workflow step into one or more real phone interactions.
+Check [Regions & languages](/regions) for supported destinations and languages.
 
-Use the [Calls API Reference](/api-reference/calls) for the exact HTTP request
-and response schemas. See the [error handling guide](/errors) for retry
-behavior and the [terminal webhooks guide](/webhooks) for asynchronous
-completion.
+## Availability
 
-## Call inputs
+Calls are available on the production API and in SDK 1.0. See the
+[migration guide](/migration) when upgrading an existing call-task integration.
+Calls and Goal Runs include `call_outcome`, `result_status` and `transcript`.
+Wait while `result_status` is `pending`, not until result or error becomes non-null.
 
-`task` is the natural-language instruction for the call task. Keep it specific and outcome-oriented.
+## Call ID and Billing
 
-`recipients` is optional. When it is omitted, include the phone target in `task` and CALL-E will infer it. Use `recipients` for explicit batch targets; each recipient contains a `phones` array of E.164 numbers. Check the [outbound-number requirement for batch calls](#batch-calls-and-account-limits) before using multiple targets.
-
-Check the [supported regions and languages](/regions)
-before choosing a recipient's `region` and `locale`. A valid E.164 number does
-not establish that its destination is supported.
-
-Examples use phone placeholders such as `<E164_PHONE>` and `<RECIPIENT_1_E164_PHONE>`. Replace them with phone numbers you own or are authorized to call.
-
-`result_schema` is a JSON Schema object for the whole call task. CALL-E validates the structured result against it before returning the terminal call task state. Object schemas are strict by default, so fields not declared in `properties` are rejected.
-
-`recipient_result_schema` is an optional JSON Schema object for each recipient result. It uses the same strict object behavior.
-
-`metadata` is copied through to the call task and webhook payload. Use it for workflow identifiers, user ids, or reconciliation fields.
-
-`webhook_url` is an optional request-level endpoint for terminal webhooks.
-
-The server SDKs also reserve a `context` input for future SDK-side workflow data. It is not sent to the API yet.
-
-## Direct HTTP with curl
-
-Set your API key, then create a call with a stable idempotency key. Replace
-`<E164_PHONE>` with a phone number you own or are authorized to call.
-
-```bash
-export CALLE_API_KEY="<CALLE_API_KEY>"
-
-curl --fail-with-body --silent --show-error \
-  --request POST "https://api.heycall-e.com/v1/calls" \
-  --header "Authorization: Bearer $CALLE_API_KEY" \
-  --header "Content-Type: application/json" \
-  --header "Idempotency-Key: wf_123_hearing_check" \
-  --data '{
-    "task": "Call <E164_PHONE> and ask whether they can hear clearly.",
-    "result_schema": {
-      "type": "object",
-      "required": ["can_hear_clearly"],
-      "properties": {
-        "can_hear_clearly": {
-          "type": "string",
-          "enum": ["yes", "no", "unknown"]
-        }
-      },
-      "additionalProperties": false
-    },
-    "metadata": {
-      "workflow_run_id": "wf_123"
-    }
-  }'
-```
-
-The response contains the call task `id`. Use it to read the current state or
-the ordered lifecycle events:
-
-```bash
-export CALLE_CALL_ID="<CALL_ID>"
-
-curl --fail-with-body --silent --show-error \
-  --header "Authorization: Bearer $CALLE_API_KEY" \
-  "https://api.heycall-e.com/v1/calls/$CALLE_CALL_ID"
-
-curl --fail-with-body --silent --show-error \
-  --header "Authorization: Bearer $CALLE_API_KEY" \
-  "https://api.heycall-e.com/v1/calls/$CALLE_CALL_ID/events?limit=50"
-```
-
-## Call identifiers
-
-- **Calls API `call_id`:** use the top-level `id` (`call_...`) in HTTP and
-  Python, or `call.id` in TypeScript.
-- **Dashboard Call Record ID:** use
-  `recipients[].attempts[].provider_call_id` in HTTP and Python, or
-  `call.recipients[i].attempts[j].providerCallId` in TypeScript.
-
-Use `call_id` with `GET /v1/calls/{call_id}` and
-`GET /v1/calls/{call_id}/events`. Do not use `provider_call_id` as `call_id`;
-it identifies one attempt and may be `null`.
-
-Event-list items expose the CallTask ID as `call_id`. Terminal webhooks expose
-it as `data.id`; the webhook's top-level `id` identifies the event.
-
-Persist the returned Call ID with your workflow record. The Calls API does not
-provide a list endpoint: `GET /v1/calls` cannot recover IDs you did not save.
-See [Recover after a restart or lost response](#recover-after-a-restart-or-lost-response).
-
-```ts title="TypeScript"
-const call = await client.calls.create(
-  {
-    task: "Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
-    recipients: [
-      { phones: ["<RECIPIENT_1_E164_PHONE>"] },
-      { phones: ["<RECIPIENT_2_E164_PHONE>"] },
-    ],
-    resultSchema: {
-      type: "object",
-      required: ["attending_count"],
-      properties: {
-        attending_count: { type: "integer" },
-      },
-    },
-    recipientResultSchema: {
-      type: "object",
-      required: ["can_attend"],
-      properties: {
-        can_attend: { type: "string", enum: ["yes", "no", "unknown"] },
-      },
-    },
-    metadata: {
-      workflow_run_id: "wf_123",
-    },
-    webhookUrl: "https://example.com/calle/webhook",
-  },
-  {
-    idempotencyKey: "wf_123_friday_lunch",
-  },
-);
-```
-
-```python title="Python"
-call = client.calls.create(
-    task="Call each recipient and ask whether they can attend Friday lunch in San Francisco.",
-    recipients=[
-        {"phones": ["<RECIPIENT_1_E164_PHONE>"]},
-        {"phones": ["<RECIPIENT_2_E164_PHONE>"]},
-    ],
-    result_schema={
-        "type": "object",
-        "required": ["attending_count"],
-        "properties": {"attending_count": {"type": "integer"}},
-    },
-    recipient_result_schema={
-        "type": "object",
-        "required": ["can_attend"],
-        "properties": {
-            "can_attend": {"type": "string", "enum": ["yes", "no", "unknown"]},
-        },
-    },
-    metadata={"workflow_run_id": "wf_123"},
-    webhook_url="https://example.com/calle/webhook",
-    idempotency_key="wf_123_friday_lunch",
-)
-```
-
-## Structured results
-
-Structured results let you turn the terminal call evidence into a stable JSON object for your workflow. The schema is an extraction contract: the SDK sends the schema to CALL-E, CALL-E extracts a result from the completed call evidence, and the service validates the result before returning it.
-
-The extraction model uses the call transcript, ASR, and Calling facts as primary evidence. It uses the post-call summary and outcome as supporting context. If CALL-E cannot produce a schema-valid result from the evidence, the public `structured_result` is `null`.
-
-A non-null result confirms that an object was returned, not that the recipient
-answered or supplied useful evidence. A required string can be empty, and an
-`unknown` enum value can satisfy the schema. Check the business answer and its
-evidence against the transcript before treating the result as success.
-
-Use `result_schema` for one result object that describes the whole call task. Use `recipient_result_schema` when each recipient needs an independent result, especially for batch calls. TypeScript uses `resultSchema` and `recipientResultSchema`; Python uses `result_schema` and `recipient_result_schema`. The JSON Schema object itself is the same shape.
-
-For `recipient_result_schema`, avoid reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, and timing fields. Use custom names such as `customer_summary`, `notes`, or `reason` instead.
-
-Descriptions are passed to the extraction model. Use `description` to explain what each field means and how enum values should be selected. Descriptions guide extraction, but they are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
-
-Supported schema features:
-
-- `type`: `object`, `string`, `number`, `integer`, `boolean`, or `array`
-- `properties`
-- `required`
-- `enum`
-- nested `object` fields
-- simple `array.items`
-- `description`
-- `additionalProperties: false`
-
-Unsupported schema features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
-
-For business decisions, prefer string enums over booleans when the answer can be unclear. Include an `unknown` value when the call may not provide enough evidence.
-
-```ts
-resultSchema: {
-  type: "object",
-  required: ["answer", "evidence"],
-  properties: {
-    answer: {
-      type: "string",
-      enum: ["yes", "no", "unknown"],
-      description:
-        "The answer to the task question. Use unknown if the recipient did not answer, avoided the question, or the evidence is ambiguous.",
-    },
-    evidence: {
-      type: "string",
-      description:
-        "A short quote or paraphrase from the call that supports the answer.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-When a result drives automation, add an evidence field so your system can inspect why CALL-E made the classification.
-
-### Classify the final endpoint
-
-The Calls API does not return a built-in AMD disposition or `answered_by` field. Define the classification with a per-recipient Structured Result. You control the property name and enum values.
-
-```ts
-recipientResultSchema: {
-  type: "object",
-  required: ["answered_by"],
-  properties: {
-    answered_by: {
-      type: "string",
-      enum: ["human", "ivr", "voicemail", "unknown"],
-      description:
-        "Classify the final endpoint. If an IVR transfers the call to a person, use human.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-Read `call.recipients[i].structuredResult` in TypeScript, `call["recipients"][i]["structured_result"]` in Python, or `recipients[i].structured_result` over HTTP. CALL-E returns `null` when it cannot produce a schema-valid recipient result or when the request omits `recipient_result_schema`. The example uses `unknown` as a schema-valid fallback.
-
-### Sales handoff
-
-Use this pattern when a prospect should be routed to a human if they ask for help or show strong interest.
-
-```ts
-resultSchema: {
-  type: "object",
-  required: [
-    "human_assistance_requested",
-    "interest_level",
-    "handoff_recommended",
-    "evidence_summary",
-  ],
-  properties: {
-    human_assistance_requested: {
-      type: "string",
-      enum: ["yes", "no", "unknown"],
-      description:
-        "Whether the prospect explicitly asked to speak with a human, sales representative, specialist, manager, or requested a callback from a person. Use unknown if the evidence is unclear.",
-    },
-    interest_level: {
-      type: "string",
-      enum: ["strong", "moderate", "low", "not_interested", "unknown"],
-      description:
-        "Use strong when the prospect asks about pricing, demos, next steps, availability, implementation, purchase process, or clearly wants follow-up. Use moderate for curiosity without a concrete next step. Use low for minimal engagement. Use not_interested when they clearly decline. Use unknown when evidence is insufficient.",
-    },
-    handoff_recommended: {
-      type: "string",
-      enum: ["yes", "no", "unknown"],
-      description:
-        "Use yes if human_assistance_requested is yes or interest_level is strong. Use no when the prospect is low interest or not interested. Use unknown when the evidence is insufficient.",
-    },
-    evidence_summary: {
-      type: "string",
-      description:
-        "One concise sentence citing the prospect's words or behavior that supports the handoff decision.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-### Appointment confirmation
-
-Use this pattern when calling a business to confirm, reschedule, or cancel an appointment.
-
-```ts
-resultSchema: {
-  type: "object",
-  required: ["appointment_status", "confirmed_time", "confirmation_code"],
-  properties: {
-    appointment_status: {
-      type: "string",
-      enum: ["confirmed", "rescheduled", "canceled", "not_found", "unknown"],
-      description:
-        "The final appointment outcome. Use confirmed only when the business clearly confirms the appointment. Use rescheduled if a new time was agreed. Use not_found if the business cannot find the appointment. Use unknown when the evidence is unclear.",
-    },
-    confirmed_time: {
-      type: "string",
-      description:
-        "The confirmed appointment time as stated in the call, or an empty string if no time was confirmed.",
-    },
-    confirmation_code: {
-      type: "string",
-      description:
-        "The confirmation number or booking reference provided by the business, or an empty string if none was provided.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-### Batch recipient result
-
-Use `recipientResultSchema` when each recipient should have their own answer.
-
-```ts
-recipientResultSchema: {
-  type: "object",
-  required: ["can_attend", "dietary_notes"],
-  properties: {
-    can_attend: {
-      type: "string",
-      enum: ["yes", "no", "maybe", "unknown"],
-      description:
-        "Whether this recipient can attend. Use maybe only when they express uncertainty. Use unknown if the call did not reach the recipient or no clear answer was given.",
-    },
-    dietary_notes: {
-      type: "string",
-      description:
-        "Any dietary restrictions or preferences mentioned by this recipient, or an empty string if none were mentioned.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-### Support triage
-
-Use this pattern when a call should determine whether an issue was resolved or needs follow-up.
-
-```ts
-resultSchema: {
-  type: "object",
-  required: ["issue_resolved", "requires_follow_up", "priority", "summary"],
-  properties: {
-    issue_resolved: {
-      type: "string",
-      enum: ["yes", "no", "partial", "unknown"],
-      description:
-        "Use yes when the issue was fully resolved during the call. Use partial when some progress was made but another action remains. Use no when the issue was not resolved. Use unknown if the outcome is unclear.",
-    },
-    requires_follow_up: {
-      type: "string",
-      enum: ["yes", "no", "unknown"],
-      description:
-        "Whether another human or system action is required after the call. Use unknown if the call evidence is insufficient.",
-    },
-    priority: {
-      type: "string",
-      enum: ["urgent", "normal", "low", "unknown"],
-      description:
-        "Use urgent for time-sensitive issues, service outages, billing blockers, or explicit escalation requests. Use normal for standard follow-up. Use low for informational or non-urgent cases.",
-    },
-    summary: {
-      type: "string",
-      description:
-        "A concise summary of the issue, outcome, and any next action.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-### Pricing or quote request
-
-Use this pattern when a prospect may ask about pricing, quotes, discounts, or budget.
-
-```ts
-resultSchema: {
-  type: "object",
-  required: ["pricing_requested", "budget_mentioned", "next_step"],
-  properties: {
-    pricing_requested: {
-      type: "string",
-      enum: ["yes", "no", "unknown"],
-      description:
-        "Whether the prospect asked for pricing, a quote, discount information, plan details, or cost comparison. Use unknown if the evidence is unclear.",
-    },
-    budget_mentioned: {
-      type: "string",
-      description:
-        "Any budget, price range, or cost constraint mentioned by the prospect, or an empty string if none was mentioned.",
-    },
-    next_step: {
-      type: "string",
-      enum: ["send_pricing", "schedule_demo", "human_callback", "no_action", "unknown"],
-      description:
-        "The most appropriate next step based on the prospect's request. Use human_callback if they ask to speak with a person. Use no_action if they clearly decline or no follow-up is needed. Use unknown if the evidence is insufficient.",
-    },
-  },
-  additionalProperties: false,
-}
-```
-
-### Best practices
-
-- Keep schemas focused. A small schema with clear fields is more reliable than a large schema with many optional fields.
-- Put enum selection rules in the field `description`.
-- Include `unknown` when the call may not contain enough evidence.
-- Use `required` for fields your workflow always expects.
-- Use `additionalProperties: false` to prevent extra fields from being returned.
-- Add an evidence or summary field when the result triggers workflow automation.
-- Do not rely on `description` for validation. Use schema constraints for enforceable behavior.
-
-## Call status
-
-The call task's `status` has exactly five values:
-
-| Status | Terminal? | Meaning |
-| --- | --- | --- |
-| `queued` | No | The call task is queued. |
-| `in_progress` | No | The call task is running, including post-call finalization. |
-| `completed` | Yes | The call task completed. Check its results for the business outcome. |
-| `failed` | Yes | The call task failed. Keep the failure fields as diagnostic context. |
-| `canceled` | Yes | The call task was canceled. |
-
-`no_answer`, `busy`, and `voicemail` are not Calls API lifecycle statuses.
-Recipient and attempt objects have their own status enums; do not substitute
-them for the top-level call status. A `completed` state does not establish
-that a person answered or that your business objective succeeded. See
-[Task completion](#task-completion) for interpreting the business result.
-
-## Parallel and quorum-based dispatch
-
-The Calls API does not expose an operation for clients to cancel a call after
-it has been created. A call that is already in flight may therefore continue
-to completion even when your application no longer needs its result. The
-`canceled` resource status does not imply that clients can request
-cancellation.
-
-For workflows that need only a target number of confirmations, dispatch calls
-in controlled waves instead of starting every call at once. Count terminal
-results through polling or webhooks, and stop creating subsequent waves after
-the confirmation target is reached. Choose a wave size that balances response
-speed against the number of calls that may still be in flight when the target
-is met.
-
-## Batch calls and account limits
-
-Shared platform outbound lines support **one phone number per task**, counted
-across all recipients, including targets inferred from `task`. To call multiple
-numbers, select an eligible purchased number as the account's default outbound
-number. Otherwise, creation returns `422 call_not_ready`.
-
-Account task concurrency defaults to 1 on shared platform lines and 10 on
-eligible purchased numbers. Configured account limits take precedence; selecting
-a purchased number as the default does not turn it into a shared platform line.
-Account concurrency and LLM usage checks can reject creation with `429` or `503`;
-see [account-control recovery](/errors#account-controls).
-
-## Idempotency
-
-Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
-
-Use a stable workflow key, not a random UUID generated at each retry.
-
-### Recover after a restart or lost response
-
-Save the idempotency key and original request with your workflow record before
-sending `POST /v1/calls`. Save the returned Call ID as soon as the response
-arrives. Keep that record across application restarts.
-
-| Situation | Recovery action |
-| --- | --- |
-| Call ID saved | Read `GET /v1/calls/{call_id}` or resume SDK polling with that ID. Do not create another call to learn the existing call's outcome. |
-| Confirmed creation rejection; cause resolved | Save the request with a new key before submitting an intentionally new attempt. Keep that request and key unchanged for subsequent retries. |
-| Acceptance uncertain; original request and key saved, but no Call ID | Repeat the create request with the same key and unchanged body. If the original request was accepted, save the returned Call ID. |
-| Neither the Call ID nor the original request and key | Reconcile the original operation before submitting a replacement. A lost response does not prove that the first request was rejected. |
-
-For an idempotent replay, preserve the entire request, including `metadata`,
-schemas, and `webhook_url`. Rebuilding it with a new timestamp or other changed
-value can produce `idempotency_conflict`. Check the saved request if this occurs;
-do not generate a new key just to bypass the conflict.
-
-If the original creation is still in progress, an unchanged retry can return
-`409 idempotency_conflict` with `details.reason_code` set to
-`creation_in_progress`. Back off and retry with the **same key and unchanged
-body**; do not submit a replacement operation.
-
-A persisted creation failure replays its original HTTP status and error body.
-An uncertain response alone is not evidence of a rejection.
-
-Keep local workflow identifiers in `metadata` for correlation; they do not
-replace the `Idempotency-Key` header.
-
-### Correct a missing-information rejection
-
-When `POST /v1/calls` returns HTTP `422` with `call_not_ready` and asks for
-missing task information, such as the company or sender's name, review the
-message and `details.questions`. Once you have confirmed this is a creation
-rejection for missing information, correct the task and use a **new**
-idempotency key for that corrected request.
-
-The original key remains bound to the rejected request. Sending its unchanged
-body replays the rejection; changing the body while keeping that key returns
-`409 idempotency_conflict`. Not receiving a Call ID does not mean the server
-created no internal record.
-
-`call_not_ready` alone is not enough to choose this correction path. Check
-which operation failed and what its error details say. This example does not
-handle an accepted call's failure or other reasons a plan was rejected.
-
-#### Run the correction example
-
-The [recovery helper](https://github.com/CALLE-AI/calle-docs/blob/main/examples/recover_create.py)
-uses Python 3.11+ and `calle-ai==0.7.0`, with the same environment setup as the
-[complete Python example](/quickstart#run-a-complete-example). It reads that
-example's private run-directory format: `request.json` contains the saved
-SDK create arguments, including `idempotency_key`; `error.json` contains
-`status_code`, `code`, `message`, and `details`. Keep the original files.
-
-Read `error.json` privately and put the full corrected task in a UTF-8 file,
-`corrected-task.txt`. Supply the missing facts yourself; do not invent them.
-Then prepare the correction:
-
-```bash
-python examples/recover_create.py correct ../rejected-run \
-  --task-file corrected-task.txt --confirm-missing-information
-```
-
-This sends no request. It requires the saved `422 call_not_ready` error and
-your confirmation that it was a missing-information creation rejection, and
-refuses a directory with a saved Call ID. It saves a new key and corrected
-task in `../rejected-run/corrected/request.json`, preserving the other request
-fields. Running `correct` again refuses to overwrite that directory or
-generate another saved key.
-
-Review the corrected request, keep the same API key and `CALLE_BASE_URL`, and
-submit it explicitly. This can place a real, billed call to the saved recipient:
-
-```bash
-python examples/recover_create.py submit ../rejected-run/corrected
-```
-
-The helper saves the Call ID, retrieves the result, and makes no automatic
-create retry. If interrupted, rerun the same command with the same directory:
-with a saved ID it only retrieves that call; without one it resubmits the
-unchanged saved request and key. Do not edit or delete the saved files to retry.
-An exit code of zero means a terminal result was retrieved, not that the
-business task succeeded. Stopping the script does not cancel an accepted call.
-
-## Task completion
-
-`task_completed` is CALL-E's post-call judgment of whether the task reached
-a clear end state for the user. `completion_confidence` is confidence in that
-judgment, and `evidence` supports it. These fields do not require a custom
-result schema.
-
-Read execution, task completion, and the business answer separately:
-
-| Field | Question it answers | How to use it |
-| --- | --- | --- |
-| `status` | Has the call task finished executing? | Use the [lifecycle states](#call-status) to decide whether to keep waiting. `completed` alone does not establish task or business success. |
-| `task_completed` | Did CALL-E judge that the requested task reached a clear end state? | Read it with `completion_confidence` and `evidence`. Confidence applies to this judgment, not to the likelihood of a favorable business answer. |
-| `structured_result` | What business answer was extracted? | Check the fields defined by your result schema and the supporting transcript before taking a business action. |
-
-A `true` value or high confidence does not establish that a person answered
-or that your business objective was met. Check the business answer in
-`structured_result` against the call transcript. Use the
-[custom answered_by example](#classify-the-final-endpoint) to extract an
-endpoint classification alongside your business result. Keep `unknown`
-answers unresolved.
-
-### Example: an answered question with an unfavorable result
-
-Suppose the task is: "Ask whether a table for two is available at 7 p.m.
-Do not make a reservation." The restaurant says no tables are available.
-With a caller-defined `table_available` result field, an illustrative terminal
-response excerpt is:
+The response adds a fixed `call_id` field for matching a telephone call to the
+**Call ID** shown in Billing.
 
 ```json
 {
-  "status": "completed",
-  "task_completed": true,
-  "evidence": ["The restaurant confirmed that no table for two is available at 7 p.m."],
-  "structured_result": {
-    "table_available": "no"
+  "id": "call_example",
+  "call_id": "0123456789abcdef0123456789abcdef"
+}
+```
+
+- `id` identifies the API resource. Keep using it for get, cancel and event requests.
+- `call_id` identifies the actual telephone call. Use it to find the corresponding
+  Billing entry. It is `null` until the provider ID is recorded, including cancellation
+  before dialing; never substitute `id` when it is null.
+
+The field does not depend on a successful business result. GET, exact creation
+replay and terminal webhook `data.call_id` use the same recorded identity, including
+existing Calls with saved provider evidence. An ID does not mean settlement is
+complete; the Billing charge may appear later. Event envelopes keep their existing
+`call_id` as the API resource ID. In the TypeScript wrapper the new response field
+is `call.callId`; Python and raw JSON use `call["call_id"]`.
+
+## Request contract
+
+`POST /v2/calls` prepares one phone task, then returns `202` after durable
+acceptance. The request waits for preparation; dialing runs in the background
+using the saved instructions.
+
+| Input | Required | Meaning |
+| --- | --- | --- |
+| `task` | Yes | Complete instructions and facts needed for the conversation. |
+| `phone` | Yes | One E.164 number, including `+` and country code. |
+| `region` | No | Two-letter uppercase destination hint, such as `US`. Inferred from the phone when omitted. |
+| `locale` | No | Spoken language, such as `en-US`. Inferred from the task and available regional languages when omitted. |
+| `result_schema` | Yes | A closed object containing at most 32 scalar properties. |
+| `Idempotency-Key` header | Yes | A stable key for this logical call, 1-255 characters after trimming. See [Idempotency](#idempotency). |
+| `metadata` | No | Application-owned correlation data, returned with the Call. |
+| `webhook_url` | No | HTTPS receiver for the final result or error. |
+
+If `region` and `locale` pass format validation but have no supported calling
+configuration, creation returns `422 unsupported_region` or
+`422 unsupported_language`. The error identifies the field to correct and
+includes the rejected region and locale, whether supplied or inferred:
+
+```json
+{
+  "error": {
+    "code": "unsupported_language",
+    "message": "Locale 'xx-XX' is not supported for region 'CN'. Choose a supported locale for this region.",
+    "details": {
+      "field": "locale",
+      "region": "CN",
+      "locale": "xx-XX"
+    }
   }
 }
 ```
 
-The availability question reached a clear answer, even though the answer was
-unfavorable. The application should report "No table available", not
-"Reservation successful". If the requested task were to make a reservation,
-the application would need evidence of a confirmed booking; this example does
-not establish that outcome. A `null` result or an `unknown` answer must remain
-unresolved rather than becoming a yes or no from `status` alone.
+Choose a supported [region and language](/regions) and resubmit with the same
+idempotency key. Explicit unsupported targets are rejected before model
+preparation; an inferred locale is checked after inference. Neither rejection
+creates a Call or outbound telephone task. Configuration service failures still return
+`503 provider_unavailable`.
 
-### Read a saved result
+Omitting a hint or sending `null` requests inference. Explicit spoken-language
+instructions in `task` take precedence over the language used to write the task.
+CALL-E returns the resolved `region` and `locale` on acceptance and keeps them
+fixed for execution and retries. An explicit region conflicting with the phone,
+or a language that cannot be determined unambiguously, returns
+`422 input_incomplete` with `details.missing_inputs`. Correct the phone/region
+or specify the spoken language before resubmitting. A supplied locale is never
+silently replaced with another language.
 
-The [Python result reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_results.py)
-displays task-level and recipient-level results separately, followed by the
-transcript labeled by recipient and attempt. Run it with Python 3.11+ on the
-`result.json` saved by either [complete Calls example](/quickstart#run-a-complete-example):
+For a phone/region conflict, `details.fields` identifies `phone` and `region`,
+`details.region` is the supplied region, and `details.inferred_region` is the
+region resolved from the number. Display `details.missing_inputs` to the user;
+do not fix the conflict by silently changing their destination.
 
-```bash
-python examples/read_results.py ../calle-run/result.json
+If essential information is missing or conflicting, creation returns
+`422 input_incomplete` with the specific missing inputs. No Call is created,
+no phone is dialed, and no terminal webhook is sent for the rejected request.
+
+```json
+{
+  "error": {
+    "code": "input_incomplete",
+    "message": "The task lacks information required to make this call.",
+    "details": {
+      "missing_inputs": [
+        "Provide the appointment date.",
+        "Provide the appointment time."
+      ]
+    }
+  }
+}
 ```
 
-This command makes no API requests and leaves the file unchanged. Its output
-may contain private results and transcript text; keep it private. A zero exit
-code means the file was read, not that the call or business task succeeded.
+Collect the missing facts in your application, update `task`, and submit again.
+Information the call is meant to collect from the recipient is not itself a
+missing prerequisite. The API does not ask clarification questions interactively.
+Preparation is bounded to 25 seconds. A preparation timeout or model failure
+returns `503 provider_unavailable`; it is not an incomplete-input response.
 
-`result_schema` supplies the task-level `structured_result`;
-`recipient_result_schema` supplies each `recipients[].structured_result`, even
-for a single recipient. A null task-level result does not imply that recipient
-results or transcripts are missing. The reader preserves `null`, `unknown`,
-`false`, and zero rather than treating them as success or substituting one
-recipient's result for the whole task. Attempt transcript counts show when an
-attempt has no transcript turns.
+## Result schema
 
-## Polling and events
+Use `type: "object"` and `additionalProperties: false`. Property values can be
+strings, booleans, integers or numbers. Nested objects, arrays, null values and
+schema combinators are unsupported. Use an explicit scalar such as `"unknown"`
+when an answer can be unknown. The request and schema are frozen for execution.
 
-Use `waitForResult` or `wait_for_result` for simple server-side polling. Use events when you need a developer-facing trace of the call lifecycle.
+For example, `"type": ["string", "null"]` is not supported. It returns
+`400 result_schema_invalid` before a Call is created. Use `"type": "string"`
+and explicitly describe an allowed `"unknown"` fallback in the task instead.
 
-Before mapping a failed call to no answer or decline, read
-[Accepted call execution outcomes](/errors#accepted-call-execution-outcomes).
+### Result outcomes
 
-When the terminal `structured_result` is `null`, CALL-E did not produce a schema-valid whole-task result from the available evidence. Recipient-level structured results use the same rule: invalid or unsupported values are returned as `null`.
+The response uses the same result model as Goal Runs. `call_outcome` describes
+the telephone outcome: `completed`, `no_answer`, `busy`, or `declined`. A no-answer,
+busy or declined call finishes with `status: "completed"` and is not a technical error.
 
-Each recipient attempt can include `transcript_turns`, an ordered list of structured transcript turns for that dial attempt. Each turn has `offset_seconds`, `speaker`, and `text`; `speaker` is `bot`, `user`, or `unknown`. The array is empty when no transcript is available.
+Poll while `result_status` is `pending`. `available` includes a validated empty
+object; `unavailable` means the evidence did not support a schema-valid business
+result; `not_applicable` covers cancellation and technical execution failure.
+Both `result` and `error` can be null in a final unavailable result.
 
-### Read transcript turns
+Include explicit missing-answer and unknown rules in `task`, consistent with
+`result_schema`. CALL-E preserves those rules during extraction. Missing answers
+do not automatically become `false`. Without a permitted fallback, the business
+result remains unavailable and `error` stays null.
 
-Read `recipients[].attempts[].transcript_turns` in Python or HTTP responses,
-and `recipients[].attempts[].transcriptTurns` in the TypeScript SDK. Each turn
-keeps the `offset_seconds` field in both SDKs. A null offset means the timestamp
-is unavailable; zero means the start of the attempt.
-
-Saved transcripts are not automatically deleted. An empty `transcript_turns`
-array means no transcript is available for that attempt; it is not an
-expiration marker.
-
-The runnable [Python reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read_transcript.py)
-and [TypeScript reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/read-transcript.ts)
-label each recipient and attempt, keep `unknown` separate from `user`, and display
-null offsets as `time unavailable` without changing the input. An unknown speaker
-is not evidence that the recipient answered. Interpret the result using
-[Task completion](#task-completion).
-
-From a checkout of the docs repository, run the synthetic checks with Python 3.11+
-or Node.js 22.18+ (native TypeScript support):
-
-```bash
-python examples/read_transcript.py
-node examples/read-transcript.ts
+```json
+{
+  "status": "completed",
+  "call_outcome": "busy",
+  "result_status": "unavailable",
+  "transcript": [],
+  "result": null,
+  "error": null
+}
 ```
 
-These commands make no API requests. They cover bot, user, unknown, zero and null
-offsets, and an empty transcript. To read a real result in your application, pass
-the completed Python/HTTP call object to `transcript_lines`, or the completed
-TypeScript SDK call object to `transcriptLines`, and iterate the returned lines.
-Transcript text may contain private data; keep the output private.
+`status: "completed"` means telephone execution ended; it does not mean the
+business goal succeeded or that the result is ready. `completed_at` is the
+execution completion time. Evaluate your own schema fields to decide business
+success. Put a summary or completion flag in the schema if your application needs it.
 
-**Audio recordings:** Saved recordings remain available in Dashboard call
-details, where you can download them. The Calls API does not return audio
-recordings, playback or download URLs, or recording availability and expiration
-fields. Recording retrieval through MCP and the SDKs is tracked separately in
-[#753](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/753).
+## Transcript
 
-### Poll for results
+Every Call includes a top-level `transcript` array, separate from `result` and
+`result_schema`. After execution ends, it contains the recorded conversation in
+order, even while the business result is pending, unavailable, or failed.
+Before execution ends or when no transcript is available, it is `[]`.
 
-
-```ts title="TypeScript"
-const completed = await client.calls.waitForResult(call.id, {
-  timeoutMs: 120_000,
-  intervalMs: 2_000,
-});
-
-const events = await client.calls.listEvents(call.id, { limit: 50 });
+```json
+{
+  "transcript": [
+    {"speaker": "bot", "offset_seconds": 0, "text": "Hello."},
+    {"speaker": "user", "offset_seconds": 2, "text": "Goodbye."}
+  ]
+}
 ```
 
-```python title="Python"
-completed = client.calls.wait_for_result(
-    call["id"],
-    timeout_seconds=120,
-    interval_seconds=2,
-)
+`speaker` is `bot` (CALL-E), `user` (the remote party, including automated prompts), or `unknown`.
+`offset_seconds` is a nonnegative offset in seconds, or `null` when unavailable.
+`text` preserves the recorded words. Missing roles or times are not inferred.
+GET and terminal webhooks use the same transcript snapshot. This field does not
+provide live ASR streaming, recordings, or a generated summary.
 
-events = client.calls.list_events(call["id"], limit=50)
+## Idempotency
+
+Persist the original request and one stable `Idempotency-Key` before submission.
+Reuse them to recover the **same logical call**, not to dial again. Replay requires
+the same project and authenticated owner; a key is not a global call identifier.
+
+<div className="comparison-table" role="region" aria-label="Call retry decisions" tabIndex={0}>
+
+| Situation | Response / next action |
+| --- | --- |
+| Same key and unchanged input after acceptance | `202` with the same Call ID and its current saved state, not necessarily the original response body. Preparation and dialing are not repeated. |
+| Original Call is completed, failed or canceled | Same replay behavior. A new key is required for an intentionally new call, even to the same phone. |
+| Same key while the first create request is still running | `409 idempotency_conflict`, with `details.reason_code: "creation_in_progress"`. Back off and retry the original key and body. |
+| Same key but changed input | `409 idempotency_conflict`. Restore the original request to recover it, or use a new key only for a deliberate new call. |
+| Definitive validation rejection before acceptance | Correct the input and reuse the key. For example: `400 result_schema_invalid`, `422 input_incomplete`, `unsupported_region` or `unsupported_language`. No Call was created. |
+| Timeout, lost response or an unclassified server error | Acceptance is uncertain. Retry the same key and unchanged body; do not generate another key to bypass the error. |
+
+</div>
+
+The input comparison includes `task`, `phone`, `region`, `locale`, `result_schema`,
+`metadata` and `webhook_url`. JSON object-key order is not significant, but
+changing a field value is. Keep your original body rather than reconstructing
+it from the response: if you omitted `region` or `locale`, continue omitting
+them on retries. Copying the inferred response values into a retry changes the
+request and returns 409, even when those values match the chosen destination.
+
+Use a durable business key such as `order-8472-confirmation-attempt-1`. Reuse it
+after a timeout; use `order-8472-confirmation-attempt-2` only when your application
+has intentionally decided to place another call. Store the returned Call ID and
+use GET for routine status polling. These rules apply to Calls, not automatically
+to [legacy creation failures](/legacy-calls#idempotency) or [Goal Run keys](/goal-runs#idempotency).
+
+## Read, events and cancellation
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/v2/calls/{call_id}` | Reads committed state without dialing or running inference. |
+| GET | `/v2/calls/{call_id}/events` | Lists persisted lifecycle events and observed speech updates. |
+| POST | `/v2/calls/{call_id}/cancel` | Cancels before provider submission. |
+
+Events support `cursor` and `limit` (1-100). Continue with `next_cursor` to read
+remaining available pages. To poll for new events, retain the last returned
+event's `id` and pass it as `cursor`, even when `next_cursor` is null. An empty
+page does not mean the call ended. Cursors belong to one Call; event IDs remain
+stable across retries. Events follow persistence order, so late observations
+remain reachable after the previous cursor.
+
+This endpoint returns JSON pages, not an SSE connection. Deduplicate by event
+`id`, not `turn` or text. A turn can contain several distinct speech updates.
+Read until `next_cursor` is null, then keep the last event ID for the next poll;
+an empty page must not erase that saved cursor. Invalid or foreign cursors and
+out-of-range limits return `400 invalid_request`.
+
+| Event | Meaning |
+| --- | --- |
+| `call.accepted` | Instructions prepared and Call accepted. |
+| `call.in_progress` | Provider submission started. |
+| `call.ringing` / `call.connected` | Observed ringing or connection. |
+| `call.asr` | Callee recognition update; may be a partial fragment or a revised hypothesis. |
+| `call.speech` | Observed bot speech text. |
+| `call.interrupted` / `call.dtmf` | Interruption or keypad input. |
+| `call.ended` | Phone execution ended; result processing may still be pending. |
+| `call.result_ready` | The structured result is saved and can be read. |
+| `call.completed` / `call.failed` / `call.canceled` | The Call's terminal outcome. |
+
+Speech events preserve the full observed text without truncation. They do not
+guarantee a complete sentence or include an `is_final` flag. For example, distinct
+ASR events may contain `"my"`, `"my favorite"` and `"my favorite color is green"`.
+Do not concatenate every ASR event into a final transcript. One illustrative event:
+
+```json
+{
+  "id": "call_example:event:42",
+  "type": "call.asr",
+  "call_id": "call_example",
+  "created_at": "2026-09-22T10:00:12Z",
+  "level": "info",
+  "status": "in_progress",
+  "message": "Callee speech recognized.",
+  "details": {
+    "speaker": "user",
+    "turn": 3,
+    "text": "Yes, I will attend with two guests.",
+    "occurred_at": "2026-09-22T10:00:11Z"
+  }
+}
 ```
+
+`occurred_at` is the provider timestamp when supplied, otherwise null. These
+are observed events, not a guarantee that the remote party heard the bot.
+Not every call emits every lifecycle event; absence of `call.ringing` or
+`call.connected` alone does not establish a telephone outcome.
+Historical calls without stored realtime
+evidence retain their lifecycle events; missing speech is not synthesized.
+Internal agent traces are not exposed. `call.accepted` alone does not prove the
+phone rang. Reads never initiate a call, extract a result or persist new events.
+
+Cancellation after provider submission returns `409 call_cannot_cancel`.
+It does not hang up an active call. Repeating cancellation on a terminal Call
+returns its stored state. See the [API Reference](/api-reference/calls) for schemas.
+
+## Limits
+
+- One target per Call. Recipient lists, batch requests and `recipient_result_schema` are not accepted.
+- Calls accept immediate execution only. Scheduling and recurrence are not supported.
+- Billing correlation is available through `call_id`; detailed provider attempt records are not exposed.
+- Account concurrency, balance, regional access and other account policies still apply. Acceptance may be followed by queued work.
+- Existing legacy call-task IDs must be read through their original interface; changing the URL does not convert historical records.
+
+## Failures and uncertain submissions
+
+HTTP errors reject or fail the request itself. An accepted Call can later expose
+an execution error or a result-processing error in `error`. The latter can
+coexist with execution status `completed`.
+
+| Error | Meaning / next step |
+| --- | --- |
+| `call_failed`, `timed_out` | A technical execution failure; inspect the returned detail. |
+| `result_invalid` | The result did not satisfy the schema. |
+| `result_failed` | Processing or persisting the result failed. |
+| `detail_code: authorization_expired` | Execution authorization became unavailable. After submission, the provider may still complete the call. |
+| `detail_code: submission_unknown` | Provider submission could not be confirmed. |
+
+Do not automatically create a replacement for an uncertain submission. Retain
+the original Call ID and reconcile it before making another call. Expiration of
+a client wait timeout is also not evidence that no call occurred.
