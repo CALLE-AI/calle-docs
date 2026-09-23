@@ -991,7 +991,7 @@ test("keeps retry tables and API operations within the mobile viewport", async (
 
 test("publishes production SDK installation and readiness guidance", async ({ page }) => {
   await page.goto("/sdks");
-  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle@1.0.0" })).toBeVisible();
+  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle@1.0.1" })).toBeVisible();
   await expect(page.locator("pre").filter({ hasText: "pip install calle-ai==1.0.0" })).toBeVisible();
   await expect(page.locator("main")).toContainText("resultStatus");
   await expect(page.locator("main")).not.toContainText("These packages have not been published");
