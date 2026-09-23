@@ -34,15 +34,16 @@ export function BillingComparison({ children }: { children: ReactNode }) {
       </figcaption>
       <div className="billing-comparison__plot">
         {prices.map((price) => (
-          <div key={price.name} className="billing-comparison__row">
+          <div key={price.name} className={`billing-comparison__row billing-comparison__row--${price.name === "Goal" ? "goal" : "oneshot"}`}>
             <div className="billing-comparison__row-heading">
               <span className="billing-comparison__name">
                 {price.name}
-                {price.name === "Goal" && <span className="billing-comparison__saving">50% less</span>}
+                {price.name === "Goal" && <span className="billing-comparison__saving">Half price</span>}
               </span>
               <span className="billing-comparison__total">{money(price.total)}</span>
             </div>
-            <div
+            <div className="billing-comparison__track">
+              <div
               className={`billing-comparison__bar billing-comparison__bar--${price.name === "Goal" ? "goal" : "oneshot"}`}
               style={{ width: `${(price.total / prices[0].total) * 100}%` }}
             >
@@ -106,6 +107,13 @@ export function BillingComparison({ children }: { children: ReactNode }) {
                   </Tooltip>
                 );
               })}
+              </div>
+              {price.name === "Goal" && (
+                <div className="billing-comparison__saved">
+                  <span>You save</span>
+                  <strong>{money(prices[0].total - price.total)}</strong>
+                </div>
+              )}
             </div>
           </div>
         ))}

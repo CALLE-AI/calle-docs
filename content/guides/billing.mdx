@@ -3,7 +3,7 @@ title: Billing
 description: Preview the upcoming CALL-E billing model. These rates are not yet in effect.
 ---
 
-import { ClockIcon, TagIcon } from "zudoku/icons";
+import { ClockIcon } from "zudoku/icons";
 import { BillingComparison } from "../../src/components/BillingComparison.js";
 
 <section className="billing-highlight" aria-label="Billing preview">
@@ -17,22 +17,33 @@ import { BillingComparison } from "../../src/components/BillingComparison.js";
   </div>
 </section>
 
-<section className="billing-highlight" aria-label="Goal pricing offer">
-  <p className="billing-highlight__title">
-    <TagIcon aria-hidden="true" />
-    <span>Goal: Half-price calling</span>
-  </p>
-  <div className="billing-highlight__body">
-    With the upcoming billing model, Goal will cost half as much as One-shot-call.
-    Use Goal for batch and large-scale calling, and One-shot-call for development
-    and testing.
+<section className="billing-offer" aria-label="Goal pricing offer">
+  <p className="billing-offer__badge"><ClockIcon aria-hidden="true" /><span>Coming soon</span></p>
+  <div className="billing-offer__hero">
+    <p className="billing-offer__headline"><span>Choose Goal.</span><span>Pay half.</span></p>
+    <div className="billing-offer__discount">
+      <p className="billing-offer__discount-label">SAVE</p>
+      <p className="billing-offer__number"><span>50</span><span className="billing-offer__percent">%</span></p>
+      <p className="billing-offer__comparison">vs. One-shot-call</p>
+    </div>
   </div>
   <BillingComparison>
     <p>30-second domestic outbound call · US / CA · USD · Preview</p>
     <p>One-shot-call: Model Fee $0.0296 × 3 = $0.0888; Carrier Fee $0.0400/min × 0.5 min = $0.0200; total $0.1088.</p>
     <p>Goal: Model Fee $0.0148 × 3 = $0.0444; Carrier Fee $0.0200/min × 0.5 min = $0.0100; total $0.0544 (50% less).</p>
+    <p>You save $0.0544 on this 30-second call with Goal.</p>
   </BillingComparison>
 </section>
+
+<div className="billing-note billing-method-notes">
+
+Choose Goal for batch and large-scale calling. Keep One-shot-call for development and testing.
+
+**One-shot-call:** Send a `task` describing what to do to `POST /v1/calls`—no published Goal needed. TypeScript SDK: `client.calls.create(...)` · [One-shot-call guide](/calls).
+
+**Goal:** Publish a Goal in CALL-E Chat, then send `phone` and `variables` to `POST /v1/goals/{goal_id}/runs` with an `Idempotency-Key` header. TypeScript SDK: `client.goals.run(...)` · [Goal guide](/goal-runs).
+
+</div>
 
 ## How billing works
 

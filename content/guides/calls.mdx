@@ -5,6 +5,14 @@ description: Understand the call creation contract and event flow.
 
 Use call tasks to turn a structured workflow step into one or more real phone interactions.
 
+<aside className="calling-mode-guidance" aria-label="Calling mode guidance">
+
+The **one-shot Calls API** (`POST /v1/calls`) is designed for quick integration, development, and testing.
+
+For batch and large-scale calling, we recommend [Goal Runs](/goal-runs), which will cost **50% less** under the [upcoming billing model](/billing). This pricing is not yet in effect.
+
+</aside>
+
 Use the [Calls API Reference](/api-reference/calls) for the exact HTTP request
 and response schemas. See the [error handling guide](/errors) for retry
 behavior and the [terminal webhooks guide](/webhooks) for asynchronous
