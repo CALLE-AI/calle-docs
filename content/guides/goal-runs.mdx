@@ -5,7 +5,12 @@ description: Start outbound calls from a published Goal with one phone number an
 
 Start outbound calls from a published Goal when your application repeats the same validated phone workflow for different targets.
 
-**API 0.6** · **Server-side** · **Asynchronous**
+**API 0.7.0** · **Server-side** · **Asynchronous**
+
+Examples target the [Developer API 0.7.0 contract](/openapi/calle.openapi.yaml)
+and server SDKs `@call-e/calle@0.7.0` and `calle-ai==0.7.0`.
+See [API versions and migration](/changelog#api-versions-and-migration) for
+request and response changes.
 
 A Goal owns its call behavior, voice region and locale, input schema, result schema, and provider contract. A Goal Run supplies only one E.164 phone number, per-Run variables, and a business-stable idempotency key.
 
