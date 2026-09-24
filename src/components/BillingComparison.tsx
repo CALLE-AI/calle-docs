@@ -91,7 +91,7 @@ export function BillingComparison({ children }: { children: ReactNode }) {
                         dismiss();
                       }}
                     >
-                      <div className="billing-cost-tooltip__context">{price.name} · {fee.label} · Preview</div>
+                      <div className="billing-cost-tooltip__context">{price.name} · {fee.label}</div>
                       <div className="billing-cost-tooltip__rate">
                         {money(price[fee.rateKey])}<span> / {fee.unit}</span>
                       </div>
@@ -122,7 +122,7 @@ export function BillingComparison({ children }: { children: ReactNode }) {
         <span><i className="billing-comparison__model" />Model Fee · / 10s</span>
         <span><i className="billing-comparison__carrier" />Carrier Fee · / min</span>
       </div>
-      <p className="billing-comparison__hint"><InfoIcon aria-hidden="true" /> Hover or tap a segment for its rate · Preview</p>
+      <p className="billing-comparison__hint"><InfoIcon aria-hidden="true" /> Hover or tap a segment for its rate</p>
       {/* Preserve the equivalent breakdown in Markdown and LLM exports. */}
       <div hidden>{children}</div>
     </figure>
