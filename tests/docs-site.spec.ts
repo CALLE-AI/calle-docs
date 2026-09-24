@@ -427,14 +427,28 @@ test("opens and dismisses fee breakdowns by touch", async ({ browser }) => {
   await context.close();
 });
 
-test("limits changelog headings to release dates", async ({ page }) => {
+test("limits changelog headings to releases with optional feature themes", async ({ page }) => {
   await page.goto("/changelog");
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
-  expect(dates.length).toBeGreaterThan(0);
-  for (const date of dates) {
-    expect(date.trim()).toMatch(/^(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}$/);
-  }
+  expect(dates.map((date) => date.trim())).toEqual([
+    "September 24, 2026 — Updated Billing",
+    "September 23, 2026 — Calls & SDK 1.0",
+    "September 22, 2026",
+    "September 19, 2026 — Editable Prompts",
+    "September 14, 2026 — Billing & Concurrency",
+    "September 10, 2026",
+    "September 7, 2026 — Number Verification",
+    "September 3, 2026 — Server SDK 0.7",
+    "August 28, 2026 — Goal Call Analysis",
+    "August 21, 2026",
+    "August 15, 2026 — Dashboard Upgrade",
+    "August 11, 2026 — Dashboard API Keys",
+    "July 29, 2026 — Terminal Webhooks",
+    "July 22, 2026 — Simplified Goal Runs",
+    "July 21, 2026 — Goal Runs Preview",
+    "June 8, 2026 — Developer API & SDKs",
+  ]);
   await expect(article.locator("h3, h4, h5, h6")).toHaveCount(0);
   await expect(page.locator('a[href="#api-versions-and-migration"]')).toHaveCount(0);
   await expect(article).toContainText("Calls and SDK 1.0:");
