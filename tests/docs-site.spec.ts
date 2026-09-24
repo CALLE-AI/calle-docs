@@ -17,6 +17,7 @@ const docsPages = [
   { path: "/errors", heading: "Errors" },
   { path: "/sdks", heading: "SDKs" },
   { path: "/changelog", heading: "What's New" },
+  { path: "/billing", heading: "Billing" },
 ];
 
 const guideNavigationItems = docsPages.filter(
@@ -187,13 +188,15 @@ test("places What's New in the top-level documentation navigation", async ({
   );
   const links = docsNavigation.getByRole("link");
 
-  await expect(links).toHaveCount(3);
+  await expect(links).toHaveCount(4);
   await expect(links.nth(0)).toHaveText("Guides");
   await expect(links.nth(0)).toHaveAttribute("href", "/quickstart");
   await expect(links.nth(1)).toHaveText("API Reference");
   await expect(links.nth(1)).toHaveAttribute("href", "/api-reference");
-  await expect(links.nth(2)).toHaveText("What's New");
-  await expect(links.nth(2)).toHaveAttribute("href", "/changelog");
+  await expect(links.nth(2)).toHaveText("Billing");
+  await expect(links.nth(2)).toHaveAttribute("href", "/billing");
+  await expect(links.nth(3)).toHaveText("What's New");
+  await expect(links.nth(3)).toHaveAttribute("href", "/changelog");
   await expect(
     page.locator(
       'nav[class*="overflow-y-auto"][class*="shrink-0"] a[href="/changelog"]',
@@ -202,6 +205,231 @@ test("places What's New in the top-level documentation navigation", async ({
   await expect(
     page.getByRole("heading", { level: 1, name: "What's New" }),
   ).toBeVisible();
+});
+
+test("documents aggregate billing and preserves pre-connection policy", async ({ page, request }) => {
+  await page.goto("/billing");
+  const article = page.locator('[data-pagefind-body="true"]');
+  await expect(page.getByRole("heading", { level: 1, name: "Billing" })).toBeVisible();
+  const billingPreview = article.getByRole("region", { name: "Billing preview", exact: true });
+  await expect(billingPreview).toBeVisible();
+  await expect(billingPreview).toContainText("Billing preview — coming soon");
+  await expect(billingPreview).toContainText("under development and is not yet in effect");
+  await expect(billingPreview).toContainText("your current billing remains unchanged");
+  await expect(billingPreview.locator('svg[aria-hidden="true"]')).toBeVisible();
+  await expect(article).toContainText("Total cost = Carrier Fee + Model Fee");
+  await expect(article).not.toContainText("Total cost = Carrier Fee + Model Fee + Task Success Fee");
+  const billingNote = article.locator(".billing-note").filter({ hasText: "pre-connection" });
+  await expect(billingNote).toContainText("Model fees may apply even if the call is not connected.");
+  await expect(billingNote).toHaveCSS("font-size", "14px");
+  await expect(billingNote.locator("strong")).toHaveCount(0);
+  await expect(article).toContainText("$0.0296");
+  await expect(article).toContainText("$0.0148");
+  const goalOffer = article.getByRole("region", { name: "Goal pricing offer" });
+  await expect(goalOffer).toBeVisible();
+  await expect(goalOffer).toContainText("Pay half.");
+  await expect(goalOffer).toContainText("Choose Goal.");
+  await expect(goalOffer).toContainText("Coming soon");
+  await expect(goalOffer.locator(".billing-offer__number")).toHaveText("50%");
+  await expect(goalOffer.locator(".billing-offer__discount-label")).toHaveText("SAVE");
+  await expect(goalOffer.getByRole("link", { name: "Explore Goal Runs" })).toHaveCount(0);
+  await expect(goalOffer).toContainText("vs. One-shot-call");
+  await expect(goalOffer.locator('.billing-offer__badge svg[aria-hidden="true"]')).toBeVisible();
+  await expect(article).not.toContainText("Goal is currently half the price");
+  const successFeeNote = article.locator(".billing-note").filter({ hasText: "Task Success Fee" });
+  await expect(successFeeNote).toHaveText("Task Success Fee is an experimental, outcome-based fee shown for reference only. It is currently fully waived.");
+  await expect(successFeeNote).toHaveCSS("font-size", "14px");
+  await expect(successFeeNote.locator("strong")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Task Success Fee", exact: true })).toHaveCount(0);
+  await expect(page.locator('a[href="#task-success-fee"]')).toHaveCount(0);
+  const callingGuidance = "Choose Goal for batch and large-scale calling. Keep One-shot-call for development and testing.";
+  await expect(goalOffer).not.toContainText(callingGuidance);
+  await expect(article.locator(".billing-method-notes > p").first()).toHaveText(callingGuidance);
+  await expect(article).not.toContainText("provisional");
+  await expect(article).not.toContainText("Deepgram");
+  await expect(article).not.toContainText("ElevenLabs");
+  const markdown = await request.get("/billing.md");
+  expect(markdown.ok()).toBe(true);
+  const billingMarkdown = await markdown.text();
+  expect(billingMarkdown).toContain("$0.0296");
+  expect(billingMarkdown).toContain("$0.0148");
+  await expect(article.getByRole("columnheader", { name: "30 seconds", exact: true })).toBeVisible();
+  await expect(article.getByRole("columnheader", { name: "60 seconds", exact: true })).toBeVisible();
+  expect(billingMarkdown).toContain("60 seconds");
+  expect(billingMarkdown).toContain("Pay half.");
+  expect(billingMarkdown).toContain("Choose Goal.");
+  expect(billingMarkdown).not.toContain("Explore Goal Runs");
+  expect(billingMarkdown).toContain("You save $0.0644 on this 30-second call with Goal.");
+  await expect(article).toContainText("Domestic Carrier Fees are billed in whole minutes, rounded up");
+  await expect(article).toContainText("International Carrier Fees follow the carrier's applicable rates and billing increments; Model Fee rates remain unchanged.");
+  const examples = article.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "30 seconds", exact: true }) });
+  await expect(examples.getByRole("row").filter({ hasText: "Domestic outbound · One-shot-call" })).toContainText("$0.1288");
+  await expect(examples.getByRole("row").filter({ hasText: "Domestic outbound · Goal" })).toContainText("$0.0644");
+  await expect(examples.getByRole("row").filter({ hasText: "Inbound · Goal" })).toContainText("$0.0512");
+  for (const example of [
+    { mode: "Domestic outbound · One-shot-call", totals: ["$0.1288", "$0.2176"] },
+    { mode: "Domestic outbound · Goal", totals: ["$0.0644", "$0.1088"] },
+    { mode: "Inbound · Goal", totals: ["$0.0512", "$0.0956"] },
+  ]) {
+    await expect(examples.getByRole("row").filter({ hasText: example.mode }).getByRole("cell"))
+      .toHaveText([example.mode, ...example.totals]);
+  }
+  expect(billingMarkdown).toContain("Coming soon");
+  expect(billingMarkdown).toContain("Billing preview — coming soon");
+  expect(billingMarkdown).toContain("not yet in effect");
+  expect(billingMarkdown.split(callingGuidance)).toHaveLength(2);
+  expect(billingMarkdown).toContain("It is currently fully waived.");
+  expect(billingMarkdown.match(/Task Success Fee/g)).toHaveLength(1);
+  expect(billingMarkdown).not.toMatch(/any applicable Task Success Fee|Add Task Success Fee separately|Task Success Fee is charged only/);
+  expect(billingMarkdown).not.toContain("provisional");
+  expect(billingMarkdown).not.toMatch(/multiplier|standard model cost|provider cost|\$0\.0074|×4|×2/i);
+  expect(billingMarkdown).not.toMatch(/earlier billing|previously|same policy as before|existing rules|continue to apply/i);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole("button", { name: "Open navigation menu" }).click();
+  await expect(page.getByRole("link", { name: "Billing", exact: true }).last()).toBeVisible();
+});
+
+test("compares prices with stacked bars and accessible fee breakdowns", async ({ page, request }, testInfo) => {
+  const markdown = await request.get("/billing.md");
+  const text = await markdown.text();
+  expect(text).toContain("30-second domestic outbound call");
+  expect(text).toContain("$0.1288");
+  expect(text).toContain("$0.0644");
+  expect(text).toContain("$0.0296 × 3 = $0.0888");
+  expect(text).toContain("$0.0200/min × 1 min = $0.0200");
+  expect(text).not.toContain("0.5 min");
+  for (const method of ["POST /v2/calls", "POST /v1/goals/{goal_id}/runs", "client.calls.create(...)", "client.goals.run(...)"]) {
+    expect(text).toContain(method);
+    expect(text.split(method)).toHaveLength(2);
+  }
+  expect(text).toContain("no published Goal needed");
+  expect(text).not.toContain("POST /v1/calls");
+  expect(text.split("Idempotency-Key")).toHaveLength(3);
+  expect(text).toContain("`task`, one `phone`, and `result_schema`");
+  expect(text).toContain("TypeScript SDK 1.0");
+  expect(text).toContain("Publish a Goal in CALL-E Chat");
+
+  for (const width of [1280, 390, 320]) {
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/billing");
+      const offer = page.getByRole("region", { name: "Goal pricing offer" });
+      await expect(offer.locator(".billing-offer__badge")).toHaveText("Coming soon");
+      await offer.screenshot({ path: testInfo.outputPath(`billing-offer-${width}-${colorScheme}.png`) });
+      const comparison = page.getByRole("figure", { name: /30-second call.*Domestic outbound/ });
+      await expect(comparison).toBeVisible();
+      await expect(comparison).toContainText("Hover or tap a segment for its rate · Preview");
+      await expect(comparison).toContainText("Model Fee · / 10s");
+      await expect(comparison).toContainText("Carrier Fee · / min");
+      await expect(comparison.locator(".billing-comparison__bar--oneshot")).toBeVisible();
+      await expect(comparison.locator(".billing-comparison__bar--goal")).toBeVisible();
+      const goalRow = comparison.locator(".billing-comparison__row--goal");
+      const oneShotRow = comparison.locator(".billing-comparison__row--oneshot");
+      await expect(goalRow.locator(".billing-comparison__saving")).toHaveText("Half price");
+      await expect(goalRow.locator(".billing-comparison__saved")).toHaveText("You save$0.0644");
+      const goalTotal = goalRow.locator(".billing-comparison__total");
+      const oneShotTotal = oneShotRow.locator(".billing-comparison__total");
+      await expect(goalTotal).toHaveText("$0.0644");
+      await expect(oneShotTotal).toHaveText("$0.1288");
+      expect(await goalTotal.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)))
+        .toBeGreaterThan(await oneShotTotal.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)));
+      const goalModelColor = await goalRow.locator(".billing-comparison__model").evaluate((element) => getComputedStyle(element).backgroundColor);
+      const oneShotModelColor = await oneShotRow.locator(".billing-comparison__model").evaluate((element) => getComputedStyle(element).backgroundColor);
+      expect(goalModelColor).not.toBe(oneShotModelColor);
+      for (const row of [goalRow, oneShotRow]) {
+        expect(await row.locator(".billing-comparison__carrier").evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("repeating-linear-gradient");
+      }
+      const methodNotes = page.locator(".billing-method-notes");
+      await expect(methodNotes).toBeVisible();
+      await expect(comparison).not.toContainText("POST /v1/");
+      await expect(offer.locator(".billing-method-notes")).toHaveCount(0);
+      const offerBox = (await offer.boundingBox())!;
+      const notesBox = (await methodNotes.boundingBox())!;
+      expect(notesBox.y).toBeGreaterThanOrEqual(offerBox.y + offerBox.height);
+      for (const mode of [
+        { endpoint: "POST /v2/calls", sdk: "client.calls.create(...)", guide: "/calls", description: "no published Goal needed" },
+        { endpoint: "POST /v1/goals/{goal_id}/runs", sdk: "client.goals.run(...)", guide: "/goal-runs", description: "Publish a Goal in CALL-E Chat" },
+      ]) {
+        const note = methodNotes.locator("p").filter({ hasText: mode.sdk });
+        await expect(note).toBeVisible();
+        for (const value of [mode.endpoint, mode.sdk, mode.description]) await expect(note).toContainText(value);
+        await expect(note).toHaveCSS("font-size", "14px");
+        await expect(note.getByRole("link")).toHaveAttribute("href", mode.guide);
+      }
+      await methodNotes.screenshot({ path: testInfo.outputPath(`billing-method-notes-${width}-${colorScheme}.png`) });
+      const oneshot = (await comparison.locator(".billing-comparison__bar--oneshot").boundingBox())!;
+      const goal = (await comparison.locator(".billing-comparison__bar--goal").boundingBox())!;
+      expect(goal.width / oneshot.width).toBeCloseTo(0.5, 2);
+      expect(goal.x).toBeCloseTo(oneshot.x, 1);
+      expect(goal.height).toBeCloseTo(oneshot.height, 1);
+      for (const bar of await comparison.locator(".billing-comparison__bar").all()) {
+        const totalWidth = (await bar.boundingBox())!.width;
+        const modelWidth = (await bar.locator(".billing-comparison__model").boundingBox())!.width;
+        expect(modelWidth / totalWidth).toBeCloseTo(0.0888 / 0.1288, 2);
+      }
+      await comparison.screenshot({ path: testInfo.outputPath(`billing-stacks-${width}-${colorScheme}.png`) });
+      for (const price of [
+        { name: "One-shot-call", model: "$0.0888", carrier: "$0.0400", modelRate: "$0.0296", carrierRate: "$0.0400" },
+        { name: "Goal", model: "$0.0444", carrier: "$0.0200", modelRate: "$0.0148", carrierRate: "$0.0200" },
+      ]) {
+        for (const fee of [
+          { label: "Model Fee", rate: price.modelRate, unit: "10 seconds", usage: "3 × 10-second periods", cost: price.model, other: "Carrier Fee" },
+          { label: "Carrier Fee", rate: price.carrierRate, unit: "minute", usage: "1 minute (rounded up)", cost: price.carrier, other: "Model Fee" },
+        ]) {
+          const trigger = comparison.getByRole("button", { name: `${price.name} ${fee.label}: ${fee.rate} per ${fee.unit}. Show price details`, exact: true });
+          await trigger.hover();
+          const tooltip = page.getByRole("tooltip");
+          await expect(tooltip).toBeVisible();
+          for (const value of [fee.label, `${fee.rate} / ${fee.unit}`, fee.usage, fee.cost]) await expect(tooltip).toContainText(value);
+          await expect(tooltip).not.toContainText(fee.other);
+          const popup = (await page.locator(".billing-cost-tooltip").boundingBox())!;
+          expect(popup.x).toBeGreaterThanOrEqual(0);
+          expect(popup.x + popup.width).toBeLessThanOrEqual(width);
+          await page.screenshot({ path: testInfo.outputPath(`billing-details-${price.name}-${fee.label}-${width}-${colorScheme}.png`), animations: "disabled" });
+          await page.keyboard.press("Escape");
+          await expect(tooltip).toBeHidden();
+          await page.mouse.move(0, 0);
+        }
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    }
+  }
+
+  const goalButton = page.getByRole("button", { name: "Goal Model Fee: $0.0148 per 10 seconds. Show price details", exact: true });
+  await goalButton.focus();
+  await expect(page.getByRole("tooltip")).toContainText("$0.0148 / 10 seconds");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("tooltip")).toContainText("$0.0200 / minute");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tooltip")).toBeHidden();
+  await page.locator(".billing-method-notes").getByRole("link", { name: "Goal guide", exact: true }).click();
+  await expect(page).toHaveURL(/\/goal-runs$/);
+  await expect(page.getByRole("heading", { level: 1, name: /^Goal Runs/ })).toBeVisible();
+});
+
+test("opens and dismisses fee breakdowns by touch", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto("http://localhost:4174/billing");
+  const goal = page.getByRole("button", { name: "Goal Model Fee: $0.0148 per 10 seconds. Show price details", exact: true });
+  const carrier = page.getByRole("button", { name: "Goal Carrier Fee: $0.0200 per minute. Show price details", exact: true });
+  await goal.tap();
+  await expect(page.getByRole("tooltip")).toContainText("$0.0148 / 10 seconds");
+  await goal.tap();
+  await expect(page.getByRole("tooltip")).toBeHidden();
+  await goal.tap();
+  await expect(page.getByRole("tooltip")).toBeVisible();
+  await carrier.tap();
+  await expect(page.getByRole("tooltip")).toHaveCount(1);
+  await expect(page.getByRole("tooltip")).toContainText("$0.0200 / minute");
+  await expect(page.getByRole("tooltip")).toContainText("1 minute (rounded up)");
+  await expect(page.getByRole("tooltip")).not.toContainText("$0.0100");
+  await page.locator("h2#how-billing-works").tap();
+  await expect(page.getByRole("tooltip")).toBeHidden();
+  await context.close();
 });
 
 test("keeps the wide docs article and table of contents together", async ({
@@ -743,6 +971,43 @@ test("preserves authentication, webhook, and SDK guidance", async ({
   await expect(
     page.getByRole("link", { name: "CALLE-AI/server-sdk-python" }),
   ).toHaveAttribute("href", "https://github.com/CALLE-AI/server-sdk-python");
+});
+
+test("recommends Goal Runs for scale with upcoming pricing on the Calls guide", async ({ page, request }, testInfo) => {
+  const markdown = await request.get("/calls.md");
+  expect(markdown.ok()).toBe(true);
+  const text = await markdown.text();
+  for (const phrase of ["quick integration, development, and testing", "batch and large-scale calling", "50% less", "upcoming billing model", "This pricing is not yet in effect."]) {
+    expect(text).toContain(phrase);
+  }
+  expect(text).toContain("[Goal Runs](/goal-runs)");
+  expect(text).toContain("[upcoming billing model](/billing)");
+  expect(text).toContain("POST /v2/calls");
+  expect(text).not.toContain("POST /v1/calls");
+  expect(text).toContain("Each request creates one phone task");
+
+  for (const width of [1280, 390, 320]) {
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/calls");
+      const guidance = page.getByRole("complementary", { name: "Calling mode guidance" });
+      await expect(guidance).toBeVisible();
+      await expect(guidance).toContainText("POST /v2/calls");
+      await expect(guidance).toContainText("quick integration, development, and testing");
+      await expect(guidance).toContainText("50% less");
+      await expect(guidance).toContainText("This pricing is not yet in effect.");
+      await expect(guidance.getByRole("link", { name: "Goal Runs", exact: true })).toHaveAttribute("href", "/goal-runs");
+      await expect(guidance.getByRole("link", { name: "upcoming billing model" })).toHaveAttribute("href", "/billing");
+      const guidanceBox = (await guidance.boundingBox())!;
+      const inputsBox = (await page.getByRole("heading", { level: 2, name: /^Request contract/ }).boundingBox())!;
+      expect(guidanceBox.y + guidanceBox.height).toBeLessThan(inputsBox.y);
+      expect(guidanceBox.x).toBeGreaterThanOrEqual(0);
+      expect(guidanceBox.x + guidanceBox.width).toBeLessThanOrEqual(width);
+      expect(await guidance.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+      await guidance.screenshot({ path: testInfo.outputPath(`calls-guidance-${width}-${colorScheme}.png`) });
+    }
+  }
 });
 
 test("connects the legacy Calls guide to HTTP and related references", async ({

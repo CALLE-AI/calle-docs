@@ -1,0 +1,92 @@
+---
+title: Billing
+description: Preview the upcoming CALL-E billing model. These rates are not yet in effect.
+---
+
+import { ClockIcon } from "zudoku/icons";
+import { BillingComparison } from "../../src/components/BillingComparison.js";
+
+<section className="billing-highlight" aria-label="Billing preview">
+  <p className="billing-highlight__title">
+    <ClockIcon aria-hidden="true" />
+    <span>Billing preview — coming soon</span>
+  </p>
+  <div className="billing-highlight__body">
+    This billing model is under development and is not yet in effect. The rates
+    below are a preview; your current billing remains unchanged.
+  </div>
+</section>
+
+<section className="billing-offer" aria-label="Goal pricing offer">
+  <p className="billing-offer__badge"><ClockIcon aria-hidden="true" /><span>Coming soon</span></p>
+  <div className="billing-offer__hero">
+    <p className="billing-offer__headline"><span>Choose Goal.</span><span>Pay half.</span></p>
+    <div className="billing-offer__discount">
+      <p className="billing-offer__discount-label">SAVE</p>
+      <p className="billing-offer__number"><span>50</span><span className="billing-offer__percent">%</span></p>
+      <p className="billing-offer__comparison">vs. One-shot-call</p>
+    </div>
+  </div>
+  <BillingComparison>
+    <p>30-second domestic outbound call · US / CA · USD · Preview</p>
+    <p>One-shot-call: Model Fee $0.0296 × 3 = $0.0888; Carrier Fee $0.0400/min × 1 min = $0.0400; total $0.1288.</p>
+    <p>Goal: Model Fee $0.0148 × 3 = $0.0444; Carrier Fee $0.0200/min × 1 min = $0.0200; total $0.0644 (50% less).</p>
+    <p>You save $0.0644 on this 30-second call with Goal.</p>
+  </BillingComparison>
+</section>
+
+<div className="billing-note billing-method-notes">
+
+Choose Goal for batch and large-scale calling. Keep One-shot-call for development and testing.
+
+**One-shot-call:** Send `task`, one `phone`, and `result_schema` to `POST /v2/calls` with an `Idempotency-Key` header—no published Goal needed. TypeScript SDK 1.0: `client.calls.create(...)` · [One-shot-call guide](/calls).
+
+**Goal:** Publish a Goal in CALL-E Chat, then send `phone` and `variables` to `POST /v1/goals/{goal_id}/runs` with an `Idempotency-Key` header. TypeScript SDK: `client.goals.run(...)` · [Goal guide](/goal-runs).
+
+</div>
+
+## How billing works
+
+**Total cost = Carrier Fee + Model Fee**
+
+Under this model, you will pay Carrier Fee for telephone lines and Model Fee for combined model usage.
+All prices are in USD.
+
+<div className="billing-note">
+  Call preparation and pre-connection may use model resources.
+  Model fees may apply even if the call is not connected.
+</div>
+
+## Rates by calling mode
+
+Outbound supports One-shot-call and Goal; inbound supports Goal only.
+
+| Direction | Mode | Model Fee / 10 seconds | Carrier Fee / minute |
+| --- | --- | --- | --- |
+| Domestic outbound | One-shot-call | $0.0296 | $0.0400 |
+| Domestic outbound | Goal | $0.0148 | $0.0200 |
+| Inbound | Goal | $0.0148 | $0.0068 |
+
+**Coverage:** Domestic rates apply to the United States (US) and Canada (CA),
+with more regions planned.
+
+**Billing periods:** Model Fee uses 10-second periods, regardless of the agent's
+speaking time. Domestic Carrier Fees are billed in whole minutes, rounded up:
+both 30-second and 60-second calls are billed for one minute. International
+Carrier Fees follow the carrier's applicable rates and billing increments;
+Model Fee rates remain unchanged.
+
+## Examples
+
+Illustrative totals include Model Fee and Carrier Fee:
+
+| Call type and mode | 30 seconds | 60 seconds |
+| --- | --- | --- |
+| Domestic outbound · One-shot-call | **$0.1288** | **$0.2176** |
+| Domestic outbound · Goal | **$0.0644** | **$0.1088** |
+| Inbound · Goal | **$0.0512** | **$0.0956** |
+
+<div className="billing-note">
+  Task Success Fee is an experimental, outcome-based fee shown for reference
+  only. It is currently fully waived.
+</div>
