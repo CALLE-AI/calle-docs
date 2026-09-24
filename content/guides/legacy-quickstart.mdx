@@ -257,8 +257,12 @@ before starting a replacement. Do not delete a run directory to bypass this chec
 
 Stopping this process or reaching its five-minute polling timeout does not
 cancel a call already accepted by CALL-E. Neither example retries a failed
-create request automatically. An HTTP error is saved in `error.json`; see
-[Choose the next action](/errors#choose-the-next-action).
+create request automatically. Review the saved `error.json` before retrying:
+for a confirmed v1 creation rejection, resolve its cause and start a new attempt
+with a new key; the old key can replay the saved rejection. If acceptance is
+uncertain, preserve the original request and key. Follow the
+[v1 recovery table](/legacy-calls#recover-after-a-restart-or-lost-response)
+to choose the next action.
 
 For an executed `start` or a `resume`, an exit code of zero means a terminal
 response was retrieved. Read `status`,
