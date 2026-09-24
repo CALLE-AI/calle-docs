@@ -3,7 +3,7 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
-## September 24, 2026 — Updated Billing
+## 2026-09-24 — Updated Billing
 
 **Updated billing model:** Model Fee is **$0.0296 per 10 seconds** for One-shot-call
 and **$0.0148 per 10 seconds** for Goal. US / CA domestic outbound Carrier Fee is
@@ -20,7 +20,7 @@ experimental Task Success Fee remains fully waived.
 
 All prices are in USD.
 
-## September 23, 2026 — Calls & SDK 1.0
+## 2026-09-23 — Calls & SDK 1.0
 
 **Calls and SDK 1.0:** Single-target Calls are available through the production API and the TypeScript
 and Python 1.0.0 SDKs. Start with [Quickstart](/quickstart) or [SDKs](/sdks).
@@ -131,23 +131,7 @@ using the Goal Run's top-level `id` in the Goal Run polling URL and stop polling
 when `result` or `error` is non-null. The create request remains `phone` plus
 `variables`; it does not accept `call_id`.
 
-## September 22, 2026
-
-**Saved call results:** Added a [Python reader](/legacy-calls#read-a-saved-result) that
-displays task and recipient results separately alongside the call transcript.
-
-**Ruby Calls example:** Added a [standard-library HTTP quickstart](/legacy-quickstart#run-a-complete-example)
-that saves the request and Call ID, retrieves the result, and resumes without
-placing another call.
-
-**Calls API documentation:** Clarified the purchased-number requirement for batch
-calls, account-control errors and recovery, and how to retry an idempotent
-request while its original creation is still in progress.
-Also clarified [transcript retention and recording access](/legacy-calls#read-transcript-turns):
-saved transcripts are not automatically deleted, and recordings are available
-through Dashboard call details rather than the Calls API.
-
-## September 19, 2026 — Editable Prompts
+## 2026-09-19 — Editable Prompts
 
 **Editable prompt modules:** Customize Facts, Opening, Callee Identity Check,
 Identity Disclosure, First Sentence Upon Reaching Live Human, and Conversation
@@ -164,7 +148,7 @@ following reports of intermittent call delivery. The reported issue has not been
 reproduced after recent optimizations, and monitoring continues
 ([#121](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/121)).
 
-## September 14, 2026 — Billing & Concurrency
+## 2026-09-14 — Billing & Concurrency
 
 **Updated concurrent call limits:** The shared number pool supports 1 simultaneous
 call, purchased numbers support 10 simultaneous calls, and SIP integrations have
@@ -182,7 +166,7 @@ qualify as success. For example, a reservation task succeeds only when the reque
 booking is confirmed—not simply when someone answers or discusses availability.
 Call fees may still apply when those success criteria are not met.
 
-## September 10, 2026
+## 2026-09-10
 
 **Windows-compatible agent commands:** Updated agent integrations now run correctly
 in PowerShell and Command Prompt, fixing failures caused by Unix-only command
@@ -201,7 +185,7 @@ structured results directly, so MCP integrations can access their fields without
 parsing JSON from text blocks
 ([#158](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/158)).
 
-## September 7, 2026 — Number Verification
+## 2026-09-07 — Number Verification
 
 **Clearer call failure reporting:** Improved call failure details and corrected
 cases where platform or connection failures were reported as recipient declines
@@ -220,7 +204,7 @@ The shared number pool is intended only for development and testing; for
 production, use your own purchased numbers with completed KYC or connect through
 a SIP integration.
 
-## September 3, 2026 — Server SDK 0.7
+## 2026-09-03 — Server SDK 0.7
 
 **Server SDK 0.7.0:** The stable TypeScript and Python packages now include
 the Calls and Goal Runs client surfaces. Goal Run responses expose the nullable
@@ -228,7 +212,7 @@ the Calls and Goal Runs client surfaces. Goal Run responses expose the nullable
 available. The TypeScript SDK source is available under the MIT License at
 [CALLE-AI/server-sdk-typescript](https://github.com/CALLE-AI/server-sdk-typescript).
 
-## August 28, 2026 — Goal Call Analysis
+## 2026-08-28 — Goal Call Analysis
 
 **CLI supported regions discovery:** The CALL-E CLI now includes
 `calle regions list` for reviewing supported country, region, and language
@@ -238,7 +222,7 @@ additional setup requirements—before running `plan_call`.
 **Goal call analysis:** The Dashboard can now analyze Call Records associated
 with a Goal and provide recommendations for improving future calls.
 
-## August 21, 2026
+## 2026-08-21
 
 **Safer `calle call start` result handling:** CALL-E CLI and `@call-e/core` now recognize JSON results returned through MCP
 content blocks while preserving the original response. This prevents valid
@@ -262,7 +246,7 @@ already ended
 before the outbound call started
 ([#106](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/106)).
 
-## August 15, 2026 — Dashboard Upgrade
+## 2026-08-15 — Dashboard Upgrade
 
 **Clearer call plan CLI guidance:** The CLI documentation now points users to `calle call plan --help` to view the
 parameters supported by the `call plan` subcommand.
@@ -294,13 +278,13 @@ task, while uncertain call submissions are verified before retrying.
 calls, mislabel queued work, or leave the Dashboard out of sync. Stop outcomes
 now reflect confirmed results and preserve a task's true completion state.
 
-## August 11, 2026 — Dashboard API Keys
+## 2026-08-11 — Dashboard API Keys
 
 **Dashboard-issued API keys:** Developer API authentication now accepts the `iams_live_` API keys shown in
 the CALL-E dashboard. The server SDK configuration remains unchanged: pass the
 key through `CALLE_API_KEY`, and the SDK sends it as a Bearer credential.
 
-## July 29, 2026 — Terminal Webhooks
+## 2026-07-29 — Terminal Webhooks
 
 **Terminal webhook delivery:** Call tasks that include `webhook_url` now send terminal event notifications to
 that URL. Each notification includes a stable event id for idempotent
@@ -316,7 +300,7 @@ header event id with the body `id`. The Python and TypeScript SDKs keep their
 legacy signed-webhook helpers only for source compatibility and mark them
 deprecated.
 
-## July 22, 2026 — Simplified Goal Runs
+## 2026-07-22 — Simplified Goal Runs
 
 **Phone-only Goal Run requests in API 0.6:** Create Goal Run requests now use a top-level `phone` plus `variables`. The `target` wrapper and per-Run `region`, `locale`, and `display_name` fields have been removed. Voice region and callee locale are fixed by the published Goal; recipient names needed by the conversation belong in the Goal's input schema and are supplied through `variables`.
 
@@ -336,7 +320,7 @@ versions until the 0.6.0 release is published.
 
 4. Goal discovery: `GET /v1/goals` lists the authenticated owner's active, listed, published Goal interfaces with opaque cursor pagination. The API 0.5 SDK design adds `client.goals.list(...)` in both TypeScript and Python while keeping stable 0.2 packages Calls-only until a matching SDK minor is released.
 
-## July 21, 2026 — Goal Runs Preview
+## 2026-07-21 — Goal Runs Preview
 
 **Goal Runs API preview:** This preview includes:
 
@@ -350,7 +334,7 @@ versions until the 0.6.0 release is published.
 
 See [Goal Runs](/goal-runs) for request, polling, version-pinning, and SDK examples.
 
-## June 8, 2026 — Developer API & SDKs
+## 2026-06-08 — Developer API & SDKs
 
 **Developer API and server SDKs:** This release includes:
 
