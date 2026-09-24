@@ -427,19 +427,32 @@ test("opens and dismisses fee breakdowns by touch", async ({ browser }) => {
   await context.close();
 });
 
-test("limits changelog headings to release dates", async ({ page }) => {
+test("limits changelog headings to releases with optional feature themes", async ({ page }) => {
   await page.goto("/changelog");
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
-  expect(dates.length).toBeGreaterThan(0);
-  for (const date of dates) {
-    expect(date.trim()).toMatch(/^(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}$/);
-  }
+  expect(dates.map((date) => date.trim())).toEqual([
+    "2026-09-24 — Updated Billing",
+    "2026-09-23 — Calls & SDK 1.0",
+    "2026-09-19 — Editable Prompts",
+    "2026-09-14 — Billing & Concurrency",
+    "2026-09-10",
+    "2026-09-07 — Number Verification",
+    "2026-09-03 — Server SDK 0.7",
+    "2026-08-28 — Goal Call Analysis",
+    "2026-08-21",
+    "2026-08-15 — Dashboard Upgrade",
+    "2026-08-11 — Dashboard API Keys",
+    "2026-07-29 — Terminal Webhooks",
+    "2026-07-22 — Simplified Goal Runs",
+    "2026-07-21 — Goal Runs Preview",
+    "2026-06-08 — Developer API & SDKs",
+  ]);
   await expect(article.locator("h3, h4, h5, h6")).toHaveCount(0);
   await expect(page.locator('a[href="#api-versions-and-migration"]')).toHaveCount(0);
   await expect(article).toContainText("Calls and SDK 1.0:");
   await expect(article).toContainText("API versions and migration:");
-  await expect(article.getByRole("heading", { level: 2, name: /^September 24, 2026/ })).toBeVisible();
+  await expect(article.getByRole("heading", { level: 2, name: /^2026-09-24/ })).toBeVisible();
   for (const value of ["Updated Billing", "$0.0296 per 10 seconds", "$0.0148 per 10 seconds", "$0.0400/min", "$0.0200/min", "$0.1288 with One-shot-call", "$0.0644 with Goal", "excluding preparation usage", "Task Success Fee remains fully waived"]) {
     await expect(article).toContainText(value);
   }
