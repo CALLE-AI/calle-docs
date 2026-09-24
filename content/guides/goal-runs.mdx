@@ -5,13 +5,18 @@ description: Start outbound calls from a published Goal with one phone number an
 
 Start outbound calls from a published Goal when your application repeats the same validated phone workflow for different targets.
 
-**API 0.6** · **Server-side** · **Asynchronous**
+**Server-side** · **Asynchronous**
+
+Examples target the [current Developer API contract](/openapi/calle.openapi.yaml)
+and server SDKs `@call-e/calle@1.0.0` and `calle-ai==1.0.0`.
+See [API versions and migration](/changelog#api-versions-and-migration) for
+request and response changes.
 
 A Goal owns its call behavior, voice region and locale, input schema, result schema, and provider contract. A Goal Run supplies only one E.164 phone number, per-Run variables, and a business-stable idempotency key.
 
 CALL-E does not currently provide Developer API endpoints for inbound calling. Use the [CALL-E dashboard](https://dashboard.heycall-e.com/) to purchase numbers and configure Inbound Goals.
 
-Use the one-shot [Calls](/calls) API when each request needs new task text or a request-scoped result schema. Goal Runs are a separate contract and do not replace or reinterpret `/v1/calls`.
+Use [Calls](/calls) when each request needs new task text or a request-scoped result schema. Goal Runs use a published workflow with reusable inputs.
 
 For endpoint schemas and response models, browse the read-only [Goals API Reference](/api-reference/goals) and [Goal Runs API Reference](/api-reference/goal-runs).
 
@@ -26,7 +31,7 @@ Your application then performs the following steps for every order:
 1. Store the published `goal_id` in server-side configuration.
 2. Read the Goal interface and validate which `variables` the current published version expects.
 3. Create one Goal Run using the customer's E.164 phone number, order-specific variables, and the order event's stable idempotency key.
-4. Poll until the Goal Run returns either `result` or `error`.
+4. Poll until `result_status` is no longer `pending`.
 5. Update the fulfillment system directly from `result`, for example by confirming the delivery or opening a rescheduling task.
 
 This guide uses that delivery-confirmation workflow throughout. Phone numbers remain placeholders so examples cannot accidentally call a real recipient.
@@ -224,6 +229,9 @@ The first accepted request and an exact idempotent replay both return `201 Creat
   "run_id": "run_delivery_ord_8472",
   "call_id": null,
   "status": "queued",
+  "call_outcome": null,
+  "result_status": "pending",
+  "transcript": [],
   "run_spec": {
     "id": "rspec_delivery_v4",
     "version": 4
@@ -256,7 +264,7 @@ curl "https://api.heycall-e.com/v1/goals/${CALLE_GOAL_ID}/runs/${GOAL_RUN_ID}" \
 
 `GET /v1/goals/{goal_id}/runs/{goal_run_id}` only reads persisted facts. It does not dispatch work, move the Goal's published pointer, or start result materialization.
 
-The response deliberately has one completion rule: stop polling when either `result` or `error` is non-null. `status` describes the telephone execution, so a completed call can briefly return `result: null, error: null` while CALL-E parses and saves the structured result.
+Stop polling when `result_status` is no longer `pending`. `call_outcome` describes the telephone outcome separately. No-answer, busy and declined outcomes use `status: completed` and do not populate `error`. A completed execution can still have a pending business result.
 
 ```json
 {
@@ -266,6 +274,9 @@ The response deliberately has one completion rule: stop polling when either `res
   "run_id": "run_delivery_ord_8472",
   "call_id": "calling_call_delivery_ord_8472",
   "status": "completed",
+  "call_outcome": "completed",
+  "result_status": "available",
+  "transcript": [{"speaker": "user", "offset_seconds": 12, "text": "Can you deliver after 5 PM on July 24?"}],
   "run_spec": {
     "id": "rspec_delivery_v4",
     "version": 4
@@ -280,21 +291,26 @@ The response deliberately has one completion rule: stop polling when either `res
 }
 ```
 
-When parsing succeeds, `result` is the exact dynamic object described by the Goal's `result_schema`. When anything prevents a usable result, CALL-E returns one `error` object instead:
+When parsing succeeds, `result` is the exact object described by the Goal's `result_schema`, with `result_status: available`. If evidence is insufficient and the published instructions/schema provide no valid fallback, return `result_status: unavailable` and no technical error:
 
 ```json
 {
-  "status": "failed",
+  "status": "completed",
+  "call_outcome": "no_answer",
+  "result_status": "unavailable",
+  "transcript": [],
   "result": null,
-  "error": {
-    "code": "no_answer",
-    "message": "No human answered the call.",
-    "detail_code": "no_human_answered"
-  }
+  "error": null
 }
 ```
 
-Use `error.code` for application logic and `error.message` for logs or operators. The possible Goal Run error codes are `call_failed`, `no_answer`, `declined`, `timed_out`, `canceled`, `result_invalid`, `result_unavailable`, and `result_failed`.
+Technical failures use `error.code`: `call_failed`, `timed_out`, `result_invalid`, or `result_failed`. Keep `error.message` for logs or operators. Cancellation has `result_status: not_applicable` and no error. An unavailable business result is final even when both result and error are null.
+
+Goal Runs also always include a top-level `transcript` array using the same
+[turn structure as Calls](/calls#transcript): `speaker`, `offset_seconds`, and
+`text`. It is independent of the published result schema and remains available
+after execution ends even when the business result is pending, unavailable, or
+failed. Before execution ends or when no transcript is available, it is `[]`.
 
 <a id="schema-ownership"></a>
 
@@ -340,8 +356,9 @@ See [Errors](/errors) for the HTTP error catalog. HTTP errors mean the API reque
 
 ## SDK examples
 
-The following methods are available in the stable TypeScript and Python `0.7.0`
-packages.
+Use TypeScript and Python SDK `1.0.0` for these examples. SDK 0.7.x wait helpers
+wait for a non-null result or error and can time out on a final unavailable result.
+Upgrade or poll the REST response using `result_status`; do not redial on timeout.
 
 REST responses and Python Goal dictionaries use snake_case. The TypeScript SDK
 maps these fields to camelCase:
@@ -455,4 +472,4 @@ created_and_completed = client.goals.run_and_wait(
 )
 ```
 
-`waitForResult` and `wait_for_result` return when either `result` or `error` becomes non-null. A terminal failure still returns the complete Goal Run object; polling timeout continues to use each SDK's existing timeout exception.
+`waitForResult` and `wait_for_result` return when `result_status` is no longer `pending`, including unavailable results with no error. A technical failure still returns the complete Goal Run object; polling timeout continues to use each SDK's existing timeout exception.

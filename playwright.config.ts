@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env.DOCS_PREVIEW_PORT ?? 4174);
+
 export default defineConfig({
   testDir: "./tests",
   outputDir: "./artifacts/docs-site-test-results",
@@ -8,7 +10,7 @@ export default defineConfig({
     timeout: 10_000,
   },
   use: {
-    baseURL: "http://localhost:4174",
+    baseURL: `http://localhost:${port}`,
     trace: "retain-on-failure",
   },
   projects: [
@@ -18,8 +20,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm run preview --port 4174",
-    url: "http://localhost:4174",
+    command: `pnpm run preview --port ${port}`,
+    url: `http://localhost:${port}`,
     env: {
       ZUDOKU_DISABLE_UPDATE_CHECK: "1",
     },

@@ -39,7 +39,7 @@ import { BillingComparison } from "../../src/components/BillingComparison.js";
 
 Choose Goal for batch and large-scale calling. Keep One-shot-call for development and testing.
 
-**One-shot-call:** Send a `task` describing what to do to `POST /v1/calls`—no published Goal needed. TypeScript SDK: `client.calls.create(...)` · [One-shot-call guide](/calls).
+**One-shot-call:** Send `task`, one `phone`, and `result_schema` to `POST /v2/calls` with an `Idempotency-Key` header—no published Goal needed. TypeScript SDK 1.0: `client.calls.create(...)` · [One-shot-call guide](/calls).
 
 **Goal:** Publish a Goal in CALL-E Chat, then send `phone` and `variables` to `POST /v1/goals/{goal_id}/runs` with an `Idempotency-Key` header. TypeScript SDK: `client.goals.run(...)` · [Goal guide](/goal-runs).
 

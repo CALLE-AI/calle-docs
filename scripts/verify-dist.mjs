@@ -5,9 +5,16 @@ import { fileURLToPath } from "node:url";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const docsRoot = resolve(scriptDir, "..");
 const distRoot = resolve(docsRoot, "dist");
+const docsOrigin = (process.env.ZUDOKU_PUBLIC_DOCS_ORIGIN ?? "https://docs.heycall-e.com").replace(/\/$/, "");
 
 const guides = [
   { slug: "quickstart", title: "Quickstart" },
+  { slug: "migration", title: "Migration guide" },
+  { slug: "retirement", title: "Legacy API retirement" },
+  { slug: "legacy-quickstart", title: "Legacy Quickstart" },
+  { slug: "legacy-calls", title: "Legacy Calls" },
+  { slug: "legacy-webhooks", title: "Legacy Webhooks" },
+  { slug: "legacy-sdks", title: "Legacy SDKs" },
   { slug: "authentication", title: "Authentication" },
   { slug: "calls", title: "Calls" },
   { slug: "regions", title: "Regions & languages" },
@@ -52,6 +59,10 @@ const apiInfoHtml = readRequired(
 const apiCallsHtml = readRequired(
   "api-reference/calls.html",
   "Calls API Reference",
+);
+const apiLegacyCallsHtml = readRequired(
+  "api-reference/legacy-calls.html",
+  "Legacy Calls API Reference",
 );
 const apiGoalsHtml = readRequired(
   "api-reference/goals.html",
@@ -115,7 +126,7 @@ for (const guide of guides) {
   if (!llmsFull.includes(`# ${guide.title}`)) {
     throw new Error(`llms-full.txt does not contain ${guide.title}.`);
   }
-  if (!sitemap.includes(`<loc>https://docs.heycall-e.com/${guide.slug}</loc>`)) {
+  if (!sitemap.includes(`<loc>${docsOrigin}/${guide.slug}</loc>`)) {
     throw new Error(`sitemap.xml does not contain /${guide.slug}.`);
   }
 }
@@ -149,7 +160,9 @@ if (
 
 if (
   !apiCallsHtml.includes("Create Call") ||
-  !apiCallsHtml.includes("List Call Events")
+  !apiCallsHtml.includes("List Events") ||
+  !apiCallsHtml.includes("Cancel Call") ||
+  !apiLegacyCallsHtml.includes("deprecated")
 ) {
   throw new Error("Calls API Reference is missing prerendered operations.");
 }

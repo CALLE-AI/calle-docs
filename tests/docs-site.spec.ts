@@ -3,6 +3,12 @@ import { extractRegions, REGIONS_README_URL } from "../src/regions.mjs";
 
 const docsPages = [
   { path: "/quickstart", heading: "Quickstart" },
+  { path: "/migration", heading: "Migration guide" },
+  { path: "/retirement", heading: "Legacy API retirement" },
+  { path: "/legacy-quickstart", heading: "Legacy Quickstart" },
+  { path: "/legacy-calls", heading: "Legacy Calls" },
+  { path: "/legacy-webhooks", heading: "Legacy Webhooks" },
+  { path: "/legacy-sdks", heading: "Legacy SDKs" },
   { path: "/authentication", heading: "Authentication" },
   { path: "/calls", heading: "Calls" },
   { path: "/regions", heading: "Regions & languages" },
@@ -15,7 +21,7 @@ const docsPages = [
 ];
 
 const guideNavigationItems = docsPages.filter(
-  ({ path }) => path !== "/changelog" && path !== "/billing",
+  ({ path }) => ["/quickstart", "/authentication", "/calls", "/regions", "/goal-runs", "/webhooks", "/errors", "/sdks"].includes(path),
 );
 
 test("serves prerendered guides on clean URLs", async ({ page, request }) => {
@@ -35,14 +41,14 @@ test("serves prerendered guides on clean URLs", async ({ page, request }) => {
   await expect(
     page.getByRole("link", { name: "API Reference", exact: true }).first(),
   ).toHaveAttribute("href", "/api-reference");
-  const coverageLink = page.getByRole("link", { name: /^Regions & languages/ });
+  const coverageLink = page.locator("main").getByRole("link", { name: "Regions & languages", exact: true });
   await expect(coverageLink).toBeVisible();
   await expect(coverageLink).toHaveAttribute(
     "href",
     "/regions",
   );
   await expect(
-    page.locator("pre").filter({ hasText: "pnpm add @call-e/calle" }).first(),
+    page.locator("pre").filter({ hasText: 'CALLE_BASE_URL="https://api.heycall-e.com"' }).first(),
   ).toBeVisible();
   await expect(page.locator("code.shiki.not-inline").first()).toHaveCSS(
     "background-color",
@@ -294,11 +300,15 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
   expect(text).toContain("$0.0296 × 3 = $0.0888");
   expect(text).toContain("$0.0200/min × 1 min = $0.0200");
   expect(text).not.toContain("0.5 min");
-  for (const method of ["POST /v1/calls", "POST /v1/goals/{goal_id}/runs", "client.calls.create(...)", "client.goals.run(...)", "Idempotency-Key"]) {
+  for (const method of ["POST /v2/calls", "POST /v1/goals/{goal_id}/runs", "client.calls.create(...)", "client.goals.run(...)"]) {
     expect(text).toContain(method);
     expect(text.split(method)).toHaveLength(2);
   }
   expect(text).toContain("no published Goal needed");
+  expect(text).not.toContain("POST /v1/calls");
+  expect(text.split("Idempotency-Key")).toHaveLength(3);
+  expect(text).toContain("`task`, one `phone`, and `result_schema`");
+  expect(text).toContain("TypeScript SDK 1.0");
   expect(text).toContain("Publish a Goal in CALL-E Chat");
 
   for (const width of [1280, 390, 320]) {
@@ -340,7 +350,7 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
       const notesBox = (await methodNotes.boundingBox())!;
       expect(notesBox.y).toBeGreaterThanOrEqual(offerBox.y + offerBox.height);
       for (const mode of [
-        { endpoint: "POST /v1/calls", sdk: "client.calls.create(...)", guide: "/calls", description: "no published Goal needed" },
+        { endpoint: "POST /v2/calls", sdk: "client.calls.create(...)", guide: "/calls", description: "no published Goal needed" },
         { endpoint: "POST /v1/goals/{goal_id}/runs", sdk: "client.goals.run(...)", guide: "/goal-runs", description: "Publish a Goal in CALL-E Chat" },
       ]) {
         const note = methodNotes.locator("p").filter({ hasText: mode.sdk });
@@ -535,7 +545,7 @@ test("publishes non-empty Markdown and LLM discovery files", async ({
   expect(markdown.status()).toBe(200);
   expect(markdown.headers()["content-type"]).toContain("text/markdown");
   expect(await markdown.text()).toMatch(
-    /^# Quickstart[\s\S]+pnpm add @call-e\/calle/,
+    /^# Quickstart[\s\S]+https:\/\/test-api\.heycall-e\.com/,
   );
 
   const llms = await request.get("/llms.txt");
@@ -654,6 +664,18 @@ test("renders every migrated guide from its file route", async ({ page }) => {
     await expect(
       page.locator("h1").filter({ hasText: guide.heading }),
     ).toBeVisible();
+    if (["/authentication", "/legacy-calls", "/sdks", "/legacy-webhooks"].includes(guide.path)) {
+      for (const language of ["Python", "TypeScript"]) {
+        await expect(page.locator(".code-block-wrapper > div:first-child")
+          .filter({ hasText: new RegExp(`${language}$`) }).first()).toBeVisible();
+      }
+      await expect(page.locator("p")
+        .filter({ hasText: /^(Python|TypeScript|Example output):$/ })).toHaveCount(0);
+    }
+    if (guide.path === "/legacy-quickstart") {
+      await expect(page.locator(".code-block-wrapper > div:first-child")
+        .filter({ hasText: /Example output$/ })).toHaveCount(1);
+    }
   }
 });
 
@@ -733,20 +755,99 @@ test("uses the CALL-E Web palette for docs chrome", async ({ page }) => {
 test("keeps quickstart requests minimal and safe to copy", async ({ page }) => {
   await page.goto("/quickstart");
 
+
   const minimumRequest = page
     .locator("pre")
-    .filter({ hasText: /"task":\s*"[^"]*<E164_PHONE>[^"]*"/ })
+    .filter({ hasText: '"phone": "<AUTHORIZED_E164_PHONE>"' })
     .first();
   await expect(minimumRequest).toBeVisible();
   await expect(minimumRequest).not.toContainText('"recipient"');
   await expect(minimumRequest).not.toContainText('"recipients"');
+  await expect(minimumRequest).toContainText('"result_schema"');
+  await expect(minimumRequest).toContainText("Idempotency-Key:");
   await expect(page.getByText("+14155550100")).toHaveCount(0);
   await expect(page.getByText("+8613800000000")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Ruby HTTP example" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Ruby example", exact: true })).toHaveAttribute(
-    "href", "https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.rb",
-  );
+  await expect(page.locator("main")).toContainText('result_status == "unavailable"');
+  await expect(page.locator("main")).toContainText("call_id");
 
+});
+
+test("disables code tabs until their interaction is ready", async ({ page }) => {
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
+  await page.route("**/assets/*.js", async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto("/legacy-quickstart#run-a-complete-example", { waitUntil: "commit" });
+    const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
+    const complete = page.locator("fieldset").filter({ has: page.getByRole("tab", { name: "Ruby", exact: true }) });
+    const python = complete.getByRole("tab", { name: "Python", exact: true });
+    await expect(ruby).toBeVisible();
+    await expect(ruby).toBeDisabled();
+    await expect(python).toBeDisabled();
+    for (const label of ["Create a client", "Create and wait", "Read the result"]) {
+      const example = page.getByRole("group", { name: label, exact: true });
+      await expect(example.getByRole("tab", { name: "Python", exact: true })).toBeDisabled();
+      await expect(example.getByRole("button", { name: "Copy code", exact: true }).first()).toBeDisabled();
+    }
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+      'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
+    );
+    releaseScripts();
+    const result = page.getByRole("group", { name: "Read the result", exact: true });
+    await result.getByRole("tab", { name: "Python", exact: true }).click();
+    await expect(result.getByRole("tab", { name: "Python", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(ruby).toBeEnabled();
+    await ruby.click();
+    await expect(ruby).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toBeVisible();
+    await ruby.press("ArrowLeft");
+    await expect(python).toBeFocused();
+    await expect(python).toHaveAttribute("aria-selected", "true");
+  } finally {
+    releaseScripts();
+  }
+});
+
+test("keeps SDK language, code, and output together across quickstart steps", async ({ page, context }, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  for (const width of [1280, 390]) {
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/legacy-quickstart#read-the-result");
+      const client = page.getByRole("group", { name: "Create a client", exact: true });
+      const result = page.getByRole("group", { name: "Read the result", exact: true });
+      await expect(result.getByRole("tab", { name: "TypeScript", exact: true })).toHaveAttribute("aria-selected", "true");
+      await client.getByRole("tab", { name: "Python", exact: true }).click();
+      for (const label of ["Create a client", "Create and wait", "Read the result"]) {
+        const example = page.getByRole("group", { name: label, exact: true });
+        await expect(example.getByRole("tab", { name: "Python", exact: true })).toHaveAttribute("aria-selected", "true");
+        await expect(example.getByRole("tabpanel")).toHaveCount(1);
+      }
+      for (const [language, field] of [["Python", "task_completed"], ["TypeScript", "taskCompleted"]]) {
+        const panel = result.getByRole("tabpanel", { name: language, exact: true });
+        await expect(panel.locator("code.shiki")).toHaveCount(2);
+        const snippets = await panel.locator("code.shiki").allTextContents();
+        expect(snippets[0]).toContain(language === "Python" ? 'print(call["status"])' : "console.log(call.status)");
+        expect(JSON.parse(snippets[1])[field]).toBe(true);
+        for (const index of [0, 1]) {
+          await panel.getByRole("button", { name: "Copy code", exact: true }).nth(index).click();
+          expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippets[index]);
+        }
+        if (language === "Python") {
+          await result.screenshot({ path: testInfo.outputPath(`sdk-result-${width}-${colorScheme}.png`) });
+          await result.getByRole("tab", { name: "Python", exact: true }).press("ArrowLeft");
+          await expect(result.getByRole("tab", { name: "TypeScript", exact: true })).toBeFocused();
+          await expect(client.getByRole("tab", { name: "TypeScript", exact: true })).toHaveAttribute("aria-selected", "true");
+        }
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  }
 });
 
 test("switches complete examples without a separate Ruby contents entry", async ({
@@ -763,19 +864,21 @@ test("switches complete examples without a separate Ruby contents entry", async 
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme });
     const dark = colorScheme === "dark";
-    await page.goto("/quickstart#run-a-complete-example");
-    const python = page.getByRole("tab", { name: "Python", exact: true });
+    await page.goto("/legacy-quickstart#run-a-complete-example");
+    const complete = page.locator("fieldset").filter({ has: page.getByRole("tab", { name: "Ruby", exact: true }) });
+    const python = complete.getByRole("tab", { name: "Python", exact: true });
     const ruby = page.getByRole("tab", { name: "Ruby", exact: true });
     await expect(python).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toContainText(
       'python examples/calls.py start ../calle-run --phone "$CALLE_TEST_PHONE"',
     );
+    await expect(ruby).toBeEnabled();
     await ruby.click();
     await expect(ruby).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("tabpanel", { name: "Ruby", exact: true })).toContainText(
       "ruby examples/calls.rb start ../calle-ruby-run --execute --confirm-authorized-recipient",
     );
-    await expect(page.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
+    await expect(complete.getByRole("tabpanel", { name: "Python", exact: true })).toBeHidden();
     const codeTabs = page.locator(".code-block-wrapper").filter({ has: ruby });
     const ordinaryCode = page.locator("pre > .code-block-wrapper").first();
     for (const block of [ordinaryCode, codeTabs]) {
@@ -820,9 +923,9 @@ test("switches complete examples without a separate Ruby contents entry", async 
     await codeTabs.scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`example-tabs-${width}-${colorScheme}.png`) });
   }
-  await page.goto("/quickstart#ruby-http-example");
+  await page.goto("/legacy-quickstart#ruby-http-example");
   await expect(page.locator("#ruby-http-example")).toHaveCount(1);
-  for (const route of ["/quickstart.md", "/llms-full.txt"]) {
+  for (const route of ["/legacy-quickstart.md", "/llms-full.txt"]) {
     const result = await request.get(route);
     expect(result.ok()).toBe(true);
     const text = await result.text();
@@ -844,7 +947,7 @@ test("preserves authentication, webhook, and SDK guidance", async ({
     page.getByRole("link", { name: "Webhooks", exact: true }).first(),
   ).toHaveAttribute("href", "/webhooks");
 
-  await page.goto("/webhooks");
+  await page.goto("/legacy-webhooks");
   await expect(
     page.locator("pre").filter({
       hasText: /"recipients"[\s\S]*"attempts"[\s\S]*"provider_call_id"/,
@@ -856,7 +959,7 @@ test("preserves authentication, webhook, and SDK guidance", async ({
   ).toBeVisible();
   await expect(page.getByText(/cryptographic proof of the sender/)).toBeVisible();
 
-  await page.goto("/sdks");
+  await page.goto("/legacy-sdks");
   await expect(
     page.getByRole("link", { name: "CALLE-AI/server-sdk-typescript" }),
   ).toHaveAttribute(
@@ -879,6 +982,9 @@ test("recommends Goal Runs for scale with upcoming pricing on the Calls guide", 
   }
   expect(text).toContain("[Goal Runs](/goal-runs)");
   expect(text).toContain("[upcoming billing model](/billing)");
+  expect(text).toContain("POST /v2/calls");
+  expect(text).not.toContain("POST /v1/calls");
+  expect(text).toContain("Each request creates one phone task");
 
   for (const width of [1280, 390, 320]) {
     for (const colorScheme of ["light", "dark"] as const) {
@@ -887,14 +993,14 @@ test("recommends Goal Runs for scale with upcoming pricing on the Calls guide", 
       await page.goto("/calls");
       const guidance = page.getByRole("complementary", { name: "Calling mode guidance" });
       await expect(guidance).toBeVisible();
-      await expect(guidance).toContainText("POST /v1/calls");
+      await expect(guidance).toContainText("POST /v2/calls");
       await expect(guidance).toContainText("quick integration, development, and testing");
       await expect(guidance).toContainText("50% less");
       await expect(guidance).toContainText("This pricing is not yet in effect.");
       await expect(guidance.getByRole("link", { name: "Goal Runs", exact: true })).toHaveAttribute("href", "/goal-runs");
       await expect(guidance.getByRole("link", { name: "upcoming billing model" })).toHaveAttribute("href", "/billing");
       const guidanceBox = (await guidance.boundingBox())!;
-      const inputsBox = (await page.getByRole("heading", { level: 2, name: /^Call inputs/ }).boundingBox())!;
+      const inputsBox = (await page.getByRole("heading", { level: 2, name: /^Request contract/ }).boundingBox())!;
       expect(guidanceBox.y + guidanceBox.height).toBeLessThan(inputsBox.y);
       expect(guidanceBox.x).toBeGreaterThanOrEqual(0);
       expect(guidanceBox.x + guidanceBox.width).toBeLessThanOrEqual(width);
@@ -904,20 +1010,20 @@ test("recommends Goal Runs for scale with upcoming pricing on the Calls guide", 
   }
 });
 
-test("connects the Calls guide to HTTP and related references", async ({
+test("connects the legacy Calls guide to HTTP and related references", async ({
   page,
 }) => {
-  await page.goto("/calls");
+  await page.goto("/legacy-calls");
 
   const callsBody = page.locator('[data-pagefind-body="true"]');
   await expect(
-    callsBody.locator('p a[href="/api-reference/calls"]'),
+    callsBody.locator('p a[href="/api-reference/legacy-calls"]'),
   ).toBeVisible();
   await expect(
     callsBody.locator('p a[href="/errors"]'),
   ).toBeVisible();
   await expect(
-    callsBody.locator('p a[href="/webhooks"]'),
+    callsBody.locator('p a[href="/legacy-webhooks"]'),
   ).toBeVisible();
 
   await expect(
@@ -980,7 +1086,7 @@ test("connects the Calls guide to HTTP and related references", async ({
     page.getByRole("heading", { name: "Accepted call execution outcomes" }),
   ).toBeVisible();
   const callsOutcomeWarning = page.locator("main p").filter({
-    hasText: "do not define Calls API",
+    hasText: "do not define legacy call-task",
   });
   await expect(callsOutcomeWarning).toContainText(
     "keep the business outcome unresolved",
@@ -993,17 +1099,18 @@ test("connects the Calls guide to HTTP and related references", async ({
 test("links result examples to task completion and endpoint classification", async ({
   page,
 }) => {
-  for (const route of ["/quickstart", "/webhooks"]) {
+  for (const route of ["/legacy-quickstart", "/legacy-webhooks"]) {
     await page.goto(route);
-    await page.locator('p a[href="/calls#task-completion"]').first().click();
-    await expect(page).toHaveURL(/\/calls#task-completion$/);
+    await expect(page.getByTestId("theme-menu-trigger")).toHaveAttribute("aria-haspopup", "menu");
+    await page.locator('p a[href="/legacy-calls#task-completion"]').first().click();
+    await expect(page).toHaveURL(/\/legacy-calls#task-completion$/);
     await expect(
       page.getByRole("heading", { name: "Task completion" }),
     ).toBeVisible();
   }
 
   await page.getByRole("link", { name: "custom answered_by example" }).click();
-  await expect(page).toHaveURL(/\/calls#classify-the-final-endpoint$/);
+  await expect(page).toHaveURL(/\/legacy-calls#classify-the-final-endpoint$/);
   await expect(
     page.getByRole("heading", { name: "Classify the final endpoint" }),
   ).toBeVisible();
@@ -1056,11 +1163,22 @@ test("renders a read-only OpenAPI reference", async ({ page }) => {
     page.locator("h2#create-call"),
   ).toBeVisible();
   await expect(
-    page.locator("h2#list-call-events"),
+    page.locator("h2#list-events"),
   ).toBeVisible();
   await expect(page.getByText("POST").first()).toBeVisible();
   await expect(page.getByText("Try it", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Send Request", { exact: true })).toHaveCount(0);
+
+  await expect(page.locator("h2#get-call")).toBeVisible();
+  await expect(page.locator("h2#cancel-call")).toBeVisible();
+  await expect(page.locator("main").getByText("deprecated", { exact: true })).toHaveCount(0);
+
+  await page.goto("/api-reference/legacy-calls");
+  await expect(page.locator("main").getByText("deprecated", { exact: true })).toHaveCount(3);
+  await expect(page.locator('nav[class*="overflow-y-auto"]').getByText("Legacy Calls (Deprecated)", { exact: true })).toBeVisible();
+  const retirementLink = page.locator("header").getByRole("link", { name: "View retirement details" });
+  await retirementLink.click();
+  await expect(page).toHaveURL(/\/retirement$/);
 
   await page.goto("/api-reference/webhooks");
   await expect(
@@ -1107,4 +1225,44 @@ test("keeps the guide usable on a narrow screen", async ({ page }) => {
     window.scrollTo(0, document.documentElement.scrollHeight);
   });
   await expect(page.getByTestId("scroll-to-top")).toHaveCSS("display", "none");
+});
+
+test("keeps retry tables and API operations within the mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const [path, name] of [
+    ["/calls#idempotency", "Call retry decisions"],
+    ["/errors#choose-the-next-action", "Error recovery decisions"],
+  ]) {
+    await page.goto(path);
+    const region = page.getByRole("region", { name });
+    await region.scrollIntoViewIfNeeded();
+    await expect(region).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+    const hasOverflow = await region.evaluate((element) => element.scrollWidth > element.clientWidth);
+    if (hasOverflow) {
+      await region.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect.poll(() => region.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    }
+  }
+
+  await page.goto("/api-reference/calls");
+  await expect(page.locator("h2#create-call")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+
+test("publishes production SDK installation and readiness guidance", async ({ page }) => {
+  await page.goto("/sdks");
+  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle@1.0.0" })).toBeVisible();
+  await expect(page.locator("pre").filter({ hasText: "pip install calle-ai==1.0.0" })).toBeVisible();
+  await expect(page.locator("main")).toContainText("resultStatus");
+  await expect(page.locator("main")).not.toContainText("These packages have not been published");
+  await page.goto("/migration");
+  await expect(page.locator("main")).toContainText("Goal Run users also need the new wait helper");
+  await page.goto("/calls");
+  await expect(page.locator("main")).toContainText("call_id");
+  await expect(page.locator("main")).not.toContainText("unreleased response additions");
 });

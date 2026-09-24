@@ -1,0 +1,110 @@
+---
+title: Migration guide
+description: Update call inputs, result handling, webhooks, and SDKs without duplicating calls.
+---
+
+Move an existing call-task integration to the single-target Calls API.
+Test the new integration before moving production traffic. Goal Run endpoints
+and request shapes are unchanged; their result readiness rule has changed. See the [retirement notice](/retirement) for the
+legacy interface's planned support deadline.
+
+Calls and SDK 1.0 are available in production. Install the new SDK only after
+updating Calls inputs and response handling. Legacy `calls` methods in SDK 0.7.x
+use the old interface and cannot read new Call IDs.
+
+**Goal Run users also need the new wait helper.** SDK 0.7.x waits for result or
+error to become non-null, which can time out on a final unavailable result.
+Upgrade to 1.0, or poll the REST resource until `result_status` is not `pending`.
+An unavailable result is not a technical error and must not trigger an automatic redial.
+
+## What changes
+
+<div className="comparison-table" role="region" aria-label="Call contract comparison" tabIndex={0}>
+
+| Legacy call tasks | Calls | Required migration |
+| --- | --- | --- |
+| `/v1/calls`, HTTP `201` | `/v2/calls`, HTTP `202` | Treat create as acceptance, then wait. |
+| Optional inferred target or `recipients[].phones` | Required `phone`; optional `region` and `locale` | Send one destination. Omitted hints are inferred; phone/region conflicts require corrected input. |
+| Optional idempotency key | Required `Idempotency-Key` | Save the key and original request before submission. |
+| Optional nested/array result schema | Required closed scalar-object schema | Flatten fields; do not silently discard needed information. |
+| `structured_result` | `result` | Update response parsing. |
+| `failure_code`, `failure_message` | `error.code`, `error.message`, `error.detail_code` | Update error handling and retry decisions. |
+| Wait for terminal `status` | Wait until `result_status` is not `pending`. | Use the readiness rule for the deployed contract, not just telephone completion. |
+| Top-level summary and completion fields | Business fields in `result_schema` | Ask for the summary or business flag explicitly. |
+| `recipients[].attempts[].transcript_turns` | Fixed top-level `transcript` | Read the recorded turns independently of business result availability. |
+| Provider attempt details | Not in the Calls response | Resolve this dependency before migrating that workflow. |
+
+</div>
+
+## Before and after
+
+The same single-recipient intention has different request shapes. These are
+request-body examples; use a stable idempotency header for the new request.
+
+**Before**
+
+```json
+{
+  "task": "Ask in English whether tomorrow's 2 PM to 4 PM delivery window is confirmed.",
+  "recipients": [{"phones": ["<AUTHORIZED_E164_PHONE>"], "region": "US", "locale": "en-US"}],
+  "result_schema": {
+    "type": "object",
+    "properties": {"confirmed": {"type": "boolean"}},
+    "required": ["confirmed"],
+    "additionalProperties": false
+  }
+}
+```
+
+**After**
+
+```json
+{
+  "task": "Ask in English whether tomorrow's 2 PM to 4 PM delivery window is confirmed.",
+  "phone": "<AUTHORIZED_E164_PHONE>",
+  "result_schema": {
+    "type": "object",
+    "properties": {"confirmed": {"type": "boolean"}},
+    "required": ["confirmed"],
+    "additionalProperties": false
+  }
+}
+```
+
+Update required inputs and result handling together. Changing the endpoint
+alone is insufficient. The [SDK guide](/sdks) contains equivalent examples.
+
+## Migrate one workflow
+
+1. Inventory dependencies on batch targets, nested schemas, transcripts and old response fields.
+2. Install SDK 1.0 and update the request builder and readiness rule to use `result_status` and `call_outcome`.
+3. Update the receiver using [Webhooks](/webhooks). Keep the legacy receiver for call tasks still finishing.
+4. Run authorized test calls against the test base URL; check results, HTTP retries and duplicate webhook handling.
+5. Keep each Call ID with the interface used to create it. Retrieve historical records through that interface.
+6. Switch new calls for the workflow once its dependencies are covered. Continue polling and receiving callbacks for calls already accepted.
+
+Never submit the same phone task to both interfaces to compare results: both
+requests can place a call. Do not submit through the legacy interface after a timeout.
+Preserve the exact original input on recovery, including omitted hints and metadata.
+An already completed or failed Call is not redialed by replaying its key. See
+[Call retry decisions](/calls#idempotency) before adding automatic retries.
+
+## Workflows that need a decision
+
+**Batch calls:** Calls accepts one target. Client-side orchestration and aggregation
+may work if the application can respect account concurrency and maintain one key
+per logical call. This is not a server-side batch replacement.
+
+**Nested results:** flatten the business fields or adapt the application's data
+model. Arrays and nested objects are not supported by the current schema profile.
+
+**Transcripts:** use the fixed `transcript` field. Raw ASR updates are not a
+substitute for a final transcript. **Provider attempts:** the Calls
+response does not expose these details; resolve that dependency before migrating.
+
+**Execution timing:** Calls accept immediate execution only. Scheduled and recurring
+execution are outside this interface.
+
+**Historical calls:** the new interface does not adopt legacy records. Keep the old ID and its original interface.
+Post-retirement access and export arrangements will be announced separately;
+no new archive endpoint is currently available.

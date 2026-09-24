@@ -3,19 +3,130 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## September 23, 2026 - Calls and SDK 1.0
+
+Single-target Calls are available through the production API and the TypeScript
+and Python 1.0.0 SDKs. Start with [Quickstart](/quickstart) or [SDKs](/sdks).
+
+- Send one phone and task with a required result schema and idempotency key.
+- Region and language hints are optional; ambiguous or conflicting input returns
+  actionable validation errors instead of silently changing the target.
+- Read `call_outcome`, `result_status` and a fixed `transcript` array on Calls
+  and Goal Runs. A final unavailable result may have both result and error null.
+- Use `call_id` to match the telephone call to Billing; keep `id` for API requests.
+- Read detailed lifecycle, ASR and speech events, or receive a finalized webhook.
+- Calls execute immediately. Cancellation is available only before submission.
+
+**Upgrade note:** SDK 1.0 changes the Calls input and response shapes. Old SDK
+Goal Run wait helpers can time out on final unavailable results. Upgrade those
+helpers or poll REST using `result_status`. See [Migration](/migration).
+Legacy call tasks remain available during migration and are planned for retirement
+at the end of 2026. See [Retirement](/retirement).
+
+
+## API versions and migration
+
+The current [OpenAPI snapshot](/openapi/calle.openapi.yaml) describes the released
+Calls and Goal Runs contracts. Its `info.version` is distinct from:
+
+- the URL prefixes used by Calls, Goal Runs and legacy call tasks;
+- `openapi: 3.1.0`, the format of the schema document;
+- the installed SDK package version;
+- `run_spec.version`, the published workflow version pinned by a Goal Run.
+
+Current guides target SDK 1.0.0; [legacy examples](/legacy-sdks) retain SDK 0.7.x.
+Updating an SDK does not select a historical server contract.
+Keep the contract snapshot and package lockfile
+used to validate your integration; compare request and response schemas when
+upgrading. The linked historical snapshots below are references, not endpoints
+for executing old versions.
+
+### Legacy Calls: correct an older recipient example
+
+An example using a singular `recipient` object should be corrected to
+`recipients[].phones[]`. This is an example correction, not a documented API
+version transition: the [published 0.2.0 contract](https://github.com/CALLE-AI/calle-docs/blob/29084a5/openapi/calle.openapi.yaml)
+already used `recipients`. Do not infer that the singular form was supported.
+
+The explicit-recipient part of a legacy call-task request is:
+
+```json
+{
+  "recipients": [{ "phones": ["<E164_PHONE>"] }]
+}
+```
+
+This is a field excerpt, not a complete create request: `task` is required.
+A recipient's `region` and `locale` are optional; check supported destinations
+before supplying them. Use the [complete Python or Ruby example](/legacy-quickstart#run-a-complete-example)
+for creation, durable request storage, and result retrieval. The Python command
+pins SDK 0.7.0; Ruby uses HTTP directly without an SDK.
+
+Legacy REST and Python use `result_schema` and return `structured_result`. TypeScript
+uses `resultSchema` and returns `structuredResult`. These are SDK naming
+conventions, not different server API versions. Keep property names inside
+user-defined schemas unchanged.
+
+### Goal Runs: phone-only requests in 0.6
+
+The July 22 release replaced the preview target wrapper and per-Run voice
+settings with a top-level `phone` and `variables`. The
+[published 0.6.0 contract](https://github.com/CALLE-AI/calle-docs/blob/adb5106/openapi/calle.openapi.yaml)
+and the current Goal Runs contract use this shape:
+
+```json
+{
+  "phone": "<E164_PHONE>",
+  "variables": { "customer_name": "Taylor" }
+}
+```
+
+| Earlier preview input | Current input |
+| --- | --- |
+| Phone inside `target` | Top-level `phone` |
+| Per-Run `region` / `locale` | Configure the published Goal's voice settings |
+| Per-Run `display_name` | A variable such as `customer_name`, only if defined by the Goal's input schema |
+
+Read the published input schema before choosing variable names. Remove the
+old fields rather than sending both shapes. Preserve the request and
+idempotency key for an uncertain accepted Run; do not change its payload as
+part of a retry. Follow the [Goal Runs flow](/goal-runs#create-a-run) for the
+required headers, creation, and polling.
+
+### Goal Runs: nullable call ID in 0.7
+
+[Contract 0.7.0 added](https://github.com/CALLE-AI/calle-docs/commit/b387e01b7ab943a5712bd5f1bb4cfe3699944748)
+`call_id` to Goal Run responses. For a queued Run, the response-field change is:
+
+```diff
+ {
+   "id": "rgrp_delivery_ord_8472",
+   "run_id": "run_delivery_ord_8472",
++  "call_id": null,
+   "status": "queued"
+ }
+```
+
+This excerpt omits unchanged fields. Update strict response validators to
+accept `call_id` as a string or `null` (`callId` in TypeScript). It is available
+for correlation when persisted; it does not prove a call was answered. Keep
+using the Goal Run's top-level `id` in the Goal Run polling URL and stop polling
+when `result` or `error` is non-null. The create request remains `phone` plus
+`variables`; it does not accept `call_id`.
+
 ## September 22, 2026
 
-**Saved call results:** Added a [Python reader](/calls#read-a-saved-result) that
+**Saved call results:** Added a [Python reader](/legacy-calls#read-a-saved-result) that
 displays task and recipient results separately alongside the call transcript.
 
-**Ruby Calls example:** Added a [standard-library HTTP quickstart](/quickstart#run-a-complete-example)
+**Ruby Calls example:** Added a [standard-library HTTP quickstart](/legacy-quickstart#run-a-complete-example)
 that saves the request and Call ID, retrieves the result, and resumes without
 placing another call.
 
 **Calls API documentation:** Clarified the purchased-number requirement for batch
 calls, account-control errors and recovery, and how to retry an idempotent
 request while its original creation is still in progress.
-Also clarified [transcript retention and recording access](/calls#read-transcript-turns):
+Also clarified [transcript retention and recording access](/legacy-calls#read-transcript-turns):
 saved transcripts are not automatically deleted, and recordings are available
 through Dashboard call details rather than the Calls API.
 
