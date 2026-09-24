@@ -468,9 +468,19 @@ see [account-control recovery](/errors#account-controls).
 
 ## Idempotency
 
-Pass an idempotency key when a workflow step might retry. The key maps to the `Idempotency-Key` HTTP header and prevents duplicate call creation for the same external operation.
+These rules apply to `POST /v1/calls`. For `/v2/calls`, use the
+[current Calls retry rules](/calls#idempotency).
 
-Use a stable workflow key, not a random UUID generated at each retry.
+An `Idempotency-Key` identifies one creation attempt, including a saved rejection.
+Choose how to recover before retrying: read an existing Call ID, reuse the key
+when acceptance is uncertain, or use a new key for an intentionally new attempt
+after a confirmed rejection and resolution of its cause.
+
+For example, if v1 saves a `429 account_concurrency_exceeded` rejection, retrying
+with that key returns the saved error even after capacity becomes available.
+The repeated error does not establish that the account is still at its limit.
+Once capacity is available, save a new key for the new attempt and retain it
+for any retries whose acceptance is uncertain.
 
 ### Recover after a restart or lost response
 
@@ -494,9 +504,6 @@ If the original creation is still in progress, an unchanged retry can return
 `409 idempotency_conflict` with `details.reason_code` set to
 `creation_in_progress`. Back off and retry with the **same key and unchanged
 body**; do not submit a replacement operation.
-
-A persisted creation failure replays its original HTTP status and error body.
-An uncertain response alone is not evidence of a rejection.
 
 Keep local workflow identifiers in `metadata` for correlation; they do not
 replace the `Idempotency-Key` header.
