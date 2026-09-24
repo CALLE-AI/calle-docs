@@ -1,24 +1,11 @@
 ---
 title: Billing
-description: Preview the upcoming CALL-E billing model. These rates are not yet in effect.
+description: CALL-E pricing, billing periods, and call cost examples.
 ---
 
-import { ClockIcon } from "zudoku/icons";
 import { BillingComparison } from "../../src/components/BillingComparison.js";
 
-<section className="billing-highlight" aria-label="Billing preview">
-  <p className="billing-highlight__title">
-    <ClockIcon aria-hidden="true" />
-    <span>Billing preview — coming soon</span>
-  </p>
-  <div className="billing-highlight__body">
-    This billing model is under development and is not yet in effect. The rates
-    below are a preview; your current billing remains unchanged.
-  </div>
-</section>
-
 <section className="billing-offer" aria-label="Goal pricing offer">
-  <p className="billing-offer__badge"><ClockIcon aria-hidden="true" /><span>Coming soon</span></p>
   <div className="billing-offer__hero">
     <p className="billing-offer__headline"><span>Choose Goal.</span><span>Pay half.</span></p>
     <div className="billing-offer__discount">
@@ -28,7 +15,7 @@ import { BillingComparison } from "../../src/components/BillingComparison.js";
     </div>
   </div>
   <BillingComparison>
-    <p>30-second domestic outbound call · US / CA · USD · Preview</p>
+    <p>30-second domestic outbound call · US / CA · USD</p>
     <p>One-shot-call: Model Fee $0.0296 × 3 = $0.0888; Carrier Fee $0.0400/min × 1 min = $0.0400; total $0.1288.</p>
     <p>Goal: Model Fee $0.0148 × 3 = $0.0444; Carrier Fee $0.0200/min × 1 min = $0.0200; total $0.0644 (50% less).</p>
     <p>You save $0.0644 on this 30-second call with Goal.</p>
@@ -49,7 +36,7 @@ Choose Goal for batch and large-scale calling. Keep One-shot-call for developmen
 
 **Total cost = Carrier Fee + Model Fee**
 
-Under this model, you will pay Carrier Fee for telephone lines and Model Fee for combined model usage.
+You pay Carrier Fee for telephone lines and Model Fee for combined model usage.
 All prices are in USD.
 
 <div className="billing-note">

@@ -211,12 +211,9 @@ test("documents aggregate billing and preserves pre-connection policy", async ({
   await page.goto("/billing");
   const article = page.locator('[data-pagefind-body="true"]');
   await expect(page.getByRole("heading", { level: 1, name: "Billing" })).toBeVisible();
-  const billingPreview = article.getByRole("region", { name: "Billing preview", exact: true });
-  await expect(billingPreview).toBeVisible();
-  await expect(billingPreview).toContainText("Billing preview — coming soon");
-  await expect(billingPreview).toContainText("under development and is not yet in effect");
-  await expect(billingPreview).toContainText("your current billing remains unchanged");
-  await expect(billingPreview.locator('svg[aria-hidden="true"]')).toBeVisible();
+  await expect(article.getByRole("region", { name: "Billing preview", exact: true })).toHaveCount(0);
+  await expect(article).not.toContainText(/preview|coming soon|upcoming|not yet in effect|under development/i);
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", "CALL-E pricing, billing periods, and call cost examples.");
   await expect(article).toContainText("Total cost = Carrier Fee + Model Fee");
   await expect(article).not.toContainText("Total cost = Carrier Fee + Model Fee + Task Success Fee");
   const billingNote = article.locator(".billing-note").filter({ hasText: "pre-connection" });
@@ -229,12 +226,11 @@ test("documents aggregate billing and preserves pre-connection policy", async ({
   await expect(goalOffer).toBeVisible();
   await expect(goalOffer).toContainText("Pay half.");
   await expect(goalOffer).toContainText("Choose Goal.");
-  await expect(goalOffer).toContainText("Coming soon");
   await expect(goalOffer.locator(".billing-offer__number")).toHaveText("50%");
   await expect(goalOffer.locator(".billing-offer__discount-label")).toHaveText("SAVE");
   await expect(goalOffer.getByRole("link", { name: "Explore Goal Runs" })).toHaveCount(0);
   await expect(goalOffer).toContainText("vs. One-shot-call");
-  await expect(goalOffer.locator('.billing-offer__badge svg[aria-hidden="true"]')).toBeVisible();
+  await expect(goalOffer.locator(".billing-offer__badge")).toHaveCount(0);
   await expect(article).not.toContainText("Goal is currently half the price");
   const successFeeNote = article.locator(".billing-note").filter({ hasText: "Task Success Fee" });
   await expect(successFeeNote).toHaveText("Task Success Fee is an experimental, outcome-based fee shown for reference only. It is currently fully waived.");
@@ -274,9 +270,7 @@ test("documents aggregate billing and preserves pre-connection policy", async ({
     await expect(examples.getByRole("row").filter({ hasText: example.mode }).getByRole("cell"))
       .toHaveText([example.mode, ...example.totals]);
   }
-  expect(billingMarkdown).toContain("Coming soon");
-  expect(billingMarkdown).toContain("Billing preview — coming soon");
-  expect(billingMarkdown).toContain("not yet in effect");
+  expect(billingMarkdown).not.toMatch(/preview|coming soon|upcoming|not yet in effect|under development|will pay/i);
   expect(billingMarkdown.split(callingGuidance)).toHaveLength(2);
   expect(billingMarkdown).toContain("It is currently fully waived.");
   expect(billingMarkdown.match(/Task Success Fee/g)).toHaveLength(1);
@@ -317,11 +311,11 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
       await page.emulateMedia({ colorScheme });
       await page.goto("/billing");
       const offer = page.getByRole("region", { name: "Goal pricing offer" });
-      await expect(offer.locator(".billing-offer__badge")).toHaveText("Coming soon");
+      await expect(offer.locator(".billing-offer__badge")).toHaveCount(0);
       await offer.screenshot({ path: testInfo.outputPath(`billing-offer-${width}-${colorScheme}.png`) });
       const comparison = page.getByRole("figure", { name: /30-second call.*Domestic outbound/ });
       await expect(comparison).toBeVisible();
-      await expect(comparison).toContainText("Hover or tap a segment for its rate · Preview");
+      await expect(comparison).toContainText("Hover or tap a segment for its rate");
       await expect(comparison).toContainText("Model Fee · / 10s");
       await expect(comparison).toContainText("Carrier Fee · / min");
       await expect(comparison.locator(".billing-comparison__bar--oneshot")).toBeVisible();
@@ -383,6 +377,7 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
           await trigger.hover();
           const tooltip = page.getByRole("tooltip");
           await expect(tooltip).toBeVisible();
+          await expect(tooltip).not.toContainText(/preview|coming soon/i);
           for (const value of [fee.label, `${fee.rate} / ${fee.unit}`, fee.usage, fee.cost]) await expect(tooltip).toContainText(value);
           await expect(tooltip).not.toContainText(fee.other);
           const popup = (await page.locator(".billing-cost-tooltip").boundingBox())!;
@@ -973,15 +968,16 @@ test("preserves authentication, webhook, and SDK guidance", async ({
   ).toHaveAttribute("href", "https://github.com/CALLE-AI/server-sdk-python");
 });
 
-test("recommends Goal Runs for scale with upcoming pricing on the Calls guide", async ({ page, request }, testInfo) => {
+test("recommends Goal Runs for scale with live pricing on the Calls guide", async ({ page, request }, testInfo) => {
   const markdown = await request.get("/calls.md");
   expect(markdown.ok()).toBe(true);
   const text = await markdown.text();
-  for (const phrase of ["quick integration, development, and testing", "batch and large-scale calling", "50% less", "upcoming billing model", "This pricing is not yet in effect."]) {
+  for (const phrase of ["quick integration, development, and testing", "batch and large-scale calling", "50% less", "which cost"]) {
     expect(text).toContain(phrase);
   }
   expect(text).toContain("[Goal Runs](/goal-runs)");
-  expect(text).toContain("[upcoming billing model](/billing)");
+  expect(text).toContain("[Billing](/billing)");
+  expect(text).not.toMatch(/upcoming billing|not yet in effect|will cost|coming soon/i);
   expect(text).toContain("POST /v2/calls");
   expect(text).not.toContain("POST /v1/calls");
   expect(text).toContain("Each request creates one phone task");
@@ -996,9 +992,9 @@ test("recommends Goal Runs for scale with upcoming pricing on the Calls guide", 
       await expect(guidance).toContainText("POST /v2/calls");
       await expect(guidance).toContainText("quick integration, development, and testing");
       await expect(guidance).toContainText("50% less");
-      await expect(guidance).toContainText("This pricing is not yet in effect.");
+      await expect(guidance).not.toContainText(/upcoming|not yet in effect|coming soon|will cost/i);
       await expect(guidance.getByRole("link", { name: "Goal Runs", exact: true })).toHaveAttribute("href", "/goal-runs");
-      await expect(guidance.getByRole("link", { name: "upcoming billing model" })).toHaveAttribute("href", "/billing");
+      await expect(guidance.getByRole("link", { name: "Billing", exact: true })).toHaveAttribute("href", "/billing");
       const guidanceBox = (await guidance.boundingBox())!;
       const inputsBox = (await page.getByRole("heading", { level: 2, name: /^Request contract/ }).boundingBox())!;
       expect(guidanceBox.y + guidanceBox.height).toBeLessThan(inputsBox.y);
