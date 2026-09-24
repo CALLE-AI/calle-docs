@@ -254,7 +254,8 @@ test("documents aggregate billing and preserves pre-connection policy", async ({
   expect(billingMarkdown).toContain("Choose Goal.");
   expect(billingMarkdown).not.toContain("Explore Goal Runs");
   expect(billingMarkdown).toContain("You save $0.0644 on this 30-second call with Goal.");
-  await expect(article).toContainText("Carrier Fee is billed in whole minutes, rounded up");
+  await expect(article).toContainText("Domestic Carrier Fees are billed in whole minutes, rounded up");
+  await expect(article).toContainText("International Carrier Fees follow the carrier's applicable rates and billing increments; Model Fee rates remain unchanged.");
   const examples = article.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "30 seconds", exact: true }) });
   await expect(examples.getByRole("row").filter({ hasText: "Domestic outbound · One-shot-call" })).toContainText("$0.1288");
   await expect(examples.getByRole("row").filter({ hasText: "Domestic outbound · Goal" })).toContainText("$0.0644");
