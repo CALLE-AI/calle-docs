@@ -248,12 +248,25 @@ test("documents aggregate billing and preserves pre-connection policy", async ({
   expect(billingMarkdown).toContain("$0.0296");
   expect(billingMarkdown).toContain("$0.0148");
   await expect(article.getByRole("columnheader", { name: "30 seconds", exact: true })).toBeVisible();
-  await expect(article.getByRole("columnheader", { name: "60 seconds", exact: true })).toHaveCount(0);
-  expect(billingMarkdown).not.toContain("60 seconds");
+  await expect(article.getByRole("columnheader", { name: "60 seconds", exact: true })).toBeVisible();
+  expect(billingMarkdown).toContain("60 seconds");
   expect(billingMarkdown).toContain("Pay half.");
   expect(billingMarkdown).toContain("Choose Goal.");
   expect(billingMarkdown).not.toContain("Explore Goal Runs");
-  expect(billingMarkdown).toContain("You save $0.0544 on this 30-second call with Goal.");
+  expect(billingMarkdown).toContain("You save $0.0644 on this 30-second call with Goal.");
+  await expect(article).toContainText("Carrier Fee is billed in whole minutes, rounded up");
+  const examples = article.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "30 seconds", exact: true }) });
+  await expect(examples.getByRole("row").filter({ hasText: "Domestic outbound · One-shot-call" })).toContainText("$0.1288");
+  await expect(examples.getByRole("row").filter({ hasText: "Domestic outbound · Goal" })).toContainText("$0.0644");
+  await expect(examples.getByRole("row").filter({ hasText: "Inbound · Goal" })).toContainText("$0.0512");
+  for (const example of [
+    { mode: "Domestic outbound · One-shot-call", totals: ["$0.1288", "$0.2176"] },
+    { mode: "Domestic outbound · Goal", totals: ["$0.0644", "$0.1088"] },
+    { mode: "Inbound · Goal", totals: ["$0.0512", "$0.0956"] },
+  ]) {
+    await expect(examples.getByRole("row").filter({ hasText: example.mode }).getByRole("cell"))
+      .toHaveText([example.mode, ...example.totals]);
+  }
   expect(billingMarkdown).toContain("Coming soon");
   expect(billingMarkdown).toContain("Billing preview — coming soon");
   expect(billingMarkdown).toContain("not yet in effect");
@@ -275,10 +288,11 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
   const markdown = await request.get("/billing.md");
   const text = await markdown.text();
   expect(text).toContain("30-second domestic outbound call");
-  expect(text).toContain("$0.1088");
-  expect(text).toContain("$0.0544");
+  expect(text).toContain("$0.1288");
+  expect(text).toContain("$0.0644");
   expect(text).toContain("$0.0296 × 3 = $0.0888");
-  expect(text).toContain("$0.0200/min × 0.5 min = $0.0100");
+  expect(text).toContain("$0.0200/min × 1 min = $0.0200");
+  expect(text).not.toContain("0.5 min");
   for (const method of ["POST /v1/calls", "POST /v1/goals/{goal_id}/runs", "client.calls.create(...)", "client.goals.run(...)", "Idempotency-Key"]) {
     expect(text).toContain(method);
     expect(text.split(method)).toHaveLength(2);
@@ -304,9 +318,11 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
       const goalRow = comparison.locator(".billing-comparison__row--goal");
       const oneShotRow = comparison.locator(".billing-comparison__row--oneshot");
       await expect(goalRow.locator(".billing-comparison__saving")).toHaveText("Half price");
-      await expect(goalRow.locator(".billing-comparison__saved")).toHaveText("You save$0.0544");
+      await expect(goalRow.locator(".billing-comparison__saved")).toHaveText("You save$0.0644");
       const goalTotal = goalRow.locator(".billing-comparison__total");
       const oneShotTotal = oneShotRow.locator(".billing-comparison__total");
+      await expect(goalTotal).toHaveText("$0.0644");
+      await expect(oneShotTotal).toHaveText("$0.1288");
       expect(await goalTotal.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)))
         .toBeGreaterThan(await oneShotTotal.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)));
       const goalModelColor = await goalRow.locator(".billing-comparison__model").evaluate((element) => getComputedStyle(element).backgroundColor);
@@ -341,16 +357,16 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
       for (const bar of await comparison.locator(".billing-comparison__bar").all()) {
         const totalWidth = (await bar.boundingBox())!.width;
         const modelWidth = (await bar.locator(".billing-comparison__model").boundingBox())!.width;
-        expect(modelWidth / totalWidth).toBeCloseTo(0.0888 / 0.1088, 2);
+        expect(modelWidth / totalWidth).toBeCloseTo(0.0888 / 0.1288, 2);
       }
       await comparison.screenshot({ path: testInfo.outputPath(`billing-stacks-${width}-${colorScheme}.png`) });
       for (const price of [
-        { name: "One-shot-call", model: "$0.0888", carrier: "$0.0200", modelRate: "$0.0296", carrierRate: "$0.0400" },
-        { name: "Goal", model: "$0.0444", carrier: "$0.0100", modelRate: "$0.0148", carrierRate: "$0.0200" },
+        { name: "One-shot-call", model: "$0.0888", carrier: "$0.0400", modelRate: "$0.0296", carrierRate: "$0.0400" },
+        { name: "Goal", model: "$0.0444", carrier: "$0.0200", modelRate: "$0.0148", carrierRate: "$0.0200" },
       ]) {
         for (const fee of [
           { label: "Model Fee", rate: price.modelRate, unit: "10 seconds", usage: "3 × 10-second periods", cost: price.model, other: "Carrier Fee" },
-          { label: "Carrier Fee", rate: price.carrierRate, unit: "minute", usage: "0.5 minutes", cost: price.carrier, other: "Model Fee" },
+          { label: "Carrier Fee", rate: price.carrierRate, unit: "minute", usage: "1 minute (rounded up)", cost: price.carrier, other: "Model Fee" },
         ]) {
           const trigger = comparison.getByRole("button", { name: `${price.name} ${fee.label}: ${fee.rate} per ${fee.unit}. Show price details`, exact: true });
           await trigger.hover();
@@ -398,7 +414,8 @@ test("opens and dismisses fee breakdowns by touch", async ({ browser }) => {
   await carrier.tap();
   await expect(page.getByRole("tooltip")).toHaveCount(1);
   await expect(page.getByRole("tooltip")).toContainText("$0.0200 / minute");
-  await expect(page.getByRole("tooltip")).toContainText("$0.0100");
+  await expect(page.getByRole("tooltip")).toContainText("1 minute (rounded up)");
+  await expect(page.getByRole("tooltip")).not.toContainText("$0.0100");
   await page.locator("h2#how-billing-works").tap();
   await expect(page.getByRole("tooltip")).toBeHidden();
   await context.close();

@@ -3,19 +3,19 @@ import { InfoIcon } from "zudoku/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "zudoku/ui/Tooltip.js";
 
 // Public rates in ten-thousandths of a dollar. The example uses three model
-// periods and half a carrier minute; it does not change billing rules.
+// periods and one carrier minute (30 seconds rounded up to a full minute).
 const prices = [
   { name: "One-shot-call", modelRate: 296, carrierRate: 400 },
   { name: "Goal", modelRate: 148, carrierRate: 200 },
 ].map((price) => {
   const model = price.modelRate * 3;
-  const carrier = price.carrierRate / 2;
+  const carrier = price.carrierRate;
   return { ...price, model, carrier, total: model + carrier };
 });
 const money = (amount: number) => `$${(amount / 10000).toFixed(4)}`;
 const feeTypes = [
   { key: "model", label: "Model Fee", rateKey: "modelRate", unit: "10 seconds", usage: "3 × 10-second periods" },
-  { key: "carrier", label: "Carrier Fee", rateKey: "carrierRate", unit: "minute", usage: "0.5 minutes" },
+  { key: "carrier", label: "Carrier Fee", rateKey: "carrierRate", unit: "minute", usage: "1 minute (rounded up)" },
 ] as const;
 
 export function BillingComparison({ children }: { children: ReactNode }) {

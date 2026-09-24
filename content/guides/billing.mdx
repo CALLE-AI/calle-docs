@@ -29,9 +29,9 @@ import { BillingComparison } from "../../src/components/BillingComparison.js";
   </div>
   <BillingComparison>
     <p>30-second domestic outbound call · US / CA · USD · Preview</p>
-    <p>One-shot-call: Model Fee $0.0296 × 3 = $0.0888; Carrier Fee $0.0400/min × 0.5 min = $0.0200; total $0.1088.</p>
-    <p>Goal: Model Fee $0.0148 × 3 = $0.0444; Carrier Fee $0.0200/min × 0.5 min = $0.0100; total $0.0544 (50% less).</p>
-    <p>You save $0.0544 on this 30-second call with Goal.</p>
+    <p>One-shot-call: Model Fee $0.0296 × 3 = $0.0888; Carrier Fee $0.0400/min × 1 min = $0.0400; total $0.1288.</p>
+    <p>Goal: Model Fee $0.0148 × 3 = $0.0444; Carrier Fee $0.0200/min × 1 min = $0.0200; total $0.0644 (50% less).</p>
+    <p>You save $0.0644 on this 30-second call with Goal.</p>
   </BillingComparison>
 </section>
 
@@ -68,22 +68,22 @@ Outbound supports One-shot-call and Goal; inbound supports Goal only.
 | Inbound | Goal | $0.0148 | $0.0068 |
 
 **Coverage:** Domestic rates apply to the United States (US) and Canada (CA),
-with more regions planned. International Carrier Fees vary by route and mode;
+with more regions planned. International Carrier Fees depend on carrier rates;
 Model Fee rates are the same as above.
 
 **Billing periods:** Model Fee uses 10-second periods, regardless of the agent's
-speaking time. Carrier Fee follows separate duration and rounding rules, not
-the model's 10-second periods.
+speaking time. Carrier Fee is billed in whole minutes, rounded up: both a
+30-second and a 60-second call incur one minute of Carrier Fee.
 
 ## Examples
 
 Illustrative totals include Model Fee and Carrier Fee:
 
-| Call type and mode | 30 seconds |
-| --- | --- |
-| Domestic outbound · One-shot-call | **$0.1088** |
-| Domestic outbound · Goal | **$0.0544** |
-| Inbound · Goal | **$0.0478** |
+| Call type and mode | 30 seconds | 60 seconds |
+| --- | --- | --- |
+| Domestic outbound · One-shot-call | **$0.1288** | **$0.2176** |
+| Domestic outbound · Goal | **$0.0644** | **$0.1088** |
+| Inbound · Goal | **$0.0512** | **$0.0956** |
 
 <div className="billing-note">
   Task Success Fee is an experimental, outcome-based fee shown for reference
