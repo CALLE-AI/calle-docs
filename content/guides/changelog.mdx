@@ -3,9 +3,28 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
-## September 23, 2026 - Calls and SDK 1.0
+## September 24, 2026
 
-Single-target Calls are available through the production API and the TypeScript
+**Updated Billing**
+
+**Updated billing model:** Model Fee is **$0.0296 per 10 seconds** for One-shot-call
+and **$0.0148 per 10 seconds** for Goal. US / CA domestic outbound Carrier Fee is
+**$0.0400/min** and **$0.0200/min**, respectively, rounded up to whole minutes;
+international charges follow carrier rates and billing increments.
+
+**Half-price calling with Goal:** A 30-second US / CA domestic outbound call costs
+**$0.1288 with One-shot-call** or **$0.0644 with Goal**, excluding preparation usage.
+Choose Goal for batch and large-scale calling.
+
+**Billing guide:** See [Billing](/billing) for the interactive cost breakdown and
+more examples. Preparation may incur model fees even without a connection; the
+experimental Task Success Fee remains fully waived.
+
+All prices are in USD.
+
+## September 23, 2026
+
+**Calls and SDK 1.0:** Single-target Calls are available through the production API and the TypeScript
 and Python 1.0.0 SDKs. Start with [Quickstart](/quickstart) or [SDKs](/sdks).
 
 - Send one phone and task with a required result schema and idempotency key.
@@ -24,7 +43,7 @@ Legacy call tasks remain available during migration and are planned for retireme
 at the end of 2026. See [Retirement](/retirement).
 
 
-## API versions and migration
+**API versions and migration:**
 
 The current [OpenAPI snapshot](/openapi/calle.openapi.yaml) describes the released
 Calls and Goal Runs contracts. Its `info.version` is distinct from:
@@ -41,7 +60,7 @@ used to validate your integration; compare request and response schemas when
 upgrading. The linked historical snapshots below are references, not endpoints
 for executing old versions.
 
-### Legacy Calls: correct an older recipient example
+**Legacy Calls: correct an older recipient example:**
 
 An example using a singular `recipient` object should be corrected to
 `recipients[].phones[]`. This is an example correction, not a documented API
@@ -67,7 +86,7 @@ uses `resultSchema` and returns `structuredResult`. These are SDK naming
 conventions, not different server API versions. Keep property names inside
 user-defined schemas unchanged.
 
-### Goal Runs: phone-only requests in 0.6
+**Goal Runs: phone-only requests in 0.6:**
 
 The July 22 release replaced the preview target wrapper and per-Run voice
 settings with a top-level `phone` and `variables`. The
@@ -93,7 +112,7 @@ idempotency key for an uncertain accepted Run; do not change its payload as
 part of a retry. Follow the [Goal Runs flow](/goal-runs#create-a-run) for the
 required headers, creation, and polling.
 
-### Goal Runs: nullable call ID in 0.7
+**Goal Runs: nullable call ID in 0.7:**
 
 [Contract 0.7.0 added](https://github.com/CALLE-AI/calle-docs/commit/b387e01b7ab943a5712bd5f1bb4cfe3699944748)
 `call_id` to Goal Run responses. For a queued Run, the response-field change is:

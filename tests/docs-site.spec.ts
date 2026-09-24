@@ -427,6 +427,25 @@ test("opens and dismisses fee breakdowns by touch", async ({ browser }) => {
   await context.close();
 });
 
+test("limits changelog headings to release dates", async ({ page }) => {
+  await page.goto("/changelog");
+  const article = page.locator('[data-pagefind-body="true"]');
+  const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
+  expect(dates.length).toBeGreaterThan(0);
+  for (const date of dates) {
+    expect(date.trim()).toMatch(/^(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}$/);
+  }
+  await expect(article.locator("h3, h4, h5, h6")).toHaveCount(0);
+  await expect(page.locator('a[href="#api-versions-and-migration"]')).toHaveCount(0);
+  await expect(article).toContainText("Calls and SDK 1.0:");
+  await expect(article).toContainText("API versions and migration:");
+  await expect(article.getByRole("heading", { level: 2, name: /^September 24, 2026/ })).toBeVisible();
+  for (const value of ["Updated Billing", "$0.0296 per 10 seconds", "$0.0148 per 10 seconds", "$0.0400/min", "$0.0200/min", "$0.1288 with One-shot-call", "$0.0644 with Goal", "excluding preparation usage", "Task Success Fee remains fully waived"]) {
+    await expect(article).toContainText(value);
+  }
+  await expect(article.getByRole("link", { name: "Billing", exact: true })).toHaveAttribute("href", "/billing");
+});
+
 test("keeps the wide docs article and table of contents together", async ({
   page,
 }) => {
