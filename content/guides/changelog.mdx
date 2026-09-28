@@ -3,6 +3,19 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## 2026-09-28
+
+**MCP OAuth compatibility:** Fixed an authorization-discovery issue that prevented
+Python MCP SDK 2.2.0 clients from reaching browser sign-in. Fresh OAuth
+authorization and call planning have been verified in production.
+([#155](https://github.com/CALLE-AI/call-e-integrations/issues/155))
+
+**Agent-plugin call monitoring:** Updated Claude, Codex, and Cursor plugin
+instructions recognize both no-answer status formats and follow server-directed
+polling and stop instructions. They also require user confirmation before
+retrying a call.
+([#770](https://github.com/CALLE-AI/awesome-phone-call-agents/issues/770))
+
 ## 2026-09-24 — Updated Billing
 
 **Updated billing model:** Model Fee is **$0.0296 per 10 seconds** for One-shot-call
