@@ -15,7 +15,7 @@ When maintainers provide a backend API change:
 
 1. Read the approved backend specification, OpenAPI diff, and rollout status.
 2. Update `openapi/calle.openapi.yaml`, affected MDX guides, examples,
-   changelog, and observable tests.
+   and observable tests.
 3. Run `pnpm run validate`.
 4. Open a focused pull request that links the backend change and lists the
    affected public API surface.
@@ -24,6 +24,12 @@ When maintainers provide a backend API change:
 
 The public docs must not describe a new capability before that capability is
 available in the public API.
+
+Routine documentation maintenance and API documentation sync must not
+automatically add changelog (release notes) entries. Before adding an entry or
+substantively modifying an existing one, present the proposed content and obtain
+explicit confirmation from the user or a maintainer. Continue other documentation
+work while awaiting confirmation.
 
 ## Security
 
