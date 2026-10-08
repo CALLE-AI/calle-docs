@@ -1289,8 +1289,8 @@ test("keeps retry tables and API operations within the mobile viewport", async (
 
 test("publishes production SDK installation and readiness guidance", async ({ page }) => {
   await page.goto("/sdks");
-  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle@1.0.0" })).toBeVisible();
-  await expect(page.locator("pre").filter({ hasText: "pip install calle-ai==1.0.0" })).toBeVisible();
+  await expect(page.locator("pre").filter({ hasText: "pnpm add @call-e/calle@1.0.1" })).toBeVisible();
+  await expect(page.locator("pre").filter({ hasText: "pip install calle-ai==1.0.1" })).toBeVisible();
   await expect(page.locator("main")).toContainText("resultStatus");
   await expect(page.locator("main")).not.toContainText("These packages have not been published");
   await page.goto("/migration");
@@ -1298,4 +1298,8 @@ test("publishes production SDK installation and readiness guidance", async ({ pa
   await page.goto("/calls");
   await expect(page.locator("main")).toContainText("call_id");
   await expect(page.locator("main")).not.toContainText("unreleased response additions");
+  await page.goto("/quickstart#run-a-complete-example");
+  await expect(page.locator("main a[href$='/examples/v2/calls.py']")).toBeVisible();
+  await expect(page.locator("main a[href$='/examples/v2/calls.rb']")).toBeVisible();
+  await expect(page.locator("main")).toContainText("python examples/v2/read_call_result.py");
 });

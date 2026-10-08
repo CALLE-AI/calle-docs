@@ -23,6 +23,11 @@ Calls are available on the production API and in SDK 1.0. See the
 Calls and Goal Runs include `call_outcome`, `result_status` and `transcript`.
 Wait while `result_status` is `pending`, not until result or error becomes non-null.
 
+Use the [complete Python and Ruby examples](/quickstart#run-a-complete-example)
+to persist a request and resume it. The
+[V2 result reader](https://github.com/CALLE-AI/calle-docs/blob/main/examples/v2/read_call_result.py)
+reads their saved response, including unavailable results and the top-level transcript.
+
 ## Call ID and Billing
 
 The response adds a fixed `call_id` field for matching a telephone call to the

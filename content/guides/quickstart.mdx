@@ -94,6 +94,29 @@ The [SDK guide](/sdks) includes installation and complete TypeScript and Python 
 For tests, explicitly set `CALLE_BASE_URL=https://test-api.heycall-e.com` and use
 a test-compatible key.
 
+## Run a complete example
+
+The runnable [Python SDK example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/v2/calls.py)
+and [Ruby HTTP example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/v2/calls.rb)
+save the original request, idempotency key and Call ID so the same operation
+can resume after a timeout or lost response. Choose one runtime and an authorized
+destination; each `start` creates a real call.
+
+```bash
+export CALLE_TEST_PHONE="<AUTHORIZED_E164_PHONE>"
+python -m pip install calle-ai==1.0.1
+python examples/v2/calls.py start ../calle-v2-run --phone "$CALLE_TEST_PHONE"
+python examples/v2/calls.py resume ../calle-v2-run
+```
+
+For Ruby preview/start/resume commands, see the
+[complete example instructions](https://github.com/CALLE-AI/calle-docs/tree/main/examples/v2).
+Read either runtime's saved result without sending another API request:
+
+```bash
+python examples/v2/read_call_result.py ../calle-v2-run/result.json
+```
+
 ## Retry without calling twice
 
 If the create response is lost, retry the **same request with the same key**.

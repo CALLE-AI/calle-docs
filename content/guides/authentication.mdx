@@ -62,7 +62,7 @@ Use an explicit base URL in each environment so staging jobs do not accidentally
 export CALLE_BASE_URL="https://api.heycall-e.com"
 ```
 
-The [complete Python call example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/calls.py)
+The [complete Python call example](https://github.com/CALLE-AI/calle-docs/blob/main/examples/v2/calls.py)
 reads `CALLE_BASE_URL` for both `start` and `resume`. If it is unset or empty,
 the example keeps the SDK's default URL. Use the same API key and environment
 when resuming a saved call. Keep test and production API keys separate, and do
