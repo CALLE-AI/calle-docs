@@ -432,6 +432,7 @@ test("limits changelog headings to releases with optional feature themes", async
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
   expect(dates.map((date) => date.trim())).toEqual([
+    "2026-10-19",
     "2026-09-28",
     "2026-09-24 — Updated Billing",
     "2026-09-23 — Calls & SDK 1.0",
@@ -450,6 +451,9 @@ test("limits changelog headings to releases with optional feature themes", async
     "2026-06-08 — Developer API & SDKs",
   ]);
   await expect(article.locator("h3, h4, h5, h6")).toHaveCount(0);
+  await expect(article).toContainText("Inbound Goal responses:");
+  await expect(article.getByRole("link", { name: "#410", exact: true })).toHaveAttribute("href", "https://github.com/CALLE-AI/awesome-phone-call-agents/issues/410");
+  await expect(article.getByRole("link", { name: "#591", exact: true })).toHaveCount(0);
   await expect(article).toContainText("MCP OAuth compatibility:");
   await expect(article).toContainText("Agent-plugin call monitoring:");
   await expect(article.getByRole("link", { name: "#155", exact: true })).toHaveAttribute("href", "https://github.com/CALLE-AI/call-e-integrations/issues/155");
