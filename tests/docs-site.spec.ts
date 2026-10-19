@@ -452,6 +452,9 @@ test("limits changelog headings to releases with optional feature themes", async
   ]);
   await expect(article.locator("h3, h4, h5, h6")).toHaveCount(0);
   await expect(article).toContainText("Inbound Goal responses:");
+  await expect(article).toContainText("MCP V2 and ChatGPT plugin:");
+  await expect(article).toContainText("Dashboard call results:");
+  await expect(article).toContainText("Batch call strategies:");
   await expect(article.getByRole("link", { name: "#410", exact: true })).toHaveAttribute("href", "https://github.com/CALLE-AI/awesome-phone-call-agents/issues/410");
   await expect(article.getByRole("link", { name: "#591", exact: true })).toHaveCount(0);
   await expect(article).toContainText("MCP OAuth compatibility:");
