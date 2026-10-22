@@ -155,12 +155,8 @@ does not resolve a coverage error.
 
 `invalid_phone` means a phone number is not valid E.164 format. Replace placeholders such as `<E164_PHONE>` with a phone number you own or are authorized to call.
 
-`result_schema_invalid` returns HTTP 400 when the Calls `result_schema` is outside
-the supported [scalar-object profile](/calls#result-schema). For example,
-`"type": ["string", "null"]` is unsupported even though it is valid general
-JSON Schema. Correct the schema before retrying; do not treat this as a provider outage.
-
-`recipient_result_schema_invalid` means the per-recipient `recipient_result_schema` is not a valid supported JSON Schema object.
+For `result_schema_invalid` and `recipient_result_schema_invalid`, see
+[Result schema errors](#result-schema-errors) below.
 
 `idempotency_conflict` has two recovery paths. When
 `details.reason_code == "creation_in_progress"`, retry unchanged after backoff.
@@ -200,3 +196,25 @@ result-processing failures belong to the accepted Run's `error` field. Preserve
 the original key and request when retrying an uncertain create.
 
 `internal_error` is retryable only when the workflow can safely tolerate retry.
+
+### Result schema errors
+
+For `POST /v2/calls`, `400 result_schema_invalid` means `result_schema` is outside
+the supported [scalar-object profile](/calls#result-schema). A schema can be valid
+general JSON Schema and still be unsupported by CALL-E.
+
+| Rejected schema content | Correction |
+| --- | --- |
+| `maxLength`, `minLength`, `minimum`, `maximum`, or `pattern` on a property | Remove the keyword and check the business constraint in your application. A `description` can guide extraction but cannot enforce the constraint. |
+| `"type": ["string", "null"]` | Use a scalar type and describe an allowed fallback such as `"unknown"`, consistent with the task. |
+
+For the five unsupported property keywords above, the error message identifies
+the keyword and property path. Use it to correct the schema; use `error.code`
+rather than parsing the message for program
+logic. This rejection creates no Call. Correct the schema and retry with the
+same idempotency key, as described in [Call retry decisions](/calls#idempotency).
+
+For legacy `POST /v1/calls`, `result_schema_invalid` concerns the whole-task
+`result_schema`; `recipient_result_schema_invalid` concerns the per-recipient
+field. Follow the [legacy supported features](/legacy-calls#structured-results)
+for those fields instead of applying V2's rejection rules to them.

@@ -144,6 +144,38 @@ For example, `"type": ["string", "null"]` is not supported. It returns
 `400 result_schema_invalid` before a Call is created. Use `"type": "string"`
 and explicitly describe an allowed `"unknown"` fallback in the task instead.
 
+CALL-E supports a subset of JSON Schema. Length constraints (`maxLength`,
+`minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are unsupported
+in `result_schema`. Adding any of these keywords to a property returns
+`400 result_schema_invalid` before a Call is created. Remove the rejected keyword;
+retrying the same invalid schema will not help. See [schema errors](/errors#result-schema-errors).
+
+Use `description` to explain a field and `enum` to list its allowed values. For
+example, this schema collects a yes/no answer while allowing missing evidence:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "answer": {
+      "type": "string",
+      "enum": ["yes", "no", "unknown"],
+      "description": "Answer to the task question. Use unknown when the call provides no clear answer."
+    }
+  },
+  "required": ["answer"],
+  "additionalProperties": false
+}
+```
+
+A description guides extraction; it does not enforce a length, range, or pattern.
+For example, asking for a summary of at most 100 characters does not guarantee
+that limit. Check business constraints in your application before using the result.
+The [Quickstart](/quickstart) shows how to submit a complete request and read its result.
+
+For older call-task integrations, use the
+[legacy schema rules](/legacy-calls#structured-results).
+
 ### Result outcomes
 
 The response uses the same result model as Goal Runs. `call_outcome` describes

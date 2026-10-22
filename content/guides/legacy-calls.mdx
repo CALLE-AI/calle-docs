@@ -185,7 +185,7 @@ For `recipient_result_schema`, avoid reserved recipient response field names suc
 
 Descriptions are passed to the extraction model. Use `description` to explain what each field means and how enum values should be selected. Descriptions guide extraction, but they are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
 
-Supported schema features:
+Both `result_schema` and `recipient_result_schema` support these schema features:
 
 - `type`: `object`, `string`, `number`, `integer`, `boolean`, or `array`
 - `properties`
@@ -197,6 +197,16 @@ Supported schema features:
 - `additionalProperties: false`
 
 Unsupported schema features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
+
+Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`,
+`maximum`), and `pattern` are outside these documented validation guarantees.
+Check those business constraints in your application before using
+`structured_result`. A description can request a short answer, but does not
+enforce its length; successful request acceptance does not prove a constraint
+will be enforced on the result.
+
+These are the legacy `POST /v1/calls` rules. The newer `POST /v2/calls` rejects
+these five keywords and uses a flat scalar object; see [Calls result schema](/calls#result-schema).
 
 For business decisions, prefer string enums over booleans when the answer can be unclear. Include an `unknown` value when the call may not provide enough evidence.
 
