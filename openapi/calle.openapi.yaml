@@ -1577,7 +1577,7 @@ components:
 
             Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
 
-            Object schemas are strict by default: fields not declared in `properties` are rejected. Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are outside the documented validation guarantees. Check these business constraints in your application; successful request acceptance does not prove they are enforced on the result. See [legacy structured results](/legacy-calls#structured-results).
+            Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are outside the documented validation guarantees. Check these business constraints in your application; successful request acceptance does not prove they are enforced on the result. See [legacy structured results](/legacy-calls#structured-results).
 
             Prefer string enums over booleans for business decisions that may be unclear, and include an `unknown` enum value when the call may not provide enough evidence.
           additionalProperties: true
