@@ -1128,10 +1128,12 @@ components:
         result_schema:
           type: object
           additionalProperties: true
-          description: Required closed flat JSON Schema using the same calle.result.scalar-object.v1
-            profile as Goal. At most 32 string, boolean, integer or number properties; additionalProperties
-            must be false. Nested objects, arrays, null values and schema combinators are
-            unsupported.
+          description: |-
+            Required closed flat JSON Schema using the same calle.result.scalar-object.v1 profile as Goal. At most 32 string, boolean, integer or number properties; additionalProperties must be false. Nested objects, arrays, null values and schema combinators are unsupported.
+
+            CALL-E supports a subset of JSON Schema. Property keywords `maxLength`, `minLength`, `minimum`, `maximum`, and `pattern` are rejected with HTTP 400 `result_schema_invalid` before a Call is created.
+
+            Use `description` to guide extraction and `enum` to list allowed values. Descriptions do not enforce length, range, or pattern constraints; check those business constraints in your application. See [Result schema](/calls#result-schema) for a supported example and [schema errors](/errors#result-schema-errors) for corrections.
         metadata:
           additionalProperties: true
           type: object
@@ -1575,6 +1577,8 @@ components:
 
             Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
 
+            Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are outside the documented validation guarantees. Check these business constraints in your application; successful request acceptance does not prove they are enforced on the result. See [legacy structured results](/legacy-calls#structured-results).
+
             Prefer string enums over booleans for business decisions that may be unclear, and include an `unknown` enum value when the call may not provide enough evidence.
           additionalProperties: true
         recipient_result_schema:
@@ -1589,6 +1593,10 @@ components:
             Do not use reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, or timing fields as custom result fields. Use names such as `customer_summary`, `notes`, or `reason` instead.
 
             Field `description` values are passed to the extraction model and should explain how enum values should be selected. Descriptions guide extraction but are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
+
+            Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
+
+            Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are outside the documented validation guarantees. Check these business constraints in your application; successful request acceptance does not prove they are enforced on the result. See [legacy structured results](/legacy-calls#structured-results).
 
             Object schemas are strict by default. Fields not declared in `properties` are rejected, and unsupported or invalid recipient results are returned as `null`.
           additionalProperties: true
