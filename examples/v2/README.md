@@ -5,6 +5,10 @@ Python requires 3.11+ and `calle-ai==1.0.1`; Ruby uses its standard library.
 Check [supported regions and languages](https://docs.heycall-e.com/regions)
 before choosing a number you own or are authorized to call.
 
+For a test destination, follow the
+[official US English testing hotline announcement](https://discord.com/channels/1493880186826133504/1495622983253889054/1546414916515401788).
+Calls use your real account and may consume credits.
+
 From the repository root, configure the same key and environment for start
 and every resume. Use a new private directory for each intentionally new call.
 
@@ -52,6 +56,11 @@ For Ruby, use `../calle-v2-ruby-run/result.json` instead.
 The reader preserves `result`, `error`, `call_outcome`, `result_status`,
 the Billing `call_id` and the top-level transcript. Use the resource `id`
 for API reads; a Billing ID can remain null.
+
+To test application outcome handling without placing calls, use the
+[offline result samples](https://github.com/CALLE-AI/awesome-phone-call-agents/tree/main/apps/python/webhook-result-receiver#offline-application-outcomes).
+These samples use synthetic data. Validating dialing, transcripts and extraction
+requires a real call.
 
 Supplemental checks make no real requests:
 
