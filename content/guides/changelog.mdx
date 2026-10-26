@@ -3,6 +3,33 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## 2026-10-26 — Live Testing & Integrations
+
+**Dashboard live testing:** Added chat-mode live testing in the Dashboard, so you
+can test conversations before placing a phone call.
+
+**Clearer call failure reasons:** Failed calls now distinguish **Unable to connect**
+(`number_unreachable`) from **Call not completed** (`system_error`), with guidance
+to check the number, retry later, or contact support.
+
+**HubSpot Calls API v2:** Updated the Contact card and workflow action to support
+Calls API v2, with verified timeout recovery and same-key request replays without
+duplicate calls. Upgrade your private app using the
+[upgrade guide](https://github.com/CALLE-AI/awesome-phone-call-agents/blob/main/plugins/hubspot-calle/docs/direct-call-user-manual.md).
+
+**n8n Calls API v2 template:** Published the updated
+[workflow template](https://n8n.io/workflows/16785-test-ivr-call-quality-using-the-call-e-api-from-a-phone-task-list/)
+with verified v2 result handling and timeout recovery. Existing v1 workflows
+require an explicit upgrade; retries must reuse the original request and
+idempotency key.
+
+**Dify plugin and v2 template:** CALL-E plugin **0.2.2** is available on the
+[Dify Marketplace](https://marketplace.dify.ai/plugin/derekwang2002/call_e), and a
+separate [Calls API v2 workflow template](https://github.com/CALLE-AI/awesome-phone-call-agents/tree/main/plugins/dify-template)
+is available on GitHub with verified result handling and safe same-key retries.
+The v2 template's Marketplace listing is still under review; the existing
+Marketplace template remains on v1.
+
 ## 2026-10-19
 
 **MCP V2 and ChatGPT plugin:** Released MCP V2 and launched the CALL-E ChatGPT plugin.
