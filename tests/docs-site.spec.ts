@@ -432,6 +432,7 @@ test("limits changelog headings to releases with optional feature themes", async
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
   expect(dates.map((date) => date.trim())).toEqual([
+    "2026-10-26 — Live Testing & Integrations",
     "2026-10-19",
     "2026-09-28",
     "2026-09-24 — Updated Billing",
@@ -451,6 +452,10 @@ test("limits changelog headings to releases with optional feature themes", async
     "2026-06-08 — Developer API & SDKs",
   ]);
   await expect(article.locator("h3, h4, h5, h6")).toHaveCount(0);
+  for (const title of ["Dashboard live testing:", "Clearer call failure reasons:", "HubSpot Calls API v2:", "n8n Calls API v2 template:", "Dify plugin and v2 template:"]) {
+    await expect(article).toContainText(title);
+  }
+  await expect(article).toContainText("Marketplace template remains on v1.");
   await expect(article).toContainText("Inbound Goal responses:");
   await expect(article).toContainText("MCP V2 and ChatGPT plugin:");
   await expect(article).toContainText("Dashboard call results:");
