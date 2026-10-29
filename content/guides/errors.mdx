@@ -53,13 +53,10 @@ SDK methods raise typed SDK errors while preserving the stable API error code an
 
 ## Accepted call execution outcomes
 
-The stable `APIError.code` values above describe an HTTP request failure. They
-are separate from the outcome of a call task or Goal Run that was accepted and
-later reached a terminal state.
+`APIError.code` describes a failed HTTP request. Accepted calls have separate outcomes:
 
 | Surface | Stable contract |
 | --- | --- |
-| Developer API request | `APIError.code` uses the stable values listed above. |
 | Calls and Goal Runs | Poll while `result_status` is `pending`. `call_outcome` separates ordinary telephone outcomes from technical errors; an unavailable result may have both result and error null. |
 | Legacy call tasks | Lifecycle `status` is stable. `failure_code` is a nullable string without a published enum; `failure_message` is nullable human-readable context. |
 
@@ -95,21 +92,19 @@ the original request, key and Call ID for that purpose.
 | `409 idempotency_conflict` without that reason code | The key belongs to another request or owner. Recover using the original input and identity. Do not automatically switch keys: that can create another phone call. |
 | `503 provider_unavailable` during Call preparation | Preparation could not finish. Retry the same request with the same key; do not treat this as missing user information. |
 | `422 call_not_ready` from `POST /v1/calls`, with a request for missing task information | Review the missing information, then [save a corrected request with a new key](/legacy-calls#correct-a-missing-information-rejection). Keep that corrected request and key for its subsequent retries. |
-| `unauthorized` or `forbidden` | Check the key and its access to the resource. Keep credentials out of logs and support posts. |
-| `insufficient_balance` | Resolve the account's billing condition before attempting more calls. A provider failure alone does not prove the balance is exhausted. |
-| `rate_limit_exceeded` | Back off. For a retry of the same operation, retain the original request and idempotency key. Do not replace an uncertain call with a new key. |
-| `provider_unavailable` on a Goal Run create request | This code applies before durable Goal Run acceptance. Preserve the request and error details; a later accepted Goal Run failure belongs to that run's `error` field. |
+| Authentication, balance, or rate-limit error | Follow the [code-specific guidance](#code-specific-guidance). Keep the original request and key when retrying an uncertain creation. |
 | Timeout, malformed response, or server error without a saved Call ID | The response alone may not establish acceptance. Follow [Calls recovery](/quickstart#retry-without-calling-twice); retain the original request and key. |
 | A saved Call ID, including a polling error or terminal failure | Retrieve that call and inspect its status, failure context, and available transcript. Keep the ID for support. Do not issue another create request to discover its outcome. |
 
 </div>
 
-The `provider_unavailable` Goal Run contract does not establish the cause of an
-arbitrary Calls API `503`. For support, retain the SDK version, UTC timestamp,
-HTTP status, error code/details, and existing Call ID if available. Redact
+For support, retain the SDK version, UTC timestamp, HTTP status, error
+code/details, and existing Call ID if available. Redact
 credentials, phone numbers, and private transcript content before sharing.
 
-### Account controls
+<a id="account-controls"></a>
+
+### Legacy account controls
 
 For `POST /v1/calls`, account controls can reject creation before planning:
 
@@ -205,14 +200,12 @@ general JSON Schema and still be unsupported by CALL-E.
 
 | Rejected schema content | Correction |
 | --- | --- |
-| `maxLength`, `minLength`, `minimum`, `maximum`, or `pattern` on a property | Remove the keyword and check the business constraint in your application. A `description` can guide extraction but cannot enforce the constraint. |
+| `maxLength`, `minLength`, `minimum`, `maximum`, or `pattern` on a property | Remove the keyword and check the business constraint in your application. |
 | `"type": ["string", "null"]` | Use a scalar type and describe an allowed fallback such as `"unknown"`, consistent with the task. |
 
-For the five unsupported property keywords above, the error message identifies
-the keyword and property path. Use it to correct the schema; use `error.code`
-rather than parsing the message for program
-logic. This rejection creates no Call. Correct the schema and retry with the
-same idempotency key, as described in [Call retry decisions](/calls#idempotency).
+For unsupported property keywords, the message identifies the keyword and property
+path. Use `error.code` for program logic. This rejection creates no Call; correct
+the schema and retry with the same key. See [Call retry decisions](/calls#idempotency).
 
 For legacy `POST /v1/calls`, `result_schema_invalid` concerns the whole-task
 `result_schema`; `recipient_result_schema_invalid` concerns the per-recipient

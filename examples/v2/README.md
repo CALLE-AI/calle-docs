@@ -7,8 +7,9 @@ before choosing a number you own or are authorized to call.
 
 Calls use your real account and may consume credits.
 
-From the repository root, configure the same key and environment for start
-and every resume. Use a new private directory for each intentionally new call.
+Clone or download this repository and run the commands below from its root.
+Use the same key and environment for start and every resume, and a new private
+directory for each intentionally new call.
 
 ```bash
 export CALLE_BASE_URL="https://api.heycall-e.com"
