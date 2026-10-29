@@ -262,6 +262,60 @@ has intentionally decided to place another call. Store the returned Call ID and
 use GET for routine status polling. These rules apply to Calls, not automatically
 to [legacy creation failures](/legacy-calls#idempotency) or [Goal Run keys](/goal-runs#idempotency).
 
+### Retry a failed call
+
+Suppose you saved the original POST JSON body in `call-request.json` and used
+`order-8472-confirmation-attempt-1` as its key. Creation returned the API resource
+ID `call_example_attempt_1`, and a later GET reports `status: "failed"`.
+Use the same API environment and credentials as the original request; see
+[Quickstart](/quickstart#connect-to-the-api) for the environment variables.
+
+Replay the saved body and original key to recover that Call:
+
+```bash
+curl --fail-with-body --silent --show-error \
+  --request POST "$CALLE_BASE_URL/v2/calls" \
+  --header @- \
+  --header "Content-Type: application/json" \
+  --header "Idempotency-Key: order-8472-confirmation-attempt-1" \
+  --data-binary @call-request.json <<EOF
+Authorization: Bearer $CALLE_API_KEY
+EOF
+```
+
+The response is **202 Accepted** with the original ID and saved failed state.
+For example, these fields remain:
+
+```json
+{"id": "call_example_attempt_1", "status": "failed"}
+```
+
+This successful HTTP replay does not retry the phone call or reset it to queued.
+Inspect its `error` before deciding whether another call is appropriate.
+If provider submission is uncertain, [reconcile the original Call first](#failures-and-uncertain-submissions).
+
+To intentionally call again, save a new key for the second attempt, then submit
+the body with that key. This requests another real call and may consume credits:
+
+```bash
+curl --fail-with-body --silent --show-error \
+  --request POST "$CALLE_BASE_URL/v2/calls" \
+  --header @- \
+  --header "Content-Type: application/json" \
+  --header "Idempotency-Key: order-8472-confirmation-attempt-2" \
+  --data-binary @call-request.json <<EOF
+Authorization: Bearer $CALLE_API_KEY
+EOF
+```
+
+Successful acceptance returns **202** with a different API resource ID. Save
+that ID and use GET to follow the second Call; acceptance does not guarantee
+that it will connect or succeed.
+
+If either POST times out or loses its response, replay that attempt's unchanged
+body and key. In particular, retry the second POST with `attempt-2`, not a third
+key. A timeout alone is never a reason to move to the next attempt.
+
 ## Read, events and cancellation
 
 | Method | Path | Behavior |
