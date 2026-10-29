@@ -144,11 +144,10 @@ For example, `"type": ["string", "null"]` is not supported. It returns
 `400 result_schema_invalid` before a Call is created. Use `"type": "string"`
 and explicitly describe an allowed `"unknown"` fallback in the task instead.
 
-CALL-E supports a subset of JSON Schema. Length constraints (`maxLength`,
-`minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are unsupported
-in `result_schema`. Adding any of these keywords to a property returns
-`400 result_schema_invalid` before a Call is created. Remove the rejected keyword;
-retrying the same invalid schema will not help. See [schema errors](/errors#result-schema-errors).
+Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`,
+`maximum`), and `pattern` are also unsupported. These property keywords return
+`400 result_schema_invalid`; see [schema errors](/errors#result-schema-errors)
+for correction and retry guidance.
 
 Use `description` to explain a field and `enum` to list its allowed values. For
 example, this schema collects a yes/no answer while allowing missing evidence:
@@ -169,9 +168,7 @@ example, this schema collects a yes/no answer while allowing missing evidence:
 ```
 
 A description guides extraction; it does not enforce a length, range, or pattern.
-For example, asking for a summary of at most 100 characters does not guarantee
-that limit. Check business constraints in your application before using the result.
-The [Quickstart](/quickstart) shows how to submit a complete request and read its result.
+Check business constraints in your application before using the result.
 
 For older call-task integrations, use the
 [legacy schema rules](/legacy-calls#structured-results).
@@ -283,38 +280,19 @@ Authorization: Bearer $CALLE_API_KEY
 EOF
 ```
 
-The response is **202 Accepted** with the original ID and saved failed state.
-For example, these fields remain:
+The response is **202 Accepted** with the original ID and `status: "failed"`;
+it does not redial or reset the Call to queued.
 
-```json
-{"id": "call_example_attempt_1", "status": "failed"}
-```
+To intentionally call again, inspect `error` and
+[reconcile any uncertain provider submission](#failures-and-uncertain-submissions)
+first. Save a new key, such as `order-8472-confirmation-attempt-2`, then use it in
+the command's `Idempotency-Key` header with the saved body. This requests another
+real call and may consume credits. Successful acceptance returns **202** with a
+different ID; save it and use GET to follow the Call. Acceptance does not guarantee
+connection or success.
 
-This successful HTTP replay does not retry the phone call or reset it to queued.
-Inspect its `error` before deciding whether another call is appropriate.
-If provider submission is uncertain, [reconcile the original Call first](#failures-and-uncertain-submissions).
-
-To intentionally call again, save a new key for the second attempt, then submit
-the body with that key. This requests another real call and may consume credits:
-
-```bash
-curl --fail-with-body --silent --show-error \
-  --request POST "$CALLE_BASE_URL/v2/calls" \
-  --header @- \
-  --header "Content-Type: application/json" \
-  --header "Idempotency-Key: order-8472-confirmation-attempt-2" \
-  --data-binary @call-request.json <<EOF
-Authorization: Bearer $CALLE_API_KEY
-EOF
-```
-
-Successful acceptance returns **202** with a different API resource ID. Save
-that ID and use GET to follow the second Call; acceptance does not guarantee
-that it will connect or succeed.
-
-If either POST times out or loses its response, replay that attempt's unchanged
-body and key. In particular, retry the second POST with `attempt-2`, not a third
-key. A timeout alone is never a reason to move to the next attempt.
+If either POST loses its response, replay that attempt's unchanged body and key.
+A timeout alone is never a reason to move to the next attempt.
 
 ## Read, events and cancellation
 

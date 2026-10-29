@@ -1313,5 +1313,7 @@ test("publishes production SDK installation and readiness guidance", async ({ pa
   await page.goto("/quickstart#run-a-complete-example");
   await expect(page.locator("main a[href$='/examples/v2/calls.py']")).toBeVisible();
   await expect(page.locator("main a[href$='/examples/v2/calls.rb']")).toBeVisible();
-  await expect(page.locator("main")).toContainText("python examples/v2/read_call_result.py");
+  await expect(page.getByRole("link", { name: "complete example instructions" })).toHaveAttribute(
+    "href", "https://github.com/CALLE-AI/calle-docs/tree/main/examples/v2",
+  );
 });
