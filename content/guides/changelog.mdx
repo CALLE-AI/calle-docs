@@ -3,6 +3,14 @@ title: What's New
 description: Track CALL-E Developer API and SDK product updates.
 ---
 
+## 2026-11-02
+
+**n8n call result handling:** Version 2 Call nodes wait for final result readiness
+instead of returning as soon as a call ends, and retain the Call ID for recovery
+if polling times out. This behavior is available in the published node package;
+existing version 1 nodes require explicit migration.
+([#3](https://github.com/CALLE-AI/n8n-nodes-calle/issues/3))
+
 ## 2026-10-26 — Live Testing & Integrations
 
 **Dashboard live testing:** Added chat-mode live testing in the Dashboard, so you

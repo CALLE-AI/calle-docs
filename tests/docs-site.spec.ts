@@ -432,6 +432,7 @@ test("limits changelog headings to releases with optional feature themes", async
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
   expect(dates.map((date) => date.trim())).toEqual([
+    "2026-11-02",
     "2026-10-26 — Live Testing & Integrations",
     "2026-10-19",
     "2026-09-28",
