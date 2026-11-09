@@ -408,7 +408,7 @@ test("compares prices with stacked bars and accessible fee breakdowns", async ({
 test("opens and dismisses fee breakdowns by touch", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
-  await page.goto("http://localhost:4174/billing");
+  await page.goto("/billing");
   const goal = page.getByRole("button", { name: "Goal Model Fee: $0.0148 per 10 seconds. Show price details", exact: true });
   const carrier = page.getByRole("button", { name: "Goal Carrier Fee: $0.0200 per minute. Show price details", exact: true });
   await goal.tap();
