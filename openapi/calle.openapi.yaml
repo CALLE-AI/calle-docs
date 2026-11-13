@@ -4,12 +4,13 @@ info:
   version: 1.0.0
   description: >-
     Developer API contract used by the CALL-E TypeScript and Python SDKs.
-    Calls and Goal Runs expose call_outcome, result_status and a fixed transcript
-    array. SDK 1.0 supports the single-target Calls API. Legacy call tasks remain
-    available during the migration period; see the public migration guide.
+    This development contract includes call_outcome, result_status and the fixed
+    transcript array. Confirm the target environment's deployed contract before
+    using those fields or local SDK wait helpers. This is not a production
+    availability announcement. See the Calls guide's preview availability section.
 servers:
   - url: https://api.heycall-e.com
-    description: Production developer API.
+    description: Placeholder developer API base URL.
 security:
   - bearerAuth: []
 tags:
@@ -19,7 +20,9 @@ tags:
   - name: legacy-calls
     x-displayName: Legacy Calls (Deprecated)
     description: >-
-      Deprecated. v1 Calls will retire on December 31, 2026 (2026-12-31 16:00 UTC / 2027-01-01 00:00 Asia/Shanghai). See the [migration guide](/migration). Goal APIs are unaffected.
+      Deprecated. v1 Calls will retire on December 31, 2026
+      (2026-12-31 16:00 UTC / 2027-01-01 00:00 Asia/Shanghai).
+      See the [migration guide](/migration). Goal APIs are unaffected.
 paths:
   /v2/calls:
     post:
@@ -200,7 +203,7 @@ paths:
       description: >-
         Poll durable JSON event pages, not SSE. Events include call.accepted,
         call.in_progress, call.ringing, call.connected, call.asr, call.speech,
-        call.interrupted, call.dtmf, call.ended, call.result_ready, and
+        call.interrupted, call.dtmf, call.transfer_started, call.transfer_updated, call.ended, call.result_ready, and
         call.completed/failed/canceled. Not every call emits every event type.
         Speech details preserve observed text, speaker, turn and optional occurred_at.
         ASR may contain partial fragments or revised hypotheses; no is_final flag
@@ -704,6 +707,154 @@ paths:
           $ref: "#/components/responses/ErrorResponse"
         "503":
           $ref: "#/components/responses/ErrorResponse"
+  /v1/goals/{goal_id}/subjects:
+    post:
+      operationId: enrollGoalSubjects
+      tags:
+      - goals
+      summary: Append subjects to a Goal
+      description: |-
+        Append or update contacts in an existing outbound Goal owned by the API key account. A
+        Goal created in CALL-E Web does not need to be published. Draft, active, and paused
+        Goals accept batches; retired and inbound Goals reject them. Missing and other-owner
+        Goals both return 404.
+
+        Each batch contains 1–5,000 items. Phone numbers must include a country code and are
+        normalized by CALL-E. A supplied business_identity identifies the customer and business
+        record within the owner account; otherwise the normalized phone identifies the contact.
+        Duplicate identities within one batch are rejected; distinct business records can share
+        a phone. Omitted contacts are unchanged; membership withdrawn explicitly withdraws a
+        contact. Invalid batches commit no contacts.
+
+        An item may carry outcome to report a business result your own system already knows,
+        such as a payment received. CALL-E marks that contact complete, stops calling it, and
+        counts it as completed rather than removed; a contact already complete, stopped or
+        withdrawn keeps its state and only records the report. outcome and membership
+        withdrawn are mutually exclusive and reject the whole batch together.
+
+        A required Idempotency-Key identifies the batch within this Goal. Replaying the same
+        key and content returns the same checkpoint; changed content returns 409
+        idempotency_conflict. The response contains only a checkpoint and counts, never
+        contact details. Appending contacts does not confirm a Strategy, grant authorization,
+        resume a paused Goal, or create a call by itself.
+
+        Each append is its own batch and keeps the Strategy version confirmed at that moment,
+        so confirming a new Strategy later does not change batches already created. An optional
+        window sets this batch's starts_at, first_round_deadline and ends_at; ends_at cannot
+        outlast the Strategy's own hard stop, and reusing the key with a different window is a
+        content change.
+
+        Without versioned business facts, a contact already in this Goal and not closed is
+        rejected row by row and stays in its original batch; a stopped contact is rejected too. A completed or withdrawn contact
+        reopens into the new batch and restarts that batch's attempts, cycles and lifecycle.
+        The response carries the rejected counts and at most 20 samples; read the full list
+        from the checkpoint's rejected endpoint.
+
+        With business_identity, an item may include business_facts: a complete, source-ordered
+        snapshot for that customer and business record. source_version is independent of the
+        Idempotency-Key. Higher versions replace facts and contact information; equal versions
+        with identical content are no-ops, while different content returns 409
+        source_version_conflict. Older versions cannot roll back the snapshot or membership;
+        an accompanying outcome is still accepted without replacing newer facts.
+
+        Once versioned facts are used, updates retain the existing contact's batch, context and
+        attempt history. Imports cannot reopen a contact with a recorded upstream outcome in
+        this Goal, even with a new key or newer ordinary facts. A genuinely new obligation uses
+        a new business_record_id. Omitting business_facts preserves the stored snapshot; explicit
+        withdrawal and outcome commands remain available. Outcomes do not automatically close
+        the same record in another Goal.
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Stable key for this batch. Reuse only with the same content when retrying.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollGoalSubjectsRequest'
+            example:
+              items:
+              - contact_profile:
+                  phone_number: '<E164_PHONE>'
+                  display_name: Ada
+              window:
+                starts_at: '2026-10-01T09:00:00Z'
+                ends_at: '2026-10-03T18:00:00Z'
+      responses:
+        '200':
+          description: Committed batch checkpoint, including exact replays.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollGoalSubjectsResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/ErrorResponse'
+  /v1/goals/{goal_id}/subjects/checkpoints/{checkpoint_ref}/rejected:
+    get:
+      operationId: listRejectedGoalSubjects
+      tags:
+      - goals
+      summary: List the contacts one append refused
+      description: |-
+        Read the complete, ordered list of rows the duplicate rule refused for one append
+        checkpoint. Rows are named by your own contact key; no contact details are returned.
+      parameters:
+      - $ref: '#/components/parameters/GoalId'
+      - name: checkpoint_ref
+        in: path
+        required: true
+        description: Checkpoint returned by the matching append.
+        schema:
+          type: string
+      - name: offset
+        in: query
+        required: false
+        description: Rows to skip; defaults to 0.
+        schema:
+          type: integer
+          minimum: 0
+      - name: limit
+        in: query
+        required: false
+        description: Rows per page, 1 to 100; defaults to 50.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+      responses:
+        '200':
+          description: One page of refused rows.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectedGoalSubjectsResponse'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/ErrorResponse'
   /v1/goals/{goal_id}/runs:
     post:
       operationId: createGoalRun
@@ -1072,7 +1223,7 @@ components:
     CallId:
       name: call_id
       in: path
-      description: Public CALL-E call identifier returned by create call. It starts with `call_` and is safe to store in your workflow records.
+      description: Top-level CallTask `id` returned by Create Call. It starts with `call_`.
       required: true
       schema:
         type: string
@@ -1105,6 +1256,10 @@ components:
       additionalProperties: false
       properties:
         task:
+          description: Natural-language phone task. An explicit human-transfer request must
+            supply the separate international transfer destination and trigger condition.
+            Transfer uses the same account country access as ordinary outbound dialing. Missing
+            essential inputs return input_incomplete before dialing.
           minLength: 1
           type: string
         phone:
@@ -1128,12 +1283,10 @@ components:
         result_schema:
           type: object
           additionalProperties: true
-          description: |-
-            Required closed flat JSON Schema using the same calle.result.scalar-object.v1 profile as Goal. At most 32 string, boolean, integer or number properties; additionalProperties must be false. Nested objects, arrays, null values and schema combinators are unsupported.
-
-            CALL-E supports a subset of JSON Schema. Property keywords `maxLength`, `minLength`, `minimum`, `maximum`, and `pattern` are rejected with HTTP 400 `result_schema_invalid` before a Call is created.
-
-            Use `description` to guide extraction and `enum` to list allowed values. Descriptions do not enforce length, range, or pattern constraints; check those business constraints in your application. See [Result schema](/calls#result-schema) for a supported example and [schema errors](/errors#result-schema-errors) for corrections.
+          description: Required closed flat JSON Schema using the same calle.result.scalar-object.v1
+            profile as Goal. At most 32 string, boolean, integer or number properties; additionalProperties
+            must be false. Nested objects, arrays, null values and schema combinators are
+            unsupported.
         metadata:
           additionalProperties: true
           type: object
@@ -1150,6 +1303,35 @@ components:
       type: object
       description: One phone, optional region and spoken locale, and a required Goal-compatible
         result schema.
+    HumanTransferResult:
+      type: object
+      additionalProperties: false
+      description: Provider-grounded handoff result independent of the requested business result. Connected means the destination answered. Unknown preserves insufficient terminal evidence.
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, transferring, connected, failed, not_attempted, unknown]
+        target_phone:
+          type: [string, 'null']
+          description: Frozen E.164 transfer destination, or null for historical receipts without a policy.
+        call_id:
+          type: [string, 'null']
+          description: Transfer telephone call ID for correlation, independent of the API Call resource ID.
+        started_at:
+          type: [string, 'null']
+          format: date-time
+          description: UTC initiation time. Null if the provider timestamp timezone cannot be verified.
+        ringing_at:
+          type: [string, 'null']
+          format: date-time
+        connected_at:
+          type: [string, 'null']
+          format: date-time
+          description: UTC destination-answer time. A connected receipt may have an unknown timestamp timezone.
+        failure_reason:
+          type: [string, 'null']
+          description: Provider failure explanation when status is failed. Do not parse this text for application logic.
     AgenticCall:
       additionalProperties: false
       properties:
@@ -1162,6 +1344,11 @@ components:
         object:
           const: call
           type: string
+        transfer:
+          description: Shared handoff snapshot. Null when no transfer information is available.
+          anyOf:
+          - $ref: '#/components/schemas/HumanTransferResult'
+          - type: 'null'
         status:
           $ref: '#/components/schemas/GoalRunStatus'
         call_outcome:
@@ -1187,7 +1374,7 @@ components:
             - 'null'
           description: Result validated against result_schema and durably persisted. Null while pending, unavailable, not applicable, or on a technical error. Explicit schema-valid task fallbacks are preserved.
           additionalProperties:
-            $ref: '#/components/schemas/GoalScalar'
+            $ref: '#/components/schemas/GoalResultScalar'
         error:
           description: Technical execution or result-processing error, or null. No-answer, busy, declined, cancellation and insufficient business evidence do not populate error.
           oneOf:
@@ -1252,6 +1439,336 @@ components:
         data:
           $ref: '#/components/schemas/AgenticCall'
       description: v2 terminal webhook. data is identical to the terminal GET response. A valid call completion can carry a failed custom result. Retries reuse the same event id.
+    EnrollGoalSubjectItem:
+      additionalProperties: false
+      properties:
+        contact_profile:
+          $ref: '#/components/schemas/GoalSubjectContactProfile'
+        business_identity:
+          anyOf:
+          - $ref: '#/components/schemas/SubjectBusinessIdentity'
+          - type: 'null'
+          default: null
+          description: Source-confirmed customer and business-record IDs. Stable across phone changes and batches; different records have separate follow-up contexts.
+        business_facts:
+          anyOf:
+          - $ref: '#/components/schemas/SubjectBusinessFacts'
+          - type: 'null'
+          default: null
+          description: Complete versioned snapshot; requires business_identity. Higher versions replace all values and contact_profile. Missing or null values are unavailable, not inherited from an older snapshot.
+        history_subject_refs:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
+          description: Existing GoalSubject references whose entire history is confirmed to belong to business_identity. Requires business_identity; cross-owner or conflicting attribution is rejected. Existing unassigned call history must be attributed explicitly, never treated as zero calls.
+        membership:
+          default: active
+          enum:
+          - active
+          - withdrawn
+          title: Membership
+          type: string
+        outcome:
+          anyOf:
+          - $ref: '#/components/schemas/GoalSubjectOutcome'
+          - type: 'null'
+          default: null
+          description: Business result already known upstream. Rejected together with membership withdrawn.
+      required:
+      - contact_profile
+      title: EnrollGoalSubjectItem
+      type: object
+    SubjectBusinessFacts:
+      type: object
+      additionalProperties: false
+      required:
+      - source_version
+      - values
+      properties:
+        source_version:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: Source-assigned ordering for this owner and business identity. Must increase when facts or contact_profile change; unrelated to request retries or daily batch names.
+        values:
+          type: object
+          maxProperties: 32
+          propertyNames:
+            minLength: 1
+            maxLength: 64
+            pattern: '\S'
+            not:
+              const: source_version
+          additionalProperties:
+            anyOf:
+            - type: string
+              maxLength: 2000
+            - type: number
+            - type: boolean
+            - type: 'null'
+          description: Complete snapshot of scalar business facts. Use decimal strings with an explicit currency field for monetary values. source_version is reserved for the envelope.
+    SubjectBusinessIdentity:
+      additionalProperties: false
+      type: object
+      properties:
+        customer_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+        business_record_id:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - customer_id
+      - business_record_id
+    GoalSubjectOutcome:
+      additionalProperties: false
+      properties:
+        reason_code:
+          maxLength: 128
+          minLength: 1
+          pattern: ^[a-z0-9_.:-]+$
+          title: Reason Code
+          type: string
+          description: Stable upstream reason code, for example payment_received.
+        occurred_at:
+          format: date-time
+          title: Occurred At
+          type: string
+          description: When the business result happened. Must include a timezone offset.
+        summary:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          default: null
+          title: Summary
+          description: Human-readable note kept with the contact; never used as model input.
+        evidence_ref:
+          anyOf:
+          - maxLength: 1024
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Evidence Ref
+          description: Upstream receipt reference such as a ticket id or URL. Stored verbatim.
+      required:
+      - reason_code
+      - occurred_at
+      title: GoalSubjectOutcome
+      type: object
+    GoalSubjectContactProfile:
+      additionalProperties: false
+      properties:
+        display_name:
+          anyOf:
+          - maxLength: 255
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Display Name
+        phone_number:
+          maxLength: 64
+          minLength: 1
+          title: Phone Number
+          type: string
+          description: Phone number including country code; CALL-E normalizes it before identifying the subject.
+        email:
+          anyOf:
+          - maxLength: 320
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Email
+        timezone:
+          anyOf:
+          - maxLength: 255
+            minLength: 1
+            type: string
+          - type: 'null'
+          default: null
+          title: Timezone
+      required:
+      - phone_number
+      title: GoalSubjectContactProfile
+      type: object
+    GoalBatchWindow:
+      additionalProperties: false
+      description: Timing for this batch only; every field is optional and may only narrow the Strategy.
+      properties:
+        starts_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          default: null
+          title: Starts At
+          description: Nothing in this batch is submitted before this instant.
+        first_round_deadline:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          default: null
+          title: First Round Deadline
+          description: Drives estimates, risk and first-round statistics only; it never stops calling.
+        ends_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          default: null
+          title: Ends At
+          description: Hard stop for this batch; cannot outlast the Strategy's own hard stop.
+      title: GoalBatchWindow
+      type: object
+    RejectedGoalSubject:
+      additionalProperties: false
+      properties:
+        origin_subject_key:
+          title: Origin Subject Key
+          type: string
+          description: Canonical contact key; E.164 for phone identity, or business-prefixed opaque key for a supplied business identity.
+        reason:
+          enum:
+          - subject_open_in_batch
+          - subject_stopped
+          title: Reason
+          type: string
+        batch_ref:
+          title: Batch Ref
+          type: string
+          description: Batch the contact currently belongs to.
+      required:
+      - origin_subject_key
+      - reason
+      - batch_ref
+      title: RejectedGoalSubject
+      type: object
+    RejectedGoalSubjectsResponse:
+      additionalProperties: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/RejectedGoalSubject'
+          title: Data
+          type: array
+        total:
+          title: Total
+          type: integer
+        next_offset:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          title: Next Offset
+      required:
+      - data
+      - total
+      title: RejectedGoalSubjectsResponse
+      type: object
+    EnrollGoalSubjectsRequest:
+      additionalProperties: false
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 80
+          - type: 'null'
+          default: null
+          description: Optional display name for this batch. Reusing the same idempotency key with a different name returns 409.
+        items:
+          items:
+            $ref: '#/components/schemas/EnrollGoalSubjectItem'
+          maxItems: 5000
+          minItems: 1
+          title: Items
+          type: array
+        window:
+          anyOf:
+          - $ref: '#/components/schemas/GoalBatchWindow'
+          - type: 'null'
+          default: null
+          description: Optional timing for this batch only.
+      required:
+      - items
+      title: EnrollGoalSubjectsRequest
+      type: object
+    EnrollGoalSubjectsResponse:
+      additionalProperties: false
+      properties:
+        checkpoint_ref:
+          title: Checkpoint Ref
+          type: string
+        goal_id:
+          title: Goal Id
+          type: string
+        batch_ref:
+          title: Batch Ref
+          type: string
+          description: Batch this append created or reused.
+        item_count:
+          title: Item Count
+          type: integer
+        created_subject_count:
+          title: Created Subject Count
+          type: integer
+        created_goal_subject_count:
+          title: Created Goal Subject Count
+          type: integer
+        updated_goal_subject_count:
+          title: Updated Goal Subject Count
+          type: integer
+        withdrawn_goal_subject_count:
+          title: Withdrawn Goal Subject Count
+          type: integer
+        rejected_open_count:
+          title: Rejected Open Count
+          type: integer
+          description: Rows refused because the contact is already open in another batch.
+        rejected_stopped_count:
+          title: Rejected Stopped Count
+          type: integer
+          description: Rows refused because the contact is stopped.
+        rejected_samples:
+          items:
+            $ref: '#/components/schemas/RejectedGoalSubject'
+          maxItems: 20
+          default: []
+          title: Rejected Samples
+          type: array
+          description: At most 20 refused rows; read the rest from the rejected endpoint.
+        active_subject_count_after:
+          title: Active Subject Count After
+          type: integer
+        committed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Committed At
+      required:
+      - checkpoint_ref
+      - goal_id
+      - batch_ref
+      - item_count
+      - created_subject_count
+      - created_goal_subject_count
+      - updated_goal_subject_count
+      - withdrawn_goal_subject_count
+      - rejected_open_count
+      - rejected_stopped_count
+      - active_subject_count_after
+      - committed_at
+      title: EnrollGoalSubjectsResponse
+      type: object
     GoalList:
       type: object
       description: |-
@@ -1349,6 +1866,11 @@ components:
           description: |-
             Normalized JSON Schema for per-Run `variables`. Respect `required`, property types, enum
             values, defaults, and `additionalProperties`; invalid input is rejected before execution.
+            For managed Subjects, a property may use `x-calle-source` to bind to a business_facts
+            value (`source_version` binds the envelope version). The runtime supplies bound fields
+            from the Subject instead of model inputs; missing required facts prevent Run creation.
+            Bound properties cannot have defaults. Simulation and explicitly submitted single
+            Runs continue to use their supplied variables under the same type/required checks.
           additionalProperties: true
         result_schema:
           type: object
@@ -1387,7 +1909,14 @@ components:
         - string
         - number
         - boolean
-      description: Scalar value supported by published Goal input and result Schema profiles.
+      description: Non-null scalar value supported by published Goal input Schema profiles.
+    GoalResultScalar:
+      type:
+        - string
+        - number
+        - boolean
+        - "null"
+      description: Result field value. Null represents unavailable evidence when allowed by the pinned result schema.
     GoalVariables:
       type: object
       description: |-
@@ -1417,6 +1946,11 @@ components:
         - created_at
         - completed_at
       properties:
+        transfer:
+          description: Shared handoff snapshot, independent of business result readiness.
+          anyOf:
+          - $ref: '#/components/schemas/HumanTransferResult'
+          - type: 'null'
         object:
           type: string
           enum:
@@ -1464,9 +1998,9 @@ components:
             - "null"
           description: |-
             Parsed result validated against the published result schema and durably persisted, or
-            `null` while pending, unavailable, not applicable, or on a technical error. Its keys vary by Goal.
+            `null` while pending, unavailable, not applicable, or on a technical error. Its keys vary by Goal. Individual field values may be null when allowed by the pinned result schema.
           additionalProperties:
-            $ref: "#/components/schemas/GoalScalar"
+            $ref: "#/components/schemas/GoalResultScalar"
         error:
           description: |-
             Technical execution or result-processing error, or null. Ordinary telephone outcomes,
@@ -1577,8 +2111,6 @@ components:
 
             Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
 
-            Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are outside the documented validation guarantees. Check these business constraints in your application; successful request acceptance does not prove they are enforced on the result. See [legacy structured results](/legacy-calls#structured-results).
-
             Prefer string enums over booleans for business decisions that may be unclear, and include an `unknown` enum value when the call may not provide enough evidence.
           additionalProperties: true
         recipient_result_schema:
@@ -1593,10 +2125,6 @@ components:
             Do not use reserved recipient response field names such as `summary`, `status`, `transcript`, `call_id`, or timing fields as custom result fields. Use names such as `customer_summary`, `notes`, or `reason` instead.
 
             Field `description` values are passed to the extraction model and should explain how enum values should be selected. Descriptions guide extraction but are not hard validation rules. Hard validation comes from `type`, `required`, `enum`, and `additionalProperties`.
-
-            Supported schema features are `type`, `properties`, `required`, `enum`, nested `object` fields, simple `array.items`, `description`, and `additionalProperties: false`. Unsupported features include `$ref`, `oneOf`, `anyOf`, `allOf`, recursive schemas, complex format validation, and `additionalProperties: true`.
-
-            Length constraints (`maxLength`, `minLength`), numeric bounds (`minimum`, `maximum`), and `pattern` are outside the documented validation guarantees. Check these business constraints in your application; successful request acceptance does not prove they are enforced on the result. See [legacy structured results](/legacy-calls#structured-results).
 
             Object schemas are strict by default. Fields not declared in `properties` are rejected, and unsupported or invalid recipient results are returned as `null`.
           additionalProperties: true
@@ -1751,12 +2279,15 @@ components:
           type:
             - string
             - "null"
-          description: Provider call identifier for support correlation when available.
+          description: Provider identifier for this call attempt. Use it to match Dashboard Call Records. Do not use it as call_id.
         failure_code:
           type:
             - string
             - "null"
-          description: Machine-readable failure reason when this attempt failed.
+          description: |-
+            Diagnostic failure reason when this attempt failed. No published enum.
+
+            Preserve raw values for support; do not branch retry, reporting, or analytics logic on specific values. See [Accepted call execution outcomes](https://docs.heycall-e.com/errors#accepted-call-execution-outcomes).
         failure_message:
           type:
             - string
@@ -1837,7 +2368,7 @@ components:
       properties:
         id:
           type: string
-          description: Public CALL-E call task identifier. Store this id to fetch state, list events, and correlate webhooks.
+          description: CALL-E call task identifier. Use it as call_id to fetch the call and list its events. Terminal webhooks return it as data.id; the webhook's top-level id identifies the event.
         object:
           type: string
           description: Always `call_task` for call task responses.
@@ -1891,7 +2422,10 @@ components:
           type:
             - string
             - "null"
-          description: Machine-readable failure reason when `status` is `failed`; otherwise `null`.
+          description: |-
+            Diagnostic failure reason when `status` is `failed`; otherwise `null`. No published enum.
+
+            Preserve raw values for support; do not branch retry, reporting, or analytics logic on specific values. See [Accepted call execution outcomes](https://docs.heycall-e.com/errors#accepted-call-execution-outcomes).
         failure_message:
           type:
             - string
@@ -2036,6 +2570,7 @@ components:
             - call_cannot_cancel
             - invalid_request
             - input_incomplete
+            - capacity_blocked
             - unauthorized
             - forbidden
             - rate_limit_exceeded
@@ -2055,6 +2590,7 @@ components:
             - result_schema_invalid
             - recipient_result_schema_invalid
             - idempotency_conflict
+            - source_version_conflict
             - goal_not_published
             - goal_not_executable
             - goal_not_ready

@@ -472,3 +472,10 @@ created_and_completed = client.goals.run_and_wait(
 ```
 
 `waitForResult` and `wait_for_result` return when `result_status` is no longer `pending`, including unavailable results with no error. A technical failure still returns the complete Goal Run object; polling timeout continues to use each SDK's existing timeout exception.
+
+## Human transfer results
+
+Goal Run responses include the same optional `transfer` snapshot as Calls.
+Read `transfer.status` to determine whether the destination answered, alongside
+`result_status` and the requested business result. Provider timestamps and
+late-receipt corrections follow the [Calls transfer result contract](/calls#human-transfer-results).

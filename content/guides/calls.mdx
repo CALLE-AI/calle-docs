@@ -323,6 +323,8 @@ out-of-range limits return `400 invalid_request`.
 | `call.asr` | Callee recognition update; may be a partial fragment or a revised hypothesis. |
 | `call.speech` | Observed bot speech text. |
 | `call.interrupted` / `call.dtmf` | Interruption or keypad input. |
+| `call.transfer_started` | Provider observed a transfer attempt. |
+| `call.transfer_updated` | Updated handoff snapshot in `details.transfer`. |
 | `call.ended` | Phone execution ended; result processing may still be pending. |
 | `call.result_ready` | The structured result is saved and can be read. |
 | `call.completed` / `call.failed` / `call.canceled` | The Call's terminal outcome. |
@@ -388,3 +390,30 @@ coexist with execution status `completed`.
 Do not automatically create a replacement for an uncertain submission. Retain
 the original Call ID and reconcile it before making another call. Expiration of
 a client wait timeout is also not evidence that no call occurred.
+
+## Human transfer results
+
+A transfer instruction can include a destination and the condition for handing
+off the current call. The destination uses the account's outbound country access.
+The response includes an optional `transfer` snapshot. The same snapshot is
+available through MCP call tools.
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | A transfer is configured and its condition is still pending. |
+| `transferring` | The provider observed an attempt and the call is ongoing. |
+| `connected` | Provider evidence confirms that the transfer destination answered. |
+| `failed` | The provider supplied a transfer failure reason. |
+| `not_attempted` | Execution ended with positive evidence that submission never started. |
+| `unknown` | Terminal evidence is insufficient to confirm the transfer outcome. |
+
+`target_phone` is the frozen destination. `call_id` inside `transfer` identifies
+the transfer leg. The top-level `call_id` identifies the original telephone call.
+`started_at`, `ringing_at`, and `connected_at` use UTC timestamps when the provider
+timezone is known. Historical receipts with unknown timezones retain null time
+fields. `failure_reason` carries the provider explanation for a failed transfer.
+
+Business result readiness and transfer status are independent. A later GET can
+return a corrected snapshot when additional provider evidence arrives. A durable
+`call.transfer_updated` event carries each saved correction in `details.transfer`.
+`transfer` is null when no handoff information is available.
