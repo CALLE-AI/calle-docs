@@ -391,13 +391,13 @@ a client wait timeout is also not evidence that no call occurred.
 
 ## Recording playback and downloads
 
-`GET /v2/calls/{id}/recording` reads a retained recording using the same API key and Call access checks as `GET /v2/calls/{id}`. Use the Call resource `id`, rather than its telephone `call_id`. This fixed endpoint resolves the current temporary audio source when it is requested; the endpoint address does not carry a source signature or a permanent credential.
+`GET /v2/calls/{id}/recording` reads a retained recording using the same API key and Call access checks as `GET /v2/calls/{id}`. Set `{id}` to the Call resource `id` returned when you create the Call. This fixed endpoint resolves the current temporary audio source when it is requested; the endpoint address does not carry a source signature or a permanent credential.
 
 ```bash
 curl --fail \
   --header "Authorization: Bearer $CALLE_API_KEY" \
-  "https://api.heycall-e.com/v2/calls/$CALL_ID/recording?download=1" \
-  --output call.wav
+  --remote-name --remote-header-name \
+  "https://api.heycall-e.com/v2/calls/$CALL_ID/recording?download=1"
 ```
 
 The response contains audio bytes. Without `download=1`, `Content-Disposition` is `inline`; with it, the response is an attachment. A single HTTP `Range` and optional `If-Range` header support partial reads and resuming downloads. A successful range returns `206` with `Content-Range`; an unsatisfiable range returns `416`.
