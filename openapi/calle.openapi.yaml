@@ -169,6 +169,52 @@ paths:
         '404': *id001
         '409': *id001
         '500': *id001
+  /v2/calls/{call_id}/recording:
+    get:
+      operationId: getAgenticCallRecording
+      tags: [calls]
+      summary: Play or download a call recording
+      description: A stable authenticated audio entry. The server resolves the current temporary source URL on each read. Availability requires a retained recording and valid API key with access to this Call. This operation never places a call.
+      parameters:
+        - *id002
+        - name: download
+          in: query
+          schema: {type: string, enum: ['1']}
+          description: Set to 1 for an attachment; otherwise returns inline audio.
+        - name: Range
+          in: header
+          schema: {type: string}
+          description: A single bytes range, for example bytes=0-1023.
+        - name: If-Range
+          in: header
+          schema: {type: string}
+      responses:
+        '200':
+          description: Recording bytes. Cache-Control is private, no-store. Content-Disposition is inline or attachment.
+          content:
+            audio/wav:
+              schema: {type: string, format: binary}
+            audio/mpeg:
+              schema: {type: string, format: binary}
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '206':
+          description: Partial recording bytes with Content-Range and Accept-Ranges headers.
+          content:
+            audio/wav:
+              schema: {type: string, format: binary}
+            audio/mpeg:
+              schema: {type: string, format: binary}
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '409': *id001
+        '416':
+          description: Requested byte range is outside the recording; Content-Range is retained.
+        '503': *id001
   /v2/calls/{call_id}/cancel:
     post:
       operationId: cancelAgenticCall
