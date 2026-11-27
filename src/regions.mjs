@@ -26,7 +26,8 @@ export function extractRegions(readme) {
     /^\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|$/, 5);
   const separated = tables?.length === 2 && validTable(tables[0],
     /^\| Country \/ Region \| Region Code \| Calling Code \| Number Type \|$/, 4) &&
-    validTable(tables[1], /^\| Language \| Code \| Additional local accents \|$/, 3);
+    (validTable(tables[1], /^\| Language \| Code \| Additional local accents \|$/, 3) ||
+     validTable(tables[1], /^\| Language \| Accents \|$/, 2));
 
   if (!section || (!legacy && !separated) || /[<>{}]/.test(section) ||
       /^[ \t]*(?:import|export)\b/m.test(section)) {
@@ -50,5 +51,5 @@ export async function fetchRegions() {
   }
   const coverage = extractRegions(await response.text());
   // Do not replace current language coverage with the superseded per-country list.
-  return coverage.includes("### Languages and accents") ? coverage : REGIONS_SNAPSHOT;
+  return coverage.includes("| Language | Accents |") ? coverage : REGIONS_SNAPSHOT;
 }

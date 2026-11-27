@@ -89,10 +89,10 @@ const splitRegionSection = `Choose the calling destination and language independ
 
 ### Languages and accents
 
-| Language | Code | Additional local accents |
-| --- | --- | --- |
-| English | en | Australia, UK |
-| Test language | zz | — |`;
+| Language | Accents |
+| --- | --- |
+| English | US, Australia, UK |
+| Test language | Test region |`;
 const splitRegionsReadme = regionsReadme.replace(regionSection, splitRegionSection);
 
 test("extracts only valid region coverage from the source README", () => {
@@ -105,7 +105,7 @@ test("extracts only valid region coverage from the source README", () => {
     .toBe(splitRegionSection);
   for (const invalid of [
     splitRegionsReadme.replace("Number Type", "Unknown column"),
-    splitRegionsReadme.replace("Additional local accents", "Unknown column"),
+    splitRegionsReadme.replace("Accents", "Unknown column"),
     splitRegionsReadme.replace("Australia, UK", "Australia | UK"),
     splitRegionsReadme.replace("Test language", "{unsafeMdx()}"),
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
@@ -141,7 +141,7 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
   }));
   await page.reload();
   await expect(page.getByRole("columnheader", { name: "Line Region" })).toHaveCount(0);
-  await expect(page.getByRole("columnheader", { name: "Additional local accents" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Accents", exact: true })).toBeVisible();
 
   await page.route(REGIONS_README_URL, (route) => route.fulfill({
     contentType: "text/plain",
@@ -149,8 +149,8 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
   }));
   await page.reload();
   await expect(page.getByRole("columnheader", { name: "Number Type" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Additional local accents" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Australia, UK" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Accents", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "US, Australia, UK" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -170,7 +170,7 @@ test("retains a readable region snapshot when refresh fails", async ({ page, req
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");
   expect(await markdown.text()).toMatch(tableHeader);
-  expect(await markdown.text()).toContain("| Language | Code | Additional local accents |");
+  expect(await markdown.text()).toContain("| Language | Accents |");
   const llmsFull = await request.get("/llms-full.txt");
   expect(await llmsFull.text()).toMatch(tableHeader);
 
