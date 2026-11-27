@@ -79,12 +79,35 @@ ${regionSection}
 
 Unrelated examples.`;
 
+const splitRegionSection = `Choose the calling destination and language independently.
+
+### Calling regions
+
+| Country / Region | Region Code | Calling Code | Number Type |
+| --- | --- | --- | --- |
+| Updated test destination | ZZ | +999 | International |
+
+### Languages and accents
+
+| Language | Code | Additional local accents |
+| --- | --- | --- |
+| English | en | Australia, UK |
+| Test language | zz | — |`;
+const splitRegionsReadme = regionsReadme.replace(regionSection, splitRegionSection);
+
 test("extracts only valid region coverage from the source README", () => {
   expect(extractRegions(regionsReadme)).toBe(regionSection);
   expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
   expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
     .toBe(regionSection.replace("Default Line", "Line Region"));
+  expect(extractRegions(splitRegionsReadme)).toBe(splitRegionSection);
+  expect(extractRegions(splitRegionsReadme.replaceAll("\n", "\r\n")))
+    .toBe(splitRegionSection);
   for (const invalid of [
+    splitRegionsReadme.replace("Number Type", "Unknown column"),
+    splitRegionsReadme.replace("Additional local accents", "Unknown column"),
+    splitRegionsReadme.replace("Australia, UK", "Australia | UK"),
+    splitRegionsReadme.replace("Test language", "{unsafeMdx()}"),
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
     regionsReadme.replace("| Languages |", "| Renamed column |"),
     regionsReadme.replace("Test language", "Test | language"),
@@ -104,9 +127,12 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme,
   }));
   await page.goto("/regions");
-  await expect(page.getByRole("columnheader", { name: "Default Line" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Updated test destination" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calling regions", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Languages and accents", exact: true })).toBeVisible();
+  await expect(page.getByRole("table").nth(0).getByRole("row")).toHaveCount(23);
+  await expect(page.getByRole("table").nth(1).getByRole("row")).toHaveCount(20);
+  await expect(page.getByRole("cell", { name: "Arabic", exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Default Line" })).toHaveCount(0);
   await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
 
   await page.route(REGIONS_README_URL, (route) => route.fulfill({
@@ -114,7 +140,17 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme.replace("Default Line", "Line Region"),
   }));
   await page.reload();
-  await expect(page.getByRole("columnheader", { name: "Line Region" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Line Region" })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Additional local accents" })).toBeVisible();
+
+  await page.route(REGIONS_README_URL, (route) => route.fulfill({
+    contentType: "text/plain",
+    body: splitRegionsReadme,
+  }));
+  await page.reload();
+  await expect(page.getByRole("columnheader", { name: "Number Type" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Additional local accents" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Australia, UK" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -129,11 +165,12 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
 
 test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const tableHeader = /\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|/;
+  const tableHeader = /\| Country \/ Region \| Region Code \| Calling Code \| Number Type \|/;
   const html = await request.get("/regions");
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");
   expect(await markdown.text()).toMatch(tableHeader);
+  expect(await markdown.text()).toContain("| Language | Code | Additional local accents |");
   const llmsFull = await request.get("/llms-full.txt");
   expect(await llmsFull.text()).toMatch(tableHeader);
 
@@ -144,14 +181,17 @@ test("retains a readable region snapshot when refresh fails", async ({ page, req
     await page.route(REGIONS_README_URL, (route) => route.fulfill(response));
     await page.goto("/regions");
     await expect(page.getByRole("status")).toContainText("Could not refresh coverage");
-    await expect(page.getByRole("table")).toBeVisible();
+    await expect(page.getByRole("table")).toHaveCount(2);
+    await expect(page.getByRole("table").first()).toBeVisible();
     expect(await page.getByRole("row").count()).toBeGreaterThan(2);
     await expect(page.getByText("unsafeMdx()")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     const tableRegion = page.getByRole("region", { name: "Region and language coverage" });
-    await tableRegion.focus();
-    await page.keyboard.press("ArrowRight");
-    await expect.poll(() => tableRegion.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    if (await tableRegion.evaluate((element) => element.scrollWidth > element.clientWidth)) {
+      await tableRegion.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect.poll(() => tableRegion.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+    }
     await page.unroute(REGIONS_README_URL);
   }
 });
@@ -432,6 +472,7 @@ test("limits changelog headings to releases with optional feature themes", async
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
   expect(dates.map((date) => date.trim())).toEqual([
+    "2026-11-27 — Languages & Local Accents",
     "2026-11-23 — Agent Compatibility & Recordings",
     "2026-11-09 — Agent Skill & Calling Upgrades",
     "2026-11-02",
