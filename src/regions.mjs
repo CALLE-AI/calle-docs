@@ -10,22 +10,24 @@ export function extractRegions(readme) {
     ?.split(/^## /m)[0]
     .replace(/\n---\s*$/, "")
     .trim();
-  const rows = section?.match(/^\|.*\|[ \t]*$/gm);
+  const tables = section?.match(/(?:^\|.*\|[ \t]*(?:\n|$))+/gm)
+    ?.map((table) => table.trim().split("\n"));
+  const validTable = (rows, header, columns) =>
+    rows?.length >= 3 && header.test(rows[0]) &&
+    new RegExp(`^\\|(?:[ \\t]*:?-+:?[ \\t]*\\|){${columns}}$`).test(rows[1]) &&
+    rows.every((row) => row.split("|").length === columns + 2) &&
+    rows.slice(2).every((row) =>
+      row.split("|").slice(1, -1).every((cell) => cell.trim())
+    );
+  // Accept both formats so the source README can migrate independently of the site.
+  const legacy = tables?.length === 1 && validTable(tables[0],
+    /^\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|$/, 5);
+  const separated = tables?.length === 2 && validTable(tables[0],
+    /^\| Country \/ Region \| Region Code \| Calling Code \| Number Type \|$/, 4) &&
+    validTable(tables[1], /^\| Language \| Code \| Additional local accents \|$/, 3);
 
-  // ponytail: five plain cells; use a Markdown parser if cells need escaped pipes.
-  if (
-    !section ||
-    !rows ||
-    rows.length < 3 ||
-    !/^\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|$/.test(rows[0]) ||
-    !/^\|(?:[ \t]*:?-+:?[ \t]*\|){5}$/.test(rows[1]) ||
-    rows.some((row) => row.split("|").length !== 7) ||
-    rows.slice(2).some((row) =>
-      row.split("|").slice(1, -1).some((cell) => !cell.trim())
-    ) ||
-    /[<>{}]/.test(section) ||
-    /^[ \t]*(?:import|export)\b/m.test(section)
-  ) {
+  if (!section || (!legacy && !separated) || /[<>{}]/.test(section) ||
+      /^[ \t]*(?:import|export)\b/m.test(section)) {
     throw new Error(
       "The source region table is missing or has an unsupported format.",
     );

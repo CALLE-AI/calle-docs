@@ -79,12 +79,35 @@ ${regionSection}
 
 Unrelated examples.`;
 
+const splitRegionSection = `Choose the calling destination and language independently.
+
+### Calling regions
+
+| Country / Region | Region Code | Calling Code | Number Type |
+| --- | --- | --- | --- |
+| Updated test destination | ZZ | +999 | International |
+
+### Languages and accents
+
+| Language | Code | Additional local accents |
+| --- | --- | --- |
+| English | en | Australia, UK |
+| Test language | zz | — |`;
+const splitRegionsReadme = regionsReadme.replace(regionSection, splitRegionSection);
+
 test("extracts only valid region coverage from the source README", () => {
   expect(extractRegions(regionsReadme)).toBe(regionSection);
   expect(extractRegions(regionsReadme.replaceAll("\n", "\r\n"))).toBe(regionSection);
   expect(extractRegions(regionsReadme.replace("Default Line", "Line Region")))
     .toBe(regionSection.replace("Default Line", "Line Region"));
+  expect(extractRegions(splitRegionsReadme)).toBe(splitRegionSection);
+  expect(extractRegions(splitRegionsReadme.replaceAll("\n", "\r\n")))
+    .toBe(splitRegionSection);
   for (const invalid of [
+    splitRegionsReadme.replace("Number Type", "Unknown column"),
+    splitRegionsReadme.replace("Additional local accents", "Unknown column"),
+    splitRegionsReadme.replace("Australia, UK", "Australia | UK"),
+    splitRegionsReadme.replace("Test language", "{unsafeMdx()}"),
     regionsReadme.replace("Supported Regions and Languages", "Removed section"),
     regionsReadme.replace("| Languages |", "| Renamed column |"),
     regionsReadme.replace("Test language", "Test | language"),
@@ -115,6 +138,15 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
   }));
   await page.reload();
   await expect(page.getByRole("columnheader", { name: "Line Region" })).toBeVisible();
+
+  await page.route(REGIONS_README_URL, (route) => route.fulfill({
+    contentType: "text/plain",
+    body: splitRegionsReadme,
+  }));
+  await page.reload();
+  await expect(page.getByRole("columnheader", { name: "Number Type" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Additional local accents" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Australia, UK" })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -432,6 +464,7 @@ test("limits changelog headings to releases with optional feature themes", async
   const article = page.locator('[data-pagefind-body="true"]');
   const dates = await article.getByRole("heading", { level: 2 }).allTextContents();
   expect(dates.map((date) => date.trim())).toEqual([
+    "2026-11-27 — Languages & Local Accents",
     "2026-11-23 — Agent Compatibility & Recordings",
     "2026-11-09 — Agent Skill & Calling Upgrades",
     "2026-11-02",
