@@ -1,3 +1,5 @@
+import { REGIONS_SNAPSHOT } from "./regions-snapshot.mjs";
+
 export const REGIONS_SOURCE_URL =
   "https://github.com/CALLE-AI/call-e-integrations#supported-regions-and-languages";
 export const REGIONS_README_URL =
@@ -46,5 +48,7 @@ export async function fetchRegions() {
       `Could not load the source region table (HTTP ${response.status}).`,
     );
   }
-  return extractRegions(await response.text());
+  const coverage = extractRegions(await response.text());
+  // Do not replace current language coverage with the superseded per-country list.
+  return coverage.includes("### Languages and accents") ? coverage : REGIONS_SNAPSHOT;
 }

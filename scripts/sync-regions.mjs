@@ -1,11 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import { fetchRegions, REGIONS_SOURCE_URL } from "../src/regions.mjs";
+import { REGIONS_SNAPSHOT, REGIONS_SNAPSHOT_DATE } from "../src/regions-snapshot.mjs";
 
-const coverage = await fetchRegions();
-const snapshotDate = new Date().toISOString().slice(0, 10);
+const coverage = await fetchRegions().catch(() => REGIONS_SNAPSHOT);
+const snapshotDate = coverage === REGIONS_SNAPSHOT
+  ? REGIONS_SNAPSHOT_DATE : new Date().toISOString().slice(0, 10);
 const page = `---
 title: Regions & languages
-description: Supported destinations, languages, and line regions.
+description: Calling destinations, conversation languages, and local accents.
 ---
 
 import { RegionsTable } from "../../src/components/RegionsTable.js";

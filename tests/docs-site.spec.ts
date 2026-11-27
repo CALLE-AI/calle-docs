@@ -127,9 +127,12 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme,
   }));
   await page.goto("/regions");
-  await expect(page.getByRole("columnheader", { name: "Default Line" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Updated test destination" })).toBeVisible();
-  await expect(page.getByRole("cell", { name: "Test language" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calling regions", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Languages and accents", exact: true })).toBeVisible();
+  await expect(page.getByRole("table").nth(0).getByRole("row")).toHaveCount(23);
+  await expect(page.getByRole("table").nth(1).getByRole("row")).toHaveCount(20);
+  await expect(page.getByRole("cell", { name: "Arabic", exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Default Line" })).toHaveCount(0);
   await expect(page.getByText("Unrelated examples.")).toHaveCount(0);
 
   await page.route(REGIONS_README_URL, (route) => route.fulfill({
@@ -137,7 +140,8 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
     body: regionsReadme.replace("Default Line", "Line Region"),
   }));
   await page.reload();
-  await expect(page.getByRole("columnheader", { name: "Line Region" })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Line Region" })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Additional local accents" })).toBeVisible();
 
   await page.route(REGIONS_README_URL, (route) => route.fulfill({
     contentType: "text/plain",
@@ -161,11 +165,12 @@ test("refreshes region coverage without rebuilding the docs", async ({ page }) =
 
 test("retains a readable region snapshot when refresh fails", async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const tableHeader = /\| Country \| Country Code \| Calling Code \| Languages \| (?:Default Line|Line Region) \|/;
+  const tableHeader = /\| Country \/ Region \| Region Code \| Calling Code \| Number Type \|/;
   const html = await request.get("/regions");
   expect(await html.text()).toContain("<table");
   const markdown = await request.get("/regions.md");
   expect(await markdown.text()).toMatch(tableHeader);
+  expect(await markdown.text()).toContain("| Language | Code | Additional local accents |");
   const llmsFull = await request.get("/llms-full.txt");
   expect(await llmsFull.text()).toMatch(tableHeader);
 
@@ -176,7 +181,8 @@ test("retains a readable region snapshot when refresh fails", async ({ page, req
     await page.route(REGIONS_README_URL, (route) => route.fulfill(response));
     await page.goto("/regions");
     await expect(page.getByRole("status")).toContainText("Could not refresh coverage");
-    await expect(page.getByRole("table")).toBeVisible();
+    await expect(page.getByRole("table")).toHaveCount(2);
+    await expect(page.getByRole("table").first()).toBeVisible();
     expect(await page.getByRole("row").count()).toBeGreaterThan(2);
     await expect(page.getByText("unsafeMdx()")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
